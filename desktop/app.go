@@ -389,11 +389,6 @@ func (a *App) restoreOrBuildTabs() {
 			tab.model = entry.Model
 			tab.effort = cloneStringPtr(entry.Effort)
 			tab.mode = persistedTabMode(entry.Mode)
-			tab.goal = strings.TrimSpace(entry.Goal)
-			tab.toolApprovalMode = normalizeToolApprovalMode(entry.ToolApprovalMode)
-			if tab.toolApprovalMode == control.ToolApprovalAsk && tabModeHasAutoApproveTools(entry.Mode) {
-				tab.toolApprovalMode = control.ToolApprovalYolo
-			}
 			tab.SessionPath = strings.TrimSpace(entry.SessionPath)
 			tab.sink = &tabEventSink{tabID: tab.ID, app: a, ctx: ctx}
 			a.mu.Lock()
@@ -922,6 +917,8 @@ func (a *App) Fork(turn int) (TabMeta, error) {
 	model := sourceTab.model
 	effort := cloneStringPtr(sourceTab.effort)
 	mode := currentTabMode(sourceTab)
+	goal := strings.TrimSpace(sourceTab.goal)
+	toolApprovalMode := sourceTab.toolApprovalMode
 	disabledMCP := cloneServerViewMap(sourceTab.disabledMCP)
 	mcpOrder := append([]string(nil), sourceTab.mcpOrder...)
 	a.mu.RUnlock()
@@ -951,17 +948,19 @@ func (a *App) Fork(turn int) (TabMeta, error) {
 	a.mu.Lock()
 	tabID := a.newUniqueTabIDLocked()
 	tab := &WorkspaceTab{
-		ID:            tabID,
-		Scope:         scope,
-		WorkspaceRoot: workspaceRoot,
-		TopicID:       topicID,
-		TopicTitle:    topicTitle,
-		SessionPath:   newPath,
-		model:         model,
-		effort:        effort,
-		mode:          mode,
-		disabledMCP:   disabledMCP,
-		mcpOrder:      mcpOrder,
+		ID:               tabID,
+		Scope:            scope,
+		WorkspaceRoot:    workspaceRoot,
+		TopicID:          topicID,
+		TopicTitle:       topicTitle,
+		SessionPath:      newPath,
+		model:            model,
+		effort:           effort,
+		mode:             mode,
+		goal:             goal,
+		toolApprovalMode: toolApprovalMode,
+		disabledMCP:      disabledMCP,
+		mcpOrder:         mcpOrder,
 	}
 	tab.sink = &tabEventSink{tabID: tabID, app: a}
 	a.tabs[tabID] = tab
@@ -1731,6 +1730,9 @@ func (a *App) MetaForTab(tabID string) Meta {
 	}
 }
 
+// SetGoal sets a persistent goal for the active tab. When a goal is set, the
+// collaboration mode switches to "goal" and the controller loops until the
+// goal is achieved or cleared.
 func (a *App) SetGoal(goal string) {
 	a.SetGoalForTab("", goal)
 }
