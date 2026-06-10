@@ -22,11 +22,12 @@ func (a *App) createAppMenu() *menu.Menu {
 	m.Append(menu.AppMenu())
 
 	fileMenu := m.AddSubmenu("File")
-	fileMenu.AddText("Close Conversation", keys.CmdOrCtrl("w"), func(_ *menu.CallbackData) {
+	fileMenu.AddText("Close Tab", keys.CmdOrCtrl("w"), func(_ *menu.CallbackData) {
 		if a.ctx != nil {
-			runtime.EventsEmit(a.ctx, "app:close-active-tab")
+			runtime.EventsEmit(a.ctx, "app:close-tab")
 		}
 	})
+	fileMenu.AddSeparator()
 	fileMenu.AddText("Settings", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
 		if a.ctx != nil {
 			runtime.EventsEmit(a.ctx, "app:open-settings")
@@ -38,13 +39,24 @@ func (a *App) createAppMenu() *menu.Menu {
 	fileMenu.AddText("Quit Reasonix", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
 		a.quitApp()
 	})
-	fileMenu.AddText("Toggle Developer Tools", keys.CmdOrCtrl("i"), func(_ *menu.CallbackData) {
+	m.Append(menu.EditMenu())
+
+	// Custom Window submenu — replaces menu.WindowMenu() which registers
+	// Cmd+W for "Close Window", conflicting with our Close Tab accelerator.
+	windowMenu := m.AddSubmenu("Window")
+	windowMenu.AddText("Minimize", keys.CmdOrCtrl("m"), func(_ *menu.CallbackData) {
 		if a.ctx != nil {
-			runtime.WindowExecJS(a.ctx, `window.webkit.messageHandlers.external.postMessage("wails:openInspector");`)
+			runtime.WindowMinimise(a.ctx)
 		}
 	})
-	m.Append(menu.EditMenu())
-	m.Append(menu.WindowMenu())
+	windowMenu.AddText("Zoom", nil, func(_ *menu.CallbackData) {
+		if a.ctx != nil {
+			runtime.WindowMaximise(a.ctx)
+		}
+	})
+	windowMenu.AddText("Bring All to Front", nil, func(_ *menu.CallbackData) {
+		a.showMainWindow()
+	})
 
 	return m
 }

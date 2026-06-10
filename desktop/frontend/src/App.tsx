@@ -365,6 +365,48 @@ function ShellHotkeys() {
   return null;
 }
 
+/** Close current tab with Cmd+W when the tab bar is visible. */
+function TabHotkeys({
+  tabBarHidden,
+  activeTabId,
+  onCloseTab,
+}: {
+  tabBarHidden: boolean;
+  activeTabId?: string;
+  onCloseTab: (id: string) => void;
+}) {
+  const tabBarHiddenRef = useRef(tabBarHidden);
+  tabBarHiddenRef.current = tabBarHidden;
+  const activeTabIdRef = useRef(activeTabId);
+  activeTabIdRef.current = activeTabId;
+  const onCloseTabRef = useRef(onCloseTab);
+  onCloseTabRef.current = onCloseTab;
+
+  // Wails event – macOS menu sends app:close-tab.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.runtime) return;
+    return window.runtime.EventsOn("app:close-tab", () => {
+      if (!tabBarHiddenRef.current && activeTabIdRef.current) {
+        onCloseTabRef.current(activeTabIdRef.current);
+      }
+    });
+  }, []);
+
+  // JS keydown – fallback for Windows/Linux.
+  useEffect(() => {
+    if (tabBarHidden) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "w") {
+        e.preventDefault();
+        if (activeTabId) onCloseTab(activeTabId);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [tabBarHidden, activeTabId, onCloseTab]);
+  return null;
+}
+
 /** Global hotkey handler for text-size shortcuts (Ctrl/Cmd + Plus/Minus/0). */
 function TextSizeHotkeys() {
   useEffect(() => {
@@ -1560,6 +1602,11 @@ export default function App() {
     <ShellExpandProvider>
     <ShellHotkeys />
     <TextSizeHotkeys />
+    <TabHotkeys
+      tabBarHidden={tabBarHidden}
+      activeTabId={visibleTabId}
+      onCloseTab={(id) => void handleTabClose(id)}
+    />
     <div className={`app app--${desktopPlatform}`}>
       <div
         ref={layoutRef}
