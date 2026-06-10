@@ -797,6 +797,7 @@ export const en = {
   "settings.workspaceRoot": "Workspace root",
   "settings.workspaceDefault": "(default: cwd)",
   "settings.appearance": "Appearance",
+  "settings.showTabBar": "Show tab bar",
   "settings.theme": "Theme",
   "settings.themeStyle": "Visual style",
   "settings.style.graphite.zh": "Graphite",

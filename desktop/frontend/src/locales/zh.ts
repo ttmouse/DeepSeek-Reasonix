@@ -799,6 +799,7 @@ export const zh: Record<DictKey, string> = {
   "settings.workspaceRoot": "工作区根目录",
   "settings.workspaceDefault": "（默认：当前目录）",
   "settings.appearance": "外观",
+  "settings.showTabBar": "显示顶部 Tab 栏",
   "settings.theme": "主题",
   "settings.themeStyle": "视觉风格",
   "settings.style.graphite.zh": "石墨",

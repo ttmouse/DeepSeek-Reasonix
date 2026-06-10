@@ -3160,6 +3160,18 @@ function AppearanceSection({
 }) {
   const t = useT();
   const themeOptions: Theme[] = ["auto", "light", "dark"];
+  const [tabBarHidden, setTabBarHidden] = useState(() => {
+    try { return window.localStorage.getItem("reasonix.desktop.tabBarHidden") === "1"; }
+    catch { return false; }
+  });
+  const toggleTabBar = () => {
+    const next = !tabBarHidden;
+    setTabBarHidden(next);
+    try {
+      window.localStorage.setItem("reasonix.desktop.tabBarHidden", next ? "1" : "0");
+    } catch {}
+    window.dispatchEvent(new CustomEvent("reasonix:tabbar-visibility-changed"));
+  };
   return (
     <SettingsSection title={t("settings.appearance")}>
       <SettingsField label={t("settings.theme")}>
@@ -3213,6 +3225,22 @@ function AppearanceSection({
               {fontFamilyName(font, t)}
             </button>
           ))}
+        </div>
+      </SettingsField>
+      <SettingsField label={t("settings.showTabBar")}>
+        <div className="set-seg">
+          <button
+            className={`set-seg__btn${!tabBarHidden ? " set-seg__btn--on" : ""}`}
+            onClick={toggleTabBar}
+          >
+            On
+          </button>
+          <button
+            className={`set-seg__btn${tabBarHidden ? " set-seg__btn--on" : ""}`}
+            onClick={toggleTabBar}
+          >
+            Off
+          </button>
         </div>
       </SettingsField>
     </SettingsSection>
