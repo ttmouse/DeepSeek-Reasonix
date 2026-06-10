@@ -113,11 +113,36 @@ function topicActivityLabel(ms: number): string {
   const minute = 60_000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return rtf.format(-1, "minute");
-  if (delta < hour) return rtf.format(-Math.max(1, Math.round(delta / minute)), "minute");
-  if (delta < day) return rtf.format(-Math.round(delta / hour), "hour");
-  if (delta < 7 * day) return rtf.format(-Math.round(delta / day), "day");
-  return new Date(ms).toLocaleDateString();
+  let label: string;
+  if (delta < minute) label = rtf.format(-1, "minute");
+  else if (delta < hour) label = rtf.format(-Math.max(1, Math.round(delta / minute)), "minute");
+  else if (delta < day) label = rtf.format(-Math.round(delta / hour), "hour");
+  else if (delta < 7 * day) label = rtf.format(-Math.round(delta / day), "day");
+  else return new Date(ms).toLocaleDateString();
+  // Strip trailing "前" (zh) or " ago" (en) — the sidebar doesn't need it.
+  return label.replace(/前$/, "").replace(/ ago$/, "");
+}
+
+type ProjectTopicStatus = "thinking" | "streaming" | "waiting_confirmation" | "paused" | "error";
+
+function normalizeTopicStatus(status?: string): ProjectTopicStatus | "" {
+  if (!status) return "";
+  if (status === "thinking" || status === "streaming" || status === "waiting_confirmation" || status === "paused" || status === "error") {
+    return status;
+  }
+  return "";
+}
+
+function topicStatusLabel(node: ProjectNode): string {
+  const status = normalizeTopicStatus(node.status || (node.running ? "streaming" : ""));
+  const labels: Record<ProjectTopicStatus, string> = {
+    thinking: "思考中",
+    streaming: "输出中",
+    waiting_confirmation: "待确认",
+    paused: "已暂停",
+    error: "错误",
+  };
+  return status ? labels[status] : "";
 }
 
 type ProjectDropPosition = "before" | "after";
@@ -629,6 +654,9 @@ export function ProjectTree({
       const topicId = node.topicId ?? "";
       const lastActivityAt = node.lastActivityAt;
       const timeLabel = lastActivityAt != null && lastActivityAt > 0 ? topicActivityLabel(lastActivityAt).replace(/前$/, "") : null;
+      const statusLabel = topicStatusLabel(node);
+      const hasStatusLabel = statusLabel !== "";
+      const statusClass = normalizeTopicStatus(node.status || (node.running ? "streaming" : ""));
       const topicMenuOpen = menuTopic === topicId;
       const openTopicMenu = (event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
         event.preventDefault();
@@ -699,14 +727,15 @@ export function ProjectTree({
             }}
           >
             <span className="project-tree__topic-copy">
+              {hasStatusLabel && <span className={"project-tree__topic-status project-tree__topic-status--" + statusClass}>{statusLabel}</span>}
               <span className="project-tree__topic-label">{label}</span>
             </span>
             {node.running ? (
               <span className="project-tree__topic-indicator project-tree__topic-indicator--running" />
             ) : node.hasUnread ? (
               <span className="project-tree__topic-indicator project-tree__topic-indicator--unread" />
-            ) : timeLabel ? (
-              <span className="project-tree__topic-time">{timeLabel}</span>
+            ) : meta ? (
+              <span className="project-tree__topic-time">{meta}</span>
             ) : null}
           </button>
           <ContextMenu

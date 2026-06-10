@@ -147,9 +147,11 @@ export interface ProjectNode {
   projectColor?: string;
   turns?: number;
   lastActivityAt?: number;
+  createdAt?: number;
   open?: boolean;
   running?: boolean;
   hasUnread?: boolean;
+  status?: string;
   children?: ProjectNode[];
 }
 
