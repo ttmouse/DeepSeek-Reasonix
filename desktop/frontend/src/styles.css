@@ -9010,6 +9010,255 @@ a[href] {
   line-height: 1.45;
 }
 
+/* ── composer extras from rebuild ──────────────────────────────────── */
+.composer__btn--stop:not(:disabled) svg {
+  animation: stop-step 1s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes stop-step {
+  0%    { transform: rotate(0deg); }
+  25%   { transform: rotate(90deg); }
+  100%  { transform: rotate(90deg); }
+}
+.composer__btn--add {
+  color: var(--fg-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  width: 28px;
+  height: 28px;
+  align-self: center;
+  border-radius: 999px;
+}
+.composer__btn--add:hover:not(:disabled) {
+  color: var(--fg);
+  background: var(--bg-soft);
+}
+.composer__btn--add:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.composer__btn--add:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.composer-meta__control--intent {
+  flex: 0 0 auto;
+  gap: 6px;
+  min-width: 32px;
+  max-width: min(132px, 24vw);
+  margin-left: 4px;
+}
+.composer-meta__control--intent--empty {
+  display: none;
+}
+.composer-meta__control--approval {
+  flex: 0 0 auto;
+}
+.composer-meta__control--add {
+  flex: 0 0 auto;
+  margin-right: 2px;
+}
+.composer-meta__control--send {
+  flex: 0 0 auto;
+}
+.composer-meta__control--send .composer__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  align-self: center;
+}
+
+.composer-access-menu {
+  width: min(336px, calc(100vw - 16px));
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+.composer-access-menu__desc-header {
+  padding: 4px 8px 8px;
+  color: var(--fg-faint);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.composer-access-menu__section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.composer-access-menu__section + .composer-access-menu__section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+.composer-access-menu__label {
+  padding: 3px 8px 5px;
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-weight: 650;
+}
+.composer-access-menu__item {
+  --wails-draggable: no-drag;
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  text-align: left;
+}
+.composer-access-menu__item > svg {
+  flex: 0 0 auto;
+  color: var(--fg-dim);
+}
+.composer-access-menu__item:hover,
+.composer-access-menu__item:focus-visible {
+  outline: none;
+  background: var(--bg-elev-2);
+  color: var(--fg);
+}
+.composer-access-menu__item--active {
+  color: var(--fg);
+  background: var(--bg-elev-2);
+}
+.composer-access-menu__copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.composer-access-menu__title {
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 16px;
+}
+.composer-access-menu__desc {
+  min-width: 0;
+  color: var(--fg-faint);
+  font-size: 11.5px;
+  line-height: 1.35;
+  overflow: hidden;
+}
+.mode-status-btn {
+  --wails-draggable: no-drag;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  box-shadow: none;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.mode-status-btn:hover:not(:disabled),
+.mode-status-btn:focus-visible,
+.mode-status-btn--open {
+  outline: none;
+  background: var(--bg-soft);
+}
+.mode-status-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.mode-status-btn--auto {
+  color: var(--mode-auto-bg);
+  background: color-mix(in srgb, var(--mode-auto-bg) 5%, transparent);
+}
+.mode-status-btn--auto:hover:not(:disabled),
+.mode-status-btn--auto:focus-visible,
+.mode-status-btn--auto.mode-status-btn--open {
+  color: var(--mode-auto-bg);
+  background: var(--bg-soft);
+}
+.mode-status-btn--yolo {
+  color: var(--mode-yolo-bg);
+  background: color-mix(in srgb, var(--mode-yolo-bg) 5%, transparent);
+}
+.mode-status-btn--yolo:hover:not(:disabled),
+.mode-status-btn--yolo:focus-visible,
+.mode-status-btn--yolo.mode-status-btn--open {
+  color: var(--mode-yolo-bg);
+  background: var(--bg-soft);
+}
+.mode-status-btn__label {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.mode-status-chip {
+  --wails-draggable: no-drag;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: none;
+  background: color-mix(in srgb, var(--ok) 6%, transparent);
+  color: var(--ok);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mode-status-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.mode-status-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.mode-status-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.mode-status-chip__label {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.mode-status-chip__icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+.mode-status-chip__icon {
+  display: inline-flex;
+}
+.mode-status-chip:hover .mode-status-chip__icon {
+  display: none;
+}
+.mode-status-chip__close {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+}
+.mode-status-chip:hover .mode-status-chip__close,
+.mode-status-chip:focus-within .mode-status-chip__close {
+  display: flex;
+}
+.mode-status-chip__close:hover {
+  color: var(--fg);
+}
+
 @media (max-width: 820px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -11796,4 +12045,110 @@ a[href] {
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── graphite theme: composer extras ────────────────────────────────── */
+:root[data-theme-style="graphite"] .composer-wrap {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+:root[data-theme-style="graphite"] .composer-card {
+  border: 1px solid var(--app-graphite-hairline-strong);
+  border-radius: 11px;
+  background: var(--bg-elev);
+  box-shadow: var(--app-graphite-shadow);
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+:root[data-theme-style="graphite"] .composer-card:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+  transform: translateY(-1px);
+}
+:root[data-theme-style="graphite"] .composer {
+  min-height: 58px;
+  padding: 10px;
+  border-bottom-color: var(--border-soft);
+}
+:root[data-theme-style="graphite"] .composer__caret {
+  color: var(--accent);
+}
+:root[data-theme-style="graphite"] .composer__input {
+  font-size: 14px;
+  line-height: 1.6;
+}
+:root[data-theme-style="graphite"] .composer__btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+:root[data-theme-style="graphite"] .composer__btn--send {
+  color: var(--accent-fg);
+  background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 6px 16px -8px var(--accent);
+}
+:root[data-theme-style="graphite"] .composer__btn--send:not(:disabled):hover {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 94%, #ffffff), var(--accent-strong));
+  transform: translateY(-1px) scale(1.03);
+}
+:root[data-theme-style="graphite"] .composer-meta {
+  min-height: 42px;
+  padding: 5px 12px 10px;
+  color: var(--fg-dim);
+}
+:root[data-theme-style="graphite"] .composer-modebar,
+:root[data-theme-style="graphite"] .composer-mode-chip,
+:root[data-theme-style="graphite"] .composer-meta .modelsw__trigger,
+:root[data-theme-style="graphite"] .composer-context__item {
+  border-radius: 7px;
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--bg-elev-2) 70%, transparent);
+  transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+}
+:root[data-theme-style="graphite"] .composer-mode-chip:hover:not(:disabled),
+:root[data-theme-style="graphite"] .composer-mode-chip:focus-visible,
+:root[data-theme-style="graphite"] .composer-mode-chip:active:not(:disabled),
+:root[data-theme-style="graphite"] .tooltip-trigger:hover > .composer-mode-chip:not(:disabled),
+:root[data-theme-style="graphite"] .tooltip-trigger:focus-within > .composer-mode-chip:not(:disabled),
+:root[data-theme-style="graphite"] .composer-meta .modelsw__trigger:hover {
+  color: var(--fg);
+  border-color: var(--app-graphite-hairline-strong);
+  background: var(--bg-elev);
+  transform: translateY(-1px);
+}
+:root[data-theme-style="graphite"] .composer-action-trigger {
+  border-radius: 999px;
+}
+:root[data-theme-style="graphite"] .composer-action-trigger:hover:not(:disabled),
+:root[data-theme-style="graphite"] .composer-action-trigger:focus-visible,
+:root[data-theme-style="graphite"] .composer-action-trigger--open {
+  color: var(--fg);
+  border-color: var(--app-graphite-hairline-strong);
+}
+:root[data-theme-style="graphite"] .composer-mode-chip {
+  border-radius: 999px;
+}
+:root[data-theme-style="graphite"] .composer-modebar__thumb,
+:root[data-theme-style="graphite"] .composer-modebar__item {
+  border-radius: 7px;
+}
+:root[data-theme-style="graphite"] .composer-modebar {
+  border-radius: 9px;
+}
+:root[data-theme-style="graphite"] .composer-modebar__thumb {
+  border: 1px solid var(--composer-modebar-active-border);
+  background: var(--composer-modebar-active-bg);
+}
+:root[data-theme-style="graphite"] .composer-modebar__item {
+  border-radius: 7px;
+}
+:root[data-theme-style="graphite"] .composer-modebar__item:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-elev-2) 60%, transparent);
+}
+:root[data-theme-style="graphite"] .composer-modebar__item--active,
+:root[data-theme-style="graphite"] .composer-modebar__item--active:hover:not(:disabled),
+:root[data-theme-style="graphite"] .composer-modebar__item--active:focus-visible {
+  color: var(--composer-modebar-active-fg);
 }
