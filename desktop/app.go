@@ -3606,7 +3606,7 @@ func (a *App) OpenURL(rawURL string) error {
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		rawURL = "https://" + rawURL
 	}
-	return exec.Command("open", rawURL).Start()
+	return openURL(rawURL)
 }
 
 // --- Browser Control Methods (Wails-bound, auto-registered) ---

@@ -133,9 +133,14 @@ export interface TabMeta {
   ready: boolean;
   running: boolean;
   mode: Mode;
+  collaborationMode: string;
+  toolApprovalMode: string;
+  goal?: string;
+  goalStatus?: string;
   startupErr?: string;
   active: boolean;
   cwd: string;
+  lastActivityAt: number;
 }
 
 export interface ProjectNode {
@@ -169,10 +174,13 @@ export interface ContextPanelInfo {
   reasoningTokens: number;
   cacheHitTokens: number;
   cacheMissTokens: number;
+  requestCount: number;
+  elapsedMs: number;
   sessionCost?: number;
   sessionCurrency?: string;
   // Deprecated compatibility alias. Prefer sessionCost + sessionCurrency.
   sessionCostUsd?: number;
+  mock?: boolean;
   readFiles: ReadFileRecord[];
   changedFiles: ChangedFileInfo[];
 }
@@ -274,7 +282,11 @@ export interface Meta {
   startupErr?: string;
   eventChannel: string;
   cwd: string;
-  bypass?: boolean; // YOLO mode on (auto-approve every tool call)
+  autoApproveTools: boolean;
+  bypass: boolean; // YOLO mode on (auto-approve every tool call)
+  toolApprovalMode: string;
+  goal?: string;
+  goalStatus?: string;
 }
 
 // Mode is the input mode cycled by Shift+Tab: normal (shown as auto) → plan

@@ -126,7 +126,8 @@ class GenerativeMusicEngine {
     try {
       this.ctx = new AudioContext();
       this.buildSignalChain();
-    } catch {
+    } catch (e) {
+      console.warn("generative-music: failed to create AudioContext", e);
       this.running = false;
     }
   }
@@ -143,7 +144,9 @@ class GenerativeMusicEngine {
         this.masterGain.gain.cancelScheduledValues(now);
         this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
         this.masterGain.gain.linearRampToValueAtTime(0, now + 0.3);
-      } catch { /* ignore */ }
+      } catch (e) {
+        console.warn("generative-music: gain ramp failed", e);
+      }
     }
 
     // 延迟关闭 AudioContext
