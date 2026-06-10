@@ -96,10 +96,13 @@ function topicIsActive(node: ProjectNode, activeScope?: string, activeWorkspaceR
 }
 
 function topicMetaLine(node: ProjectNode, t: Translator): string {
+  const parts: string[] = [];
   const turns = node.turns ?? 0;
-  if (turns <= 0) return "";
-  const last = node.lastActivityAt ? ` · ${topicActivityLabel(node.lastActivityAt)}` : "";
-  return `${t(turns === 1 ? "history.turnOne" : "history.turnOther", { n: turns })}${last}`;
+  if (turns > 0) parts.push(t(turns === 1 ? "history.turnOne" : "history.turnOther", { n: turns }));
+  const activityAt = node.lastActivityAt || node.createdAt || 0;
+  if (activityAt > 0) parts.push(topicActivityLabel(activityAt));
+  if (parts.length === 0) parts.push(t("projectTree.justNow"));
+  return parts.join(" · ");
 }
 
 function topicActivityLabel(ms: number): string {
