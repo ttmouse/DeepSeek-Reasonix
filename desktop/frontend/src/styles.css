@@ -15523,9 +15523,6 @@ a[href] {
  * Native-feel: overscroll containment, reduced-motion, view-transition suppression
  * -------------------------------------------------------------------------- */
 
-  opacity: 1;
-}
-
 /* Prevent rubber-band / pull-to-refresh on scrollable panels so the webview
    feels like a native window, not a browser tab. */
 .transcript,
