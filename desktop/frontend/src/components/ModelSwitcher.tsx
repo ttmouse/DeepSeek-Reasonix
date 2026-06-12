@@ -33,6 +33,12 @@ export function ModelSwitcher({ label, tabId, onPick }: { label: string; tabId?:
     [models, keyword],
   );
 
+  // Current model's provider label, shown on the trigger alongside the model name
+  const currentProvider = useMemo(() => {
+    const cur = models.find((m) => m.current);
+    return cur ? providerLabel(cur.provider, t) : null;
+  }, [models, t]);
+
   // Group by provider, with the current model's group first
   const groups = useMemo(() => {
     const map = new Map<string, ModelInfo[]>();
@@ -77,7 +83,7 @@ export function ModelSwitcher({ label, tabId, onPick }: { label: string; tabId?:
         onClick={() => setOpen((v) => !v)}
       >
         <Brain size={13} className="modelsw__kind" />
-        <span className="modelsw__label">{label}</span>
+        <span className="modelsw__label">{label}{currentProvider ? ` · ${currentProvider}` : ''}</span>
         <ChevronsUpDown size={11} />
       </button>
       <AnchoredPopover
