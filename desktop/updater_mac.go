@@ -46,13 +46,22 @@ set -eu
 old_app=%q
 new_app=%q
 backup_app="$old_app.reasonix-update-backup"
-sleep 1
 rm -rf "$backup_app"
+# Wait for the old process to fully exit (up to 10 seconds) so that
+# LaunchServices does not refuse to open the replacement under the same
+# bundle ID. This matters most when the .app is not in /Applications.
+for i in $(seq 1 10); do
+  if ! pgrep -qx "reasonix-desktop" 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
 if ! mv "$old_app" "$backup_app"; then
   rm -rf %q
   exit 1
 fi
 if ditto "$new_app" "$old_app"; then
+  xattr -dr com.apple.quarantine "$old_app" 2>/dev/null || true
   open "$old_app"
   rm -rf "$backup_app"
   rm -rf %q
@@ -60,6 +69,7 @@ if ditto "$new_app" "$old_app"; then
 fi
 rm -rf "$old_app"
 mv "$backup_app" "$old_app"
+xattr -dr com.apple.quarantine "$old_app" 2>/dev/null || true
 open "$old_app"
 rm -rf %q
 exit 1
