@@ -2158,12 +2158,15 @@ export default function App() {
     setPaletteOpen(true);
     setPaletteSessions(await listSessions().catch(() => []));
   }, [closeTransientOverlays, listSessions]);
-  useGlobalShortcut("commandPalette.open", () => {
+  const openPaletteRef = useRef(openPalette);
+  openPaletteRef.current = openPalette;
+  const togglePalette = useCallback(() => {
     setPaletteOpen((current) => {
-      if (!current) void openPalette();
-      return current;
+      if (!current) void openPaletteRef.current();
+      return !current;
     });
-  }, [openPalette]);
+  }, []);
+  useGlobalShortcut("commandPalette.open", togglePalette);
   useGlobalShortcut("app.newSession", () => void handleNewTab(), [handleNewTab]);
   useGlobalShortcut("settings.open", () => {
     closeTransientOverlays();
