@@ -983,6 +983,9 @@ export function WorkspacePanel({
           if (entry.isDir) {
             toggleDir(path);
           } else {
+            // Dismiss any active external reveal request so user-initiated
+            // navigation is not overridden by the stale reveal effect.
+            if (revealPathRequest) dismissedRevealRequestIdRef.current = revealPathRequest.id;
             if (selectedPath === path) {
               setSelectedPath(null);
             } else {
@@ -1029,6 +1032,7 @@ export function WorkspacePanel({
           if (entry.isDir) {
             toggleDir(path);
           } else {
+            if (revealPathRequest) dismissedRevealRequestIdRef.current = revealPathRequest.id;
             if (selectedPath === path) {
               setSelectedPath(null);
             } else {

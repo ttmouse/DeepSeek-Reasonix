@@ -5533,6 +5533,12 @@ func workspacePathForBase(base, rel string) (string, bool, error) {
 	if rel == "" {
 		return "", false, os.ErrInvalid
 	}
+	// Wails bridge may URL-encode non-ASCII characters in string arguments
+	// when passing them from JS to Go. Decode here so Chinese filenames
+	// (e.g. 站长访谈调研记录.md) resolve correctly.
+	if decoded, err := url.QueryUnescape(rel); err == nil {
+		rel = decoded
+	}
 	path := rel
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(base, rel)
