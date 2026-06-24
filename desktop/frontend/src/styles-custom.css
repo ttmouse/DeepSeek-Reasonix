@@ -696,6 +696,9 @@
 }
 :root[data-theme-style] .app--custom .project-tree__section--pinned .project-tree__folder-main > svg {
   display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: var(--fg-dim);
 }
 
 /* ── Custom skin: right dock panel clean metrics ── */
