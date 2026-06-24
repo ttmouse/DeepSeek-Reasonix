@@ -344,6 +344,10 @@
 :root[data-theme-style] .app--custom .msg--assistant .msg__body {
   margin-left: 8px;
 }
+.app--custom .msg--assistant > .process-card,
+:root[data-theme-style] .app--custom .msg--assistant > .process-card {
+  margin-left: 8px !important;
+}
 .app--custom .topicbar__title-row h1,
 .app--custom .topicbar__subtitle {
   text-align: center;
