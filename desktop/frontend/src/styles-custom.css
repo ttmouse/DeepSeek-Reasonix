@@ -714,6 +714,7 @@
   border: none;
   background: transparent;
   box-shadow: none;
+  gap: 8px;
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
   border: none;
@@ -726,8 +727,13 @@
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
   background: color-mix(in srgb, var(--bg-soft) 50%, transparent);
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 0 10px 8px;
+  border-radius: 0 0 8px 8px;
+}
+
+/* ── Custom skin: tighter section spacing ── */
+:root[data-theme-style] .app--custom .context-panel__overview {
+  gap: 8px;
 }
 :root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) {
   padding-left: 0;
