@@ -263,6 +263,12 @@
   visibility: visible;
   opacity: 1;
 }
+.app--custom .topicbar__chrome-btn,
+.app--custom .topicbar__chrome-btn--active,
+.app--custom .topicbar__chrome-btn:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+}
 
 /* ── Custom skin: no jump-bar focus highlight ── */
 .app--custom .jump-item:focus-visible,
