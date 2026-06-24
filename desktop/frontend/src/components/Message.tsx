@@ -172,7 +172,7 @@ export function UserMessage({
   const { text: displayText, attachments } = parseAttachmentRefsForDisplay(actionText);
   const orderedAttachments = sortDisplayAttachments(attachments);
   const sourceLabel = imSource ? imSourceLabel(imSource, t) : "";
-  const sentAt = createdAt === undefined ? null : messageDate(createdAt);
+  const sentAt = createdAt === undefined ? new Date() : messageDate(createdAt);
   const canEdit = turn !== undefined && onEdit !== undefined && !editDisabled;
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(displayText);

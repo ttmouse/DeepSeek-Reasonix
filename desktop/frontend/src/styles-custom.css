@@ -627,6 +627,9 @@
   gap: 4px;
   margin-top: 2px;
 }
+:root[data-theme-style] .app--custom .msg-meta__time {
+  margin-right: 6px;
+}
 
 /* ── Custom skin: mode chip light background ── */
 :root[data-theme-style] .app--custom .composer-mode-chip,
