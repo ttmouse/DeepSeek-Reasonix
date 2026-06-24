@@ -708,7 +708,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
-  background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
+  background: var(--bg-elev);
   box-shadow: none;
   padding-top: 14px;
 }
@@ -729,7 +729,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
-  background: color-mix(in srgb, var(--bg-soft) 50%, transparent);
+  background: var(--bg-elev);
   padding: 8px 10px;
   border-radius: 8px;
 }
