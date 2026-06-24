@@ -716,6 +716,7 @@
   background: transparent;
   box-shadow: none;
   gap: 8px;
+  padding: 6px 10px;
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
   border: none;
@@ -734,7 +735,7 @@
 
 /* ── Custom skin: tighter section spacing ── */
 :root[data-theme-style] .app--custom .context-panel__overview {
-  gap: 8px;
+  gap: 2px;
 }
 :root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) {
   padding-left: 0;
