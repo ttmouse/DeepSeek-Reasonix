@@ -700,6 +700,9 @@
   height: 14px;
   color: var(--fg-dim);
 }
+:root[data-theme-style] .app--custom .project-tree__section--pinned .project-tree__folder {
+  padding-left: 14px;
+}
 
 /* ── Custom skin: right dock panel clean metrics ── */
 :root[data-theme-style] .app--custom .workbench-dock {
