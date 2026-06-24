@@ -708,7 +708,7 @@
 :root[data-theme-style] .app--custom .context-panel__usage,
 :root[data-theme-style] .app--custom .context-panel__section {
   border: none;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
   box-shadow: none;
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
@@ -721,6 +721,9 @@
 }
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
+}
+:root[data-theme-style] .app--custom .context-panel__section-head:has(h3) {
+  display: none;
 }
 
 /* ── Custom skin: hide session status section ── */
