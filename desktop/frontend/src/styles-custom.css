@@ -139,7 +139,7 @@
   font-size: 0;
 }
 .app--custom .todobar__status--completed {
-  background: var(--fg-faint);
+  background: var(--border);
   border-radius: 50%;
 }
 .app--custom .todobar__status--completed::before {
