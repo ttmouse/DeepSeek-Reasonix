@@ -399,7 +399,6 @@
   background: transparent;
   border: none;
   padding: 0;
-  margin-left: 14px;
 }
 .app--custom .turn-actions .copybtn:hover {
   background: transparent;
@@ -563,19 +562,17 @@
 /* ── Custom skin: turn-action spacing + hover circle ── */
 :root[data-theme-style] .app--custom .turn-actions {
   gap: 16px;
+  align-items: center;
+  padding-left: 14px;
 }
 :root[data-theme-style] .app--custom .turn-actions .tooltip-trigger {
   display: inline-flex;
   min-width: 0;
-  padding: 2px;
 }
 :root[data-theme-style] .app--custom .turn-actions__btn:hover:not(:disabled),
 :root[data-theme-style] .app--custom .turn-actions .copybtn:hover {
   background: var(--button-bg-hover);
   border-radius: 999px;
-  border: none;
-  padding: 4px 6px;
-  margin: -4px -6px;
 }
 
 /* ── Custom skin: dark tooltip, no shadow ── */
@@ -595,9 +592,21 @@
 }
 
 /* ── Custom skin: user msg icons match turn-action size ── */
-:root[data-theme-style] .app--custom .msg-meta__btn svg {
+:root[data-theme-style] .app--custom .msg-meta .msg-meta__btn,
+:root[data-theme-style] .app--custom .msg-meta .copybtn {
+  width: auto;
+  height: auto;
+  padding: 0;
+  min-height: 0;
+}
+:root[data-theme-style] .app--custom .msg-meta__btn svg,
+:root[data-theme-style] .app--custom .msg-meta .copybtn svg {
   width: 13px;
   height: 13px;
+}
+:root[data-theme-style] .app--custom .msg-meta__btn:hover:not(:disabled),
+:root[data-theme-style] .app--custom .msg-meta .copybtn:hover {
+  border-radius: 999px;
 }
 
 /* ── Custom skin: mode chip light background ── */
