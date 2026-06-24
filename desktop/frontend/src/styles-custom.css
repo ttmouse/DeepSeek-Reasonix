@@ -705,10 +705,14 @@
 :root[data-theme-style] .app--custom .workbench-dock {
   border-left: none;
 }
-:root[data-theme-style] .app--custom .context-panel__usage,
-:root[data-theme-style] .app--custom .context-panel__section {
+:root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
   background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
+  box-shadow: none;
+}
+:root[data-theme-style] .app--custom .context-panel__section {
+  border: none;
+  background: transparent;
   box-shadow: none;
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
@@ -722,7 +726,7 @@
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
 }
-:root[data-theme-style] .app--custom .context-panel__section-head:has(h3) {
+:root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) .context-panel__section-head {
   display: none;
 }
 
