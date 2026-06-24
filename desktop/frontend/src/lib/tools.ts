@@ -57,8 +57,11 @@ export function summarizeFileDiff(fileDiff?: ToolFileDiff): string {
 export function subjectOf(name: string, args: string): string {
   const a = parse(args);
   switch (name) {
-    case "bash":
-      return str(a, "command");
+    case "bash": {
+      const cmd = str(a, "command") || "";
+      // [CUSTOM-SKIN] strip leading cd/path prefix for cleaner display
+      return cmd.replace(/^(?:cd\s+\S+(?:\s*&&\s*)?)+/i, "");
+    }
     case "grep":
     case "glob":
       return str(a, "pattern") || str(a, "path");
@@ -73,6 +76,11 @@ export function subjectOf(name: string, args: string): string {
     }
     case "remember":
       return str(a, "name") || str(a, "description");
+    case "edit_file":
+    case "write_file": {
+      const p = str(a, "path") || str(a, "file_path") || "";
+      return p.replace(/^.*\//, ""); // [CUSTOM-SKIN] show just the filename
+    }
     case "todo_write":
     case "exit_plan_mode":
       return ""; // these get dedicated cards, not a subject line
