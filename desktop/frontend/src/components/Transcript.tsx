@@ -131,6 +131,9 @@ export function Transcript({
   } = useScrollManager();
   const autoScrollFrame = useRef<number | null>(null);
   const pendingRevealBottomScroll = useRef(false);
+  // Holds the shimmer active briefly after hydrate_done so items.length
+  // can catch up — prevents Welcome flash during topic switches.
+  const [switchHold, setSwitchHold] = useState(0);
   const sessionKey = useMemo(() => `${items[0]?.id ?? ""}|${items[items.length - 1]?.id ?? ""}`, [items]);
   const entranceRef = useEntranceAnimation<HTMLDivElement>(sessionKey, items.length);
 
@@ -159,16 +162,22 @@ export function Transcript({
   useEffect(() => {
     stick.current = true;
     pendingRevealBottomScroll.current = true;
+    setSwitchHold((v) => v + 1);
+    const timer = setTimeout(() => {
+      setSwitchHold((v) => Math.max(0, v - 1));
+    }, 300);
+    return () => clearTimeout(timer);
   }, [tabId, revealSignal]);
 
-  useEffect(() => {
+  // Scroll to latest content before paint to avoid flash-of-top-content.
+  // Must be useLayoutEffect: the browser paints AFTER this runs, so the
+  // user sees the scroll position already at the bottom.
+  useLayoutEffect(() => {
     if (!pendingRevealBottomScroll.current || items.length === 0) return;
     pendingRevealBottomScroll.current = false;
-    const frame = requestAnimationFrame(() => {
-      scrollToBottomAfterLayout(5);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [items.length, revealSignal, scrollToBottomAfterLayout, tabId]);
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [items.length, revealSignal, tabId]);
 
   // Auto-scroll to bottom during streaming. Coalesce fast token/reasoning
   // updates into one layout read/write per animation frame.
@@ -602,8 +611,8 @@ export function Transcript({
         ref={scrollRef}
         onScroll={onScroll}
       >
-        {empty && !hydrating && <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
-        {empty && hydrating && (
+        {empty && !hydrating && switchHold === 0 && <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
+        {empty && (hydrating || switchHold > 0) && (
           <div className="transcript__loading">
             <div className="transcript__loading-card" />
             <div className="transcript__loading-card" />
