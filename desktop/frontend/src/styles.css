@@ -3146,6 +3146,43 @@ a[href] {
   margin-block: auto;
   margin-inline: 0;
 }
+
+/* Loading shimmer shown during topic switch while history loads */
+@keyframes transcript-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.transcript__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 32px auto;
+  padding: 0 16px;
+}
+.transcript__loading-card {
+  height: 72px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-sub) 25%,
+    var(--bg-elev) 50%,
+    var(--bg-sub) 75%
+  );
+  background-size: 200% 100%;
+  animation: transcript-shimmer 1.4s ease-in-out infinite;
+  opacity: 0.6;
+}
+.transcript__loading-card:nth-child(2) {
+  height: 48px;
+  width: 75%;
+}
+.transcript__loading-card:nth-child(3) {
+  height: 56px;
+  width: 85%;
+}
+
 .warm-collapse {
   display: block;
   width: 100%;

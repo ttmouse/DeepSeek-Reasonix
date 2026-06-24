@@ -603,6 +603,13 @@ export function Transcript({
         onScroll={onScroll}
       >
         {empty && !hydrating && <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
+        {empty && hydrating && (
+          <div className="transcript__loading">
+            <div className="transcript__loading-card" />
+            <div className="transcript__loading-card" />
+            <div className="transcript__loading-card" />
+          </div>
+        )}
 
         <LiveStreamContext.Provider value={live}>
           {turnGroups.length > HOT_TURNS && (
