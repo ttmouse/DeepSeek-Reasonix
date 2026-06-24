@@ -745,9 +745,6 @@
 :root[data-theme-style] .app--custom .context-panel__section--status {
   display: none;
 }
-:root[data-theme-style] .app--custom .context-panel__section-head {
-  display: none;
-}
 
 /* ── Custom skin: title edit input gray focus ── */
 .app--custom .tool__subject {
