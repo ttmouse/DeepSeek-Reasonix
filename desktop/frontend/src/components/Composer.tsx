@@ -7,7 +7,7 @@ import { DedupIndex, sha256 } from "../lib/attachDedup";
 import { app, onFilesDropped } from "../lib/bridge";
 import { canUsePromptHistory, isFnKeyEvent, promptHistoryDirectionFromEvent } from "../lib/composerKeyboard";
 import { cacheGeneration, loadOlder } from "../lib/composerHistory";
-import { SPINNER_WORDS, useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n";
 import { detectShortcutPlatform, matchesShortcut } from "../lib/keyboardShortcuts";
 import { clearLayoutSize, loadOptionalLayoutSize, saveLayoutSize } from "../lib/layoutPreferences";
 import { createRafResizeUpdater } from "../lib/resizeDrag";
@@ -247,17 +247,6 @@ function loadComposerHeight(): number | null {
   return loadOptionalLayoutSize("composerHeight", clampComposerHeight);
 }
 
-function fmtTokens(n: number): string {
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
-  return String(n);
-}
-
-function fmtElapsed(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
-}
-
 // --- past:chats hover preview helpers (PR-C2) ---
 // Pure formatting helpers used by the past:chats list tooltip. They never read
 // from disk, never call PreviewSession — they only shape the data that already
@@ -284,16 +273,6 @@ function fmtSessionTime(value?: number): string {
 
 function pastChatTitle(session: SessionMeta): string {
   return session.title || session.topicTitle || session.preview || "Untitled";
-}
-
-function useTick(on: boolean): number {
-  const [, setN] = useState(0);
-  useEffect(() => {
-    if (!on) return;
-    const id = window.setInterval(() => setN((n) => n + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [on]);
-  return Date.now();
 }
 
 function isImeKeyEvent(
@@ -426,9 +405,7 @@ export function Composer({
   readOnly = false,
   decisionPending = false,
   ready,
-  turnStartAt,
-  turnTokens,
-  retry,
+
   transientDismissSignal,
   sessionKey,
 }: {
@@ -465,16 +442,12 @@ export function Composer({
   // is nil before then), the available set changes when the workspace switches,
   // and a completed turn may have installed skills or MCP prompts.
   ready?: boolean;
-  turnStartAt?: number;
-  turnTokens?: number;
-  retry?: { attempt: number; max: number };
+
   transientDismissSignal?: number;
   sessionKey?: string;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const { showToast } = useToast();
-  const shortcutPlatform = useMemo(() => detectShortcutPlatform(), []);
-  const now = useTick(running);
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [workspaceRefs, setWorkspaceRefs] = useState<WorkspaceReference[]>([]);
@@ -533,6 +506,7 @@ export function Composer({
   const attachmentDedupRef = useRef(new DedupIndex());
   const attachmentDedupKeysRef = useRef<Record<string, AttachmentDedupKey>>({});
   const draftKey = sessionKey || tabId || DEFAULT_COMPOSER_DRAFT_KEY;
+  const shortcutPlatform = useMemo(() => detectShortcutPlatform(), []);
   const draftsBySessionRef = useRef<Record<string, ComposerDraft>>({});
   const activeDraftKeyRef = useRef(draftKey);
   const textRef = useRef(text);
@@ -1886,17 +1860,6 @@ export function Composer({
       requestAnimationFrame(() => taRef.current?.focus());
     });
   };
-  const runActivity = retry
-    ? t("status.retrying", { attempt: retry.attempt, max: retry.max })
-    : running && turnStartAt
-      ? (() => {
-          const elapsedMs = Math.max(0, now - turnStartAt);
-          const words = SPINNER_WORDS[locale];
-          const word = words[Math.floor(elapsedMs / 3000) % words.length];
-          const tok = turnTokens && turnTokens > 0 ? ` · ↓ ${fmtTokens(turnTokens)} ${t("status.tokens")}` : "";
-          return `${word}… ${fmtElapsed(elapsedMs)}${tok}`;
-        })()
-      : null;
   const composerMetaClass = [
     "composer-meta",
     hasEffort ? "composer-meta--has-effort" : "composer-meta--no-effort",

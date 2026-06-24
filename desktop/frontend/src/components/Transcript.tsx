@@ -1154,7 +1154,7 @@ function QuestionJumpBar({ questions, onJump }: { questions: QuestionAnchor[]; o
     if (!container) return;
 
     const observers = questions.map((q) => {
-      const el = document.getElementById(questionAnchorId(q.turn));
+      const el = document.getElementById(questionAnchorId(String(q.turn)));
       if (!el) return null;
       const cb = (entries: IntersectionObserverEntry[]) => {
         for (const entry of entries) {

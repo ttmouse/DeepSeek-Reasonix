@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, Dispatch, KeyboardEvent, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
 import { ShellExpandProvider, useShellExpand } from "./lib/shellExpand";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -73,6 +73,7 @@ import {
   modeHasPlan,
   type ProjectNode,
   type SessionMeta,
+  type SettingsTab,
   type SettingsView,
   type TabMeta,
   type TokenMode,
@@ -796,23 +797,18 @@ function TextSizeHotkeys() {
 
 // [CUSTOM-SKIN] Collapsible topicbar actions menu for custom skin
 function TopicActionsMenu({
-  t, sidebarImDetailConnection, sessionHasContent, getSessionMarkdown,
-  topicExportOpen, setTopicExportOpen, exportSession,
-  workspacePanelRenderable, rightDockMode, openRightDockMode,
+  t, sidebarImDetailConnection, getSessionMarkdown,
+  exportSession,
+  openRightDockMode,
   closeTransientOverlays, setSettingsTarget, setSettingsFocus, openPalette,
 }: {
   t: ReturnType<typeof useT>;
   sidebarImDetailConnection: any;
-  sessionHasContent: boolean;
   getSessionMarkdown: () => string;
-  topicExportOpen: boolean;
-  setTopicExportOpen: (open: boolean) => void;
-  exportSession: (format: string) => void;
-  workspacePanelRenderable: boolean;
-  rightDockMode: string;
-  openRightDockMode: (mode: string) => void;
+  exportSession: (format: "markdown" | "json" | "pdf" | "image") => Promise<void>;
+  openRightDockMode: (mode: RightDockMode) => void;
   closeTransientOverlays: () => void;
-  setSettingsTarget: (target: string) => void;
+  setSettingsTarget: Dispatch<SetStateAction<SettingsTab | null>>;
   setSettingsFocus: (focus: any) => void;
   openPalette: () => void;
 }) {
@@ -3229,13 +3225,8 @@ export default function App() {
                 <TopicActionsMenu
                   t={t}
                   sidebarImDetailConnection={sidebarImDetailConnection}
-                  sessionHasContent={sessionHasContent}
                   getSessionMarkdown={getSessionMarkdown}
-                  topicExportOpen={topicExportOpen}
-                  setTopicExportOpen={setTopicExportOpen}
                   exportSession={exportSession}
-                  workspacePanelRenderable={workspacePanelRenderable}
-                  rightDockMode={rightDockMode}
                   openRightDockMode={openRightDockMode}
                   closeTransientOverlays={closeTransientOverlays}
                   setSettingsTarget={setSettingsTarget}
@@ -3477,9 +3468,6 @@ export default function App() {
               submitDisabled={!controllerReady}
               decisionPending={rewindCommitting || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending}
               ready={controllerReady}
-              turnStartAt={state.turnStartAt}
-              turnTokens={state.turnTokens}
-              retry={state.retry}
               transientDismissSignal={transientOverlayDismissSignal}
               sessionKey={composerSessionKey}
             />
