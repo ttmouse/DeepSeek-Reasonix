@@ -389,18 +389,21 @@ export function UserMessage({
               <BrainCircuit size={14} />
             </span>
           )}
-          <CopyButton text={actionText} label={t("msg.copy")} showInlineLabel={false} className="msg-meta__btn msg-meta__copy" />
+          <Tooltip label={t("msg.copy")} side="top">
+            <CopyButton text={actionText} label={t("msg.copy")} showInlineLabel={false} className="msg-meta__btn msg-meta__copy" />
+          </Tooltip>
           {onEdit && (
-            <button
-              className="msg-meta__btn"
-              type="button"
-              aria-label={t("common.edit")}
-              title={t("common.edit")}
-              disabled={!canEdit}
-              onClick={startEdit}
-            >
-              <Pencil size={14} />
-            </button>
+            <Tooltip label={t("common.edit")} side="top">
+              <button
+                className="msg-meta__btn"
+                type="button"
+                aria-label={t("common.edit")}
+                disabled={!canEdit}
+                onClick={startEdit}
+              >
+                <Pencil size={14} />
+              </button>
+            </Tooltip>
           )}
         </div>
       )}
