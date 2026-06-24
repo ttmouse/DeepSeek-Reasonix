@@ -709,6 +709,7 @@
   border: none;
   background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
   box-shadow: none;
+  padding-top: 14px;
 }
 :root[data-theme-style] .app--custom .context-panel__section {
   border: none;
@@ -742,6 +743,9 @@
 
 /* ── Custom skin: hide session status section ── */
 :root[data-theme-style] .app--custom .context-panel__section--status {
+  display: none;
+}
+:root[data-theme-style] .app--custom .context-panel__section-head {
   display: none;
 }
 
