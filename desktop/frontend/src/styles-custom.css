@@ -714,6 +714,12 @@
   padding-left: 20px;
 }
 
+/* ── Custom skin: keep copy button fixed on horizontal code scroll ── */
+.app--custom .code .code-block__copy {
+  position: sticky;
+  right: 6px;
+}
+
 :root[data-theme-style] .app--custom .topicbar__title-input:focus {
   border-color: var(--border);
   box-shadow: none;
