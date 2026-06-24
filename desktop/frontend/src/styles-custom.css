@@ -561,7 +561,8 @@
 
 /* ── Custom skin: turn-action spacing + hover circle ── */
 :root[data-theme-style] .app--custom .turn-actions {
-  gap: 16px;
+  gap: 4px;
+  margin-top: 2px;
   align-items: center;
   padding-left: 14px;
 }
@@ -572,13 +573,20 @@
 }
 /* ── Custom skin: turn-action buttons rest padding for hover circle ── */
 :root[data-theme-style] .app--custom .turn-actions__btn,
-:root[data-theme-style] .app--custom .turn-actions .copybtn {
-  padding: 4px;
+:root[data-theme-style] .app--custom .turn-actions .copybtn,
+:root[data-theme-style] .app--custom .msg-meta .msg-meta__btn,
+:root[data-theme-style] .app--custom .msg-meta .copybtn {
+  padding: 6px !important;
+  aspect-ratio: 1;
 }
 :root[data-theme-style] .app--custom .turn-actions__btn:hover:not(:disabled),
-:root[data-theme-style] .app--custom .turn-actions .copybtn:hover {
-  background: var(--button-bg-hover);
-  border-radius: 999px;
+:root[data-theme-style] .app--custom .turn-actions .copybtn:hover,
+:root[data-theme-style] .app--custom .msg-meta__btn:hover:not(:disabled),
+:root[data-theme-style] .app--custom .msg-meta .copybtn:hover {
+  background: color-mix(in srgb, var(--fg-faint) 20%, transparent) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  outline: none !important;
 }
 
 /* ── Custom skin: dark tooltip, no shadow ── */
@@ -613,19 +621,11 @@
   height: 15px !important;
 }
 /* ── Custom skin: user msg button rest padding for hover circle ── */
-:root[data-theme-style] .app--custom .msg-meta .msg-meta__btn,
-:root[data-theme-style] .app--custom .msg-meta .copybtn {
-  padding: 4px !important;
-}
-:root[data-theme-style] .app--custom .msg-meta__btn:hover:not(:disabled),
-:root[data-theme-style] .app--custom .msg-meta .copybtn:hover {
-  background: var(--button-bg-hover);
-  border-radius: 999px;
-}
 
 /* ── Custom skin: consistent spacing between all action icons ── */
 :root[data-theme-style] .app--custom .msg-meta {
-  gap: 16px;
+  gap: 4px;
+  margin-top: 2px;
 }
 
 /* ── Custom skin: mode chip light background ── */
