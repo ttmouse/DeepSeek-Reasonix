@@ -5115,12 +5115,12 @@ a[href] {
 
 .composer-meta__control--model {
   flex: 0 0 auto;
-  max-width: min(380px, 50vw);
+  max-width: min(200px, 35vw);
 }
 
 .composer-meta--has-intent-chip .composer-meta__control--model {
   flex: 0 0 auto;
-  max-width: min(320px, 50vw);
+  max-width: min(180px, 30vw);
 }
 
 .composer-meta__control--model .modelsw__trigger {
@@ -6192,18 +6192,8 @@ a[href] {
   gap: 2px;
 }
 .modelsw__model {
-  display: block;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.modelsw__provider {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--fg-faint);
-  font-size: 11px;
 }
 .modelsw__check {
   flex-shrink: 0;
@@ -21494,7 +21484,6 @@ a[href] {
   background: var(--accent-soft);
 }
 
-:root[data-theme-style] .modelsw__provider,
 :root[data-theme-style] .modelsw__empty {
   color: var(--fg-faint);
 }
@@ -23796,10 +23785,7 @@ a[href] {
   width: auto;
 }
 
-.app--creation .composer-meta .modelsw__kind,
-.app--creation .composer-meta .modelsw__provider,
-:root[data-theme-style] .app--creation .composer-meta .modelsw__kind,
-:root[data-theme-style] .app--creation .composer-meta .modelsw__provider {
+.app--creation .composer-meta .modelsw__kind {
   display: none;
 }
 
