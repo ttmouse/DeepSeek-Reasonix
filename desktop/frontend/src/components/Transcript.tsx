@@ -600,12 +600,26 @@ export function Transcript({
     return out;
   }, [hotStartIdx, items, openAction, actionPending, rewindDisabled, running, onEditPrompt, onRewind, subcallsByParent, userTurn, checkpointsByTurn, displayMode, stepGroups, tabId, actionHoverMenus, creationMode]);
 
+  // ── Exit animation state — drives fade-up on topic switch ──────────
+  const [exiting, setExiting] = useState(false);
+  const exitTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (revealSignal > 0 && items.length === 0) {
+      setExiting(true);
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = window.setTimeout(() => setExiting(false), 260);
+    } else if (items.length > 0) {
+      setExiting(false);
+    }
+    return () => clearTimeout(exitTimerRef.current);
+  }, [revealSignal, items.length]);
+
   // ── Assemble rendered output ──────────────────────────────────────────────
   // Warm/cold zone is a separate memo'd WarmZone component so streaming tokens
   // don't rebuild it. The hot zone uses LiveAssistantMessage (reads live from
   // LiveStreamContext) so streaming updates are captured immediately.
   return (
-    <div className="transcript-shell">
+    <div className={`transcript-shell${exiting ? " transcript-shell--exiting" : ""}`}>
       <div
         className={`transcript${empty ? " transcript--empty" : ""}`}
         ref={scrollRef}

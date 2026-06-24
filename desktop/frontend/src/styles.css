@@ -3152,6 +3152,15 @@ a[href] {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* Exit animation: old content area fades up while shimmmer loads underneath */
+@keyframes transcript-exit-fade-up {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-24px); }
+}
+.transcript-shell--exiting {
+  animation: transcript-exit-fade-up 0.25s ease-out forwards;
+}
 .transcript__loading {
   display: flex;
   flex-direction: column;
