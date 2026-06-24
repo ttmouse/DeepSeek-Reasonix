@@ -704,7 +704,7 @@
 /* ── Custom skin: right dock panel clean metrics ── */
 :root[data-theme-style] .app--custom .workbench-dock {
   border-left: none;
-  background: transparent;
+  background: var(--chat-bg);
 }
 :root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
