@@ -83,7 +83,7 @@
 .app--custom .footer,
 :root[data-theme-style] .app--custom .footer {
   border-top: none;
-  padding-bottom: 0;
+  padding-bottom: 23px;
 }
 
 :root[data-theme-style] .app--custom .composer-card {
