@@ -722,6 +722,11 @@
 :root[data-theme-style] .app--custom .workbench-dock {
   border-left: none;
   background: #f5f6f9 !important;
+  transition: opacity 0.22s, transform 0.28s cubic-bezier(0.2, 0.72, 0.2, 1);
+}
+:root[data-theme-style] .app--custom .layout:not(.layout--workspace-open) .workbench-dock {
+  opacity: 0;
+  transform: translateX(18px);
 }
 :root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
