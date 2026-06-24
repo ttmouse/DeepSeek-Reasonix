@@ -465,6 +465,20 @@
 :root[data-theme-style] .app--custom .composer-meta {
   border-top: none;
 }
+.app--custom .composer-resize-handle::before {
+  width: 100%;
+  height: 1px;
+  top: 0;
+  border-radius: 0;
+  background: var(--border);
+  box-shadow: none;
+  opacity: 0;
+}
+.app--custom .composer-resize-handle:hover::before,
+.app--custom .composer-resize-handle:focus-visible::before,
+.app--custom .composer-card--resizing .composer-resize-handle::before {
+  opacity: 0.5;
+}
 
 :root[data-theme-style] .app--custom .composer-mode-chip__icon--dismiss {
   background: var(--fg-dim);
