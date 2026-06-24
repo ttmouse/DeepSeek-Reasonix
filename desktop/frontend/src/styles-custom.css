@@ -704,6 +704,7 @@
 /* ── Custom skin: right dock panel clean metrics ── */
 :root[data-theme-style] .app--custom .workbench-dock {
   border-left: none;
+  background: transparent;
 }
 :root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
@@ -720,7 +721,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
   border: none;
-  background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
+  background: var(--bg-elev);
   box-shadow: none;
 }
 :root[data-theme-style] .app--custom .context-panel__total {
