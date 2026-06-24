@@ -386,14 +386,14 @@
 
 /* ── Custom skin: send/stop button dark gray ── */
 :root[data-theme-style] .app--custom .composer-meta__control--send .composer__btn {
-  background: #2a2a2a;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-fg);
   border-radius: 999px;
   width: 28px;
   height: 28px;
 }
 :root[data-theme-style] .app--custom .composer__btn--send:not(:disabled):hover {
-  background: #3a3a3a;
+  background: var(--accent-strong);
   transform: none;
 }
 :root[data-theme-style] .app--custom .composer-meta__control--send {
