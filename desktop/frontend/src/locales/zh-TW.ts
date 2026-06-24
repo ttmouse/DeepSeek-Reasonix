@@ -648,6 +648,7 @@ export const zhTW: Record<DictKey, string> = {
   "settings.desktopLayoutStyle.classic": "經典",
   "settings.desktopLayoutStyle.workbench": "工作臺",
   "settings.desktopLayoutStyle.creation": "創作",
+  "settings.desktopLayoutStyle.custom": "自定義",
   "settings.manageProviders": "管理模型服務",
   "settings.activeProvider": "當前模型服務",
   "settings.plannerStatus": "規劃方式",

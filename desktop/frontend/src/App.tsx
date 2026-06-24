@@ -29,6 +29,7 @@ import {
   Brain,
   Cpu,
   Palette,
+  MoreHorizontal,
 } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { asArray } from "./lib/array";
@@ -57,6 +58,7 @@ import { ShortcutsCheatsheet } from "./components/ShortcutsCheatsheet";
 import { ProjectTree } from "./components/ProjectTree";
 import { HeartbeatPanel } from "./custom/features/heartbeat/HeartbeatPanel";
 import "./custom/features/heartbeat/heartbeat.css";
+import "./styles-custom.css"; // [CUSTOM-SKIN]
 import { CopyButton } from "./components/CopyButton";
 import { parseTodos } from "./lib/tools";
 import { shouldShowTodoPanel, todoDismissalKey } from "./lib/todoVisibility";
@@ -174,11 +176,12 @@ function isThemeMode(value: string): value is Theme {
   return value === "auto" || value === "light" || value === "dark";
 }
 
-type DesktopLayoutStyle = "classic" | "workbench" | "creation";
+type DesktopLayoutStyle = "classic" | "workbench" | "creation" | "custom"; // [CUSTOM-SKIN]
 
 function normalizeDesktopLayoutStyle(style: string | undefined): DesktopLayoutStyle {
   if (style === "workbench") return "workbench";
   if (style === "creation") return "creation";
+  if (style === "custom") return "custom";  // [CUSTOM-SKIN]
   return "classic";
 }
 const SHOW_CONTEXT_DOCK = true;
@@ -791,6 +794,100 @@ function TextSizeHotkeys() {
   return null;
 }
 
+// [CUSTOM-SKIN] Collapsible topicbar actions menu for custom skin
+function TopicActionsMenu({
+  t, sidebarImDetailConnection, sessionHasContent, getSessionMarkdown,
+  topicExportOpen, setTopicExportOpen, exportSession,
+  workspacePanelRenderable, rightDockMode, openRightDockMode,
+  closeTransientOverlays, setSettingsTarget, setSettingsFocus, openPalette,
+}: {
+  t: ReturnType<typeof useT>;
+  sidebarImDetailConnection: any;
+  sessionHasContent: boolean;
+  getSessionMarkdown: () => string;
+  topicExportOpen: boolean;
+  setTopicExportOpen: (open: boolean) => void;
+  exportSession: (format: string) => void;
+  workspacePanelRenderable: boolean;
+  rightDockMode: string;
+  openRightDockMode: (mode: string) => void;
+  closeTransientOverlays: () => void;
+  setSettingsTarget: (target: string) => void;
+  setSettingsFocus: (focus: any) => void;
+  openPalette: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
+  return (
+    <div ref={menuRef} className="topicbar__more-menu">
+      <Tooltip label={t("topicBar.more")}>
+        <button
+          className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
+          type="button"
+          aria-label={t("topicBar.more")}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <MoreHorizontal size={14} />
+        </button>
+      </Tooltip>
+      {menuOpen && (
+        <div className="topicbar__more-dropdown" role="menu">
+          {!sidebarImDetailConnection && (
+            <>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigator.clipboard?.writeText(getSessionMarkdown()); }}>
+                <FileText size={13} />
+                <span>{t("topicBar.copyAll")}</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void exportSession("markdown"); }}>
+                <FileDown size={13} />
+                <span>{t("topicBar.exportMarkdown")}</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void exportSession("json"); }}>
+                <FileJson size={13} />
+                <span>{t("topicBar.exportJson")}</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void exportSession("pdf"); }}>
+                <FileDown size={13} />
+                <span>{t("topicBar.exportPdf")}</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void exportSession("image"); }}>
+                <FileImage size={13} />
+                <span>{t("topicBar.exportImage")}</span>
+              </button>
+              <div className="topicbar__more-separator" />
+            </>
+          )}
+          <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); openRightDockMode("changed"); }}>
+            <GitBranch size={13} />
+            <span>{t("workspace.changedTab")}</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); closeTransientOverlays(); setSettingsFocus(null); setSettingsTarget("shortcuts"); }}>
+            <CircleHelp size={13} />
+            <span>{t("shortcuts.cheatsheetTitle")}</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void openPalette(); }}>
+            <Command size={13} />
+            <span>{t("topicBar.command")}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const {
     state,
@@ -856,7 +953,7 @@ export default function App() {
   const settingsFocus = useOverlayStore((s) => s.settingsFocus);
   const setSettingsFocus = useOverlayStore((s) => s.setSettingsFocus);
   const [desktopLayoutStyle, setDesktopLayoutStyle] = useState<DesktopLayoutStyle>("workbench");
-  const singleSurfaceLayout = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "creation";
+  const singleSurfaceLayout = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "creation" || desktopLayoutStyle === "custom"; // [CUSTOM-SKIN]
   const [startupUpdateChecksEnabled, setStartupUpdateChecksEnabled] = useState<boolean | null>(null);
   const [histView, setHistView] = useState<HistoryViewState | null>(null);
   const paletteOpen = useOverlayStore((s) => s.paletteOpen);
@@ -2680,6 +2777,7 @@ export default function App() {
   const workspacePanelResizeMinWidth = workspacePanelAriaMinWidth(workspacePanelMinWidth, workspacePanelRenderWidth);
   const workspacePanelMaxWidth = rightDockDetailActive ? RIGHT_DOCK_MAX_WIDTH : RIGHT_DOCK_TREE_MAX_WIDTH;
   const sidebarCreation = desktopLayoutStyle === "creation";
+  const sidebarCustom = desktopLayoutStyle === "custom";  // [CUSTOM-SKIN]
   const topicbarTitle = sidebarImDetailConnection ? t("botDetail.title", { name: sidebarImDetailConnection.title }) : topicDisplayTitle(activeTab);
   const topicbarWorkspaceLabel = sidebarImDetailConnection ? t("botDetail.subtitle") : activeTab ? tabWorkspaceTitle(activeTab) : "";
   const topicbarWorkspacePath = activeTab?.scope === "project" ? activeTab.workspaceRoot || state.meta?.cwd : "";
@@ -2694,7 +2792,7 @@ export default function App() {
     : [topicbarWorkspacePath || topicbarWorkspaceLabel, topicbarImSourceLabel].filter(Boolean).join(" · ");
   const topicbarCanRename = !sidebarImDetailConnection && Boolean(activeTab?.topicId);
   const topicbarTitleEditSize = Math.min(56, Math.max(4, topicTitleDraft.length || topicbarTitle.length || 1));
-  const sidebarWorkbench = desktopLayoutStyle === "workbench";
+  const sidebarWorkbench = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "custom";  // [CUSTOM-SKIN]
   // Creation keeps the classic sidebar/chat structure while gating chrome tweaks
   // behind its own style flag so classic/workbench remain unchanged.
   const appChromeHidden = sidebarWorkbench || sidebarCreation;
@@ -2717,6 +2815,7 @@ export default function App() {
         browserPreviewChrome ? "app--browser-preview" : "",
         sidebarWorkbench ? "app--workbench" : "",
         sidebarCreation ? "app--creation" : "",
+        sidebarWorkbench && sidebarCustom ? "app--custom" : "",  // [CUSTOM-SKIN] — custom inherits workbench layout + its own class
       ].filter(Boolean).join(" ")}
     >
       <div
@@ -3125,7 +3224,25 @@ export default function App() {
                   </button>
                 </Tooltip>
               )}
-              {!sidebarImDetailConnection && (
+              {sidebarCustom ? (  // [CUSTOM-SKIN] collapsed actions menu
+                <TopicActionsMenu
+                  t={t}
+                  sidebarImDetailConnection={sidebarImDetailConnection}
+                  sessionHasContent={sessionHasContent}
+                  getSessionMarkdown={getSessionMarkdown}
+                  topicExportOpen={topicExportOpen}
+                  setTopicExportOpen={setTopicExportOpen}
+                  exportSession={exportSession}
+                  workspacePanelRenderable={workspacePanelRenderable}
+                  rightDockMode={rightDockMode}
+                  openRightDockMode={openRightDockMode}
+                  closeTransientOverlays={closeTransientOverlays}
+                  setSettingsTarget={setSettingsTarget}
+                  setSettingsFocus={setSettingsFocus}
+                  openPalette={openPalette}
+                />
+              ) : (
+              <>{!sidebarImDetailConnection && (
               <>
               <Tooltip label={t("topicBar.copyAll")}>
                 <CopyButton
@@ -3209,6 +3326,8 @@ export default function App() {
                   <span>{t("topicBar.command")}</span>
                 </button>
               </Tooltip>
+              </>
+              )}
               {sidebarCreation && (
                 <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
                   <button
@@ -3363,6 +3482,7 @@ export default function App() {
               transientDismissSignal={transientOverlayDismissSignal}
               sessionKey={composerSessionKey}
             />
+            {!sidebarCustom && (  // [CUSTOM-SKIN] hide status bar
             <StatusBar
               context={state.context}
               usage={state.usage}
@@ -3385,6 +3505,7 @@ export default function App() {
               gitBranch={state.meta?.gitBranch}
               hydrationLabel={hydrateStatusLabel}
             />
+            )}
           </footer>
           )}
           </>

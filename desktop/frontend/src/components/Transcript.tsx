@@ -1147,6 +1147,35 @@ function QuestionJumpBar({ questions, onJump }: { questions: QuestionAnchor[]; o
     setActive(questions[questions.length - 1]?.turn ?? null);
   }, [questions]);
 
+  // [CUSTOM-SKIN] update active turn based on scroll position
+  useEffect(() => {
+    if (questions.length === 0) return;
+    const container = document.querySelector(".main");
+    if (!container) return;
+
+    const observers = questions.map((q) => {
+      const el = document.getElementById(questionAnchorId(q.turn));
+      if (!el) return null;
+      const cb = (entries: IntersectionObserverEntry[]) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActive(q.turn);
+            break;
+          }
+        }
+      };
+      const observer = new IntersectionObserver(cb, {
+        root: container,
+        rootMargin: "-60px 0px 0px 0px",
+        threshold: 0,
+      });
+      observer.observe(el);
+      return observer;
+    });
+
+    return () => observers.forEach((o) => o?.disconnect());
+  }, [questions]);
+
   useEffect(() => {
     if (active === null) return;
     const el = barRef.current?.querySelector(`[data-turn="${active}"]`);

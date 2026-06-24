@@ -2625,7 +2625,7 @@ type desktopTabsFile struct {
 
 func singleSurfaceLayoutStyle(style string) bool {
 	switch strings.ToLower(strings.TrimSpace(style)) {
-	case "workbench", "creation":
+	case "workbench", "creation", "custom": // [CUSTOM-SKIN]
 		return true
 	default:
 		return false

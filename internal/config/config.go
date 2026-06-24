@@ -156,6 +156,8 @@ func normalizeDesktopLayoutStyle(style string) string {
 		return "workbench"
 	case "creation":
 		return "creation"
+	case "custom": // [CUSTOM-SKIN]
+		return "custom"
 	default:
 		return "workbench"
 	}

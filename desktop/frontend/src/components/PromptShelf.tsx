@@ -12,6 +12,7 @@ export function PromptShelf({
   headerActions,
   barRef,
   role = "dialog",
+  onHeaderClick,
 }: {
   titleId: string;
   title: ReactNode;
@@ -24,6 +25,7 @@ export function PromptShelf({
   headerActions?: ReactNode;
   barRef?: RefObject<HTMLDivElement | null>;
   role?: "dialog" | "region";
+  onHeaderClick?: () => void;
 }) {
   return (
     <div className="prompt-shelf" aria-live="polite">
@@ -35,7 +37,7 @@ export function PromptShelf({
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <div className="prompt-shelf__header">
+        <div className="prompt-shelf__header" onClick={onHeaderClick}>
           <div className="prompt-shelf__copy">
             <div id={titleId} className="prompt-shelf__title">
               <span className="prompt-shelf__heading">{title}</span>

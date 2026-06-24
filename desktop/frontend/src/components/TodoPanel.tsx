@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { useT } from "../lib/i18n";
 import type { Todo } from "../lib/tools";
 import { PromptBadge, PromptHeaderAction, PromptShelf } from "./PromptShelf";
@@ -56,15 +57,15 @@ export function TodoPanel({
       badges={<PromptBadge>{done}/{todos.length}</PromptBadge>}
       meta={summary}
       role="region"
+      onHeaderClick={() => setOpen((value) => { const next = !value; saveOpenState(next); return next; })}
       headerActions={
         <>
-          <PromptHeaderAction onClick={() => setOpen((value) => { const next = !value; saveOpenState(next); return next; })}>
-            {open ? t("common.collapse") : t("common.expand")}
-          </PromptHeaderAction>
           {allDone && (
-            <PromptHeaderAction onClick={onDismiss}>
-              {t("common.close")}
-            </PromptHeaderAction>
+            <div onClick={(e) => e.stopPropagation()} style={{ display: 'contents' }}>
+              <PromptHeaderAction onClick={onDismiss} ariaLabel={t("common.close")}>
+                <X size={14} />
+              </PromptHeaderAction>
+            </div>
           )}
         </>
       }

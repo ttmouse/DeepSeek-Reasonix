@@ -109,7 +109,7 @@ export function ModelSwitcher({ label, tabId, onPick }: { label: string; tabId?:
         anchorRef={triggerRef}
         onClose={() => setOpen(false)}
         className="modelsw__menu modelsw__menu--portal"
-        style={{ minWidth: Math.max(triggerWidth || 200, 200), maxWidth: "min(90vw, 480px)" }}
+        style={{ minWidth: triggerWidth || undefined, maxWidth: "min(90vw, 480px)" }}
       >
         <div role="listbox">
           <div className="modelsw__search" role="presentation">

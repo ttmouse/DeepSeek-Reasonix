@@ -1,0 +1,508 @@
+/* [CUSTOM-SKIN] Custom skin styles
+ * Imported in App.tsx for the custom skin's collapsible topicbar menu.
+ */
+
+/* ── More actions dropdown ── */
+.topicbar__more-menu {
+  position: relative;
+}
+
+.topicbar__more-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  min-width: 200px;
+  padding: 6px;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topicbar__more-dropdown button[role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: default;
+  text-align: left;
+}
+
+.topicbar__more-dropdown button[role="menuitem"]:hover,
+.topicbar__more-dropdown button[role="menuitem"]:focus-visible {
+  background: var(--accent);
+}
+
+.topicbar__more-dropdown button[role="menuitem"] svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.topicbar__more-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
+}
+
+/* ── Stop button rotation animation (ported from codex/upstream-sync-20260613) ── */
+.composer__btn--stop:not(:disabled) svg {
+  animation: stop-step 1s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes stop-step {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(90deg); }
+  100% { transform: rotate(90deg); }
+}
+
+/* ── Circular send/stop button ── */
+:root[data-theme-style] .composer-meta__control--send .composer__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  align-self: center;
+}
+
+/* ── Custom skin sidebar tweaks ── */
+.app--custom .sidebar--workbench .sidebar__nav--footer {
+  border-top: none;
+}
+
+.app--custom .footer,
+:root[data-theme-style] .app--custom .footer {
+  border-top: none;
+}
+
+:root[data-theme-style] .app--custom .composer-card {
+  border-radius: 20px;
+}
+
+:root[data-theme-style] .app--custom .composer__caret {
+  display: none;
+}
+
+/* ── Custom skin todo panel ── */
+/* ── Custom skin todo panel ── */
+.app--custom .prompt-shelf__card,
+:root[data-theme-style] .app--custom .prompt-shelf__card {
+  border: none;
+  box-shadow: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--bg-soft);
+}
+.app--custom .prompt-shelf__header {
+  cursor: pointer;
+  align-items: center;
+}
+.app--custom .prompt-shelf__header:active {
+  opacity: 0.7;
+}
+
+/* ── Custom skin todo close button: show on hover ── */
+.app--custom .prompt-shelf__header-actions {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.app--custom .prompt-shelf__card:hover .prompt-shelf__header-actions {
+  opacity: 1;
+}
+
+/* ── Custom skin todo: checklist style ── */
+.app--custom .todobar__status {
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.app--custom .todobar__status::before {
+  font-size: 0;
+}
+.app--custom .todobar__status--completed {
+  background: var(--fg-faint);
+  border-radius: 50%;
+}
+.app--custom .todobar__status--completed::before {
+  content: "✓";
+  font-size: 10px;
+  line-height: 1;
+  color: #fff;
+  font-weight: 700;
+}
+.app--custom .todobar__status--in_progress {
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+}
+.app--custom .todobar__status--in_progress::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.app--custom .todobar__status--pending {
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+}
+.app--custom .todobar__status--pending::before {
+  content: none;
+}
+.app--custom .todobar__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+.app--custom .todobar__item--completed .todobar__text {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+.app--custom .todobar__text {
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* ── Custom skin: remove composer focus effects ── */
+.app--custom .composer-card,
+:root[data-theme-style] .app--custom .composer-card {
+  border: 1px solid var(--border);
+}
+.app--custom .composer-card:focus-within,
+:root[data-theme-style] .app--custom .composer-card:focus-within,
+.app--custom .composer-card:hover,
+:root[data-theme-style] .app--custom .composer-card:hover {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.app--custom .sidebar-resizer,
+:root[data-theme-style] .app--custom .sidebar-resizer {
+  bottom: 0;
+}
+.app--custom .workspace-panel-resizer,
+:root[data-theme-style] .app--custom .workspace-panel-resizer {
+  height: 100%;
+}
+
+.app--custom .sidebar--workbench,
+:root[data-theme-style] .app--custom .sidebar--workbench {
+  padding-bottom: 10px;
+}
+
+/* ── Custom skin compact todo panel ── */
+.app--custom .prompt-shelf__copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row;
+}
+.app--custom .prompt-shelf__meta {
+  font-size: 11px;
+  color: var(--fg-faint);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app--custom .prompt-shelf__badge {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  color: var(--fg-faint);
+  padding: 0;
+  font-size: 11px;
+  font-weight: inherit;
+}
+
+/* ── Custom skin: transparent topicbar ── */
+.app--custom .topicbar,
+:root[data-theme-style] .app--custom .topicbar,
+:root[data-theme-style] .app--custom .layout--workbench-chrome-hidden .topicbar {
+  background: transparent !important;
+  border-bottom: none;
+}
+
+/* ── Custom skin: center-aligned topicbar title ── */
+.app--custom .topicbar__title-row {
+  justify-content: center;
+}
+.app--custom .topicbar__icon-btn {
+  display: none;
+}
+
+/* ── Custom skin: no jump-bar focus highlight ── */
+.app--custom .jump-item:focus-visible,
+.app--custom .jump-item:focus-visible .jump-dot {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ── Custom skin: jump-bar scroll position visibility ── */
+.app--custom .jump-dot[data-d="0"] {
+  background: var(--accent);
+  width: 8px;
+  height: 4px;
+  border-radius: 4px;
+}
+.app--custom .jump-dot[data-d="1"] {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  width: 5px;
+  height: 3px;
+}
+.app--custom .jump-dot[data-d="2"] {
+  background: var(--border);
+  width: 3px;
+  height: 3px;
+}
+
+/* ── Custom skin: jump-to-bottom closer to todo ── */
+.app--custom .transcript__jump-bottom {
+  bottom: 8px;
+}
+
+/* ── Custom skin: turn-actions icon-only ── */
+.app--custom .turn-actions__btn,
+:root[data-theme-style] .app--custom .turn-actions__btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  gap: 0;
+}
+.app--custom .turn-actions__btn:hover:not(:disabled),
+.app--custom .turn-actions__btn:focus-visible:not(:disabled),
+.app--custom .turn-actions__group--open .turn-actions__btn {
+  background: transparent;
+  border: none;
+}
+.app--custom .turn-actions__btn > span,
+.app--custom .turn-actions__btn--confirm > span,
+.app--custom .rewind__btn > span {
+  display: none;
+}
+.app--custom .rewind__btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+}
+.app--custom .rewind__btn:hover,
+.app--custom .rewind__btn:focus-visible,
+.app--custom .rewind--open .rewind__btn {
+  background: transparent;
+  border: none;
+}
+
+/* ── Custom skin: transparent topicbar utility buttons ── */
+:root[data-theme-style] .app--custom .topicbar__action-btn--utility {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* ── Custom skin: reasoning & message body left indent ── */
+.app--custom .reasoning__body,
+:root[data-theme-style] .app--custom .reasoning__body {
+  margin-left: 14px;
+}
+.app--custom .msg--assistant .msg__body,
+:root[data-theme-style] .app--custom .msg--assistant .msg__body {
+  margin-left: 8px;
+}
+.app--custom .topicbar__title-row h1,
+.app--custom .topicbar__subtitle {
+  text-align: center;
+}
+.app--custom .topicbar__identity {
+  align-items: center;
+}
+
+/* ── Custom skin: consistent resizer styling ── */
+.app--custom .sidebar-resizer::after {
+  background: var(--border-soft);
+}
+.app--custom .sidebar-resizer:hover::after,
+.app--custom .sidebar-resizer:focus-visible::after,
+.app--custom .layout--sidebar-resizing .sidebar-resizer::after {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+/* ── Custom skin: sidebar & dock background ── */
+.app--custom .workbench-dock,
+:root[data-theme-style] .app--custom .workbench-dock {
+  background: #F9F9F9 !important;
+}
+.app--custom .sidebar,
+:root[data-theme-style] .app--custom .sidebar {
+  background: #F9F9F9 !important;
+  border-right: none;
+}
+
+/* ── Custom skin: send/stop button dark gray ── */
+:root[data-theme-style] .app--custom .composer-meta__control--send .composer__btn {
+  background: #2a2a2a;
+  color: #fff;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+}
+:root[data-theme-style] .app--custom .composer__btn--send:not(:disabled):hover {
+  background: #3a3a3a;
+  transform: none;
+}
+:root[data-theme-style] .app--custom .composer-meta__control--send {
+  margin-left: auto;
+}
+
+/* ── Custom skin: no hover transform, show bg/border on hover ── */
+:root[data-theme-style] .app--custom .composer-modebar__item:hover:not(:disabled) {
+  transform: none;
+}
+:root[data-theme-style] .app--custom .composer-mode-chip:hover:not(:disabled) {
+  transform: none;
+}
+:root[data-theme-style] .app--custom .composer-meta__control .composer-modebar__item:hover,
+:root[data-theme-style] .app--custom .composer-meta__control .composer-mode-chip:hover,
+:root[data-theme-style] .app--custom .composer-meta__control .composer-more-trigger:hover,
+:root[data-theme-style] .app--custom .composer-meta__control .composer-action-trigger:hover,
+:root[data-theme-style] .app--custom .composer-meta__control .modelsw__trigger:hover {
+  transform: none !important;
+}
+
+/* ── Custom skin: clean copy button in turn-actions ── */
+:root[data-theme-style] .app--custom .turn-actions .copybtn,
+.app--custom .turn-actions .copybtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: 14px;
+}
+.app--custom .turn-actions .copybtn:hover {
+  background: transparent;
+  border: none;
+  gap: 5px;
+  color: var(--fg-faint);
+}
+.app--custom .turn-actions .copybtn__label-inline {
+  display: none;
+}
+
+/* ── Custom skin: turn-actions indent and spacing ── */
+.app--custom .turn-actions {
+  gap: 10px;
+}
+.app--custom .turn-actions svg {
+  width: 15px;
+  height: 15px;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 20px 0 10px;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger:hover {
+  background: var(--button-bg-hover) !important;
+  border-color: var(--border) !important;
+  border-radius: 999px;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger:hover .modelsw__label {
+  color: var(--fg);
+}
+
+/* ── Custom skin: remove composer input divider line ── */
+.app--custom .composer,
+:root[data-theme-style] .app--custom .composer {
+  border-bottom: none;
+}
+.app--custom .composer-meta,
+:root[data-theme-style] .app--custom .composer-meta {
+  border-top: none;
+}
+
+/* ── Custom skin: model menu width adapts to name ── */
+.app--custom .modelsw__menu,
+:root[data-theme-style] .app--custom .modelsw__menu,
+.app--custom .modelsw__menu--portal {
+  min-width: unset;
+  width: max-content;
+}
+
+/* ── Custom skin: bottom controls large rounded corners ── */
+:root[data-theme-style] .app--custom .composer-action-trigger,
+:root[data-theme-style] .app--custom .composer-mode-chip,
+:root[data-theme-style] .app--custom .composer-more-trigger,
+:root[data-theme-style] .app--custom .modelsw__trigger {
+  border-radius: 999px;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* ── Custom skin: hide more button, enough space ── */
+.app--custom .composer-meta__control--more {
+  display: none;
+}
+
+/* ── Custom skin: model menu width adapts to name (portal in body) ── */
+.modelsw__menu--portal {
+  min-width: unset !important;
+  width: max-content !important;
+}
+:root[data-theme-style] .app--custom .composer-meta__params {
+  overflow: visible;
+}
+:root[data-theme-style] .app--custom .composer-meta__control--model {
+  max-width: max-content;
+  overflow: visible;
+}
+:root[data-theme-style] .app--custom .composer-meta{
+  overflow: visible;
+}
+:root[data-theme-style] .app--custom .composer-meta__control--model .modelsw__trigger {
+  max-width: max-content;
+}
+.app--custom .modelsw__menu,
+.app--custom .modelsw__menu--portal {
+  border-radius: 14px;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger > svg:last-child {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger:hover > svg:last-child {
+  opacity: 1;
+}
+:root[data-theme-style] .app--custom .modelsw__label {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  min-width: auto;
+}
+:root[data-theme-style] .app--custom .modelsw__trigger {
+  min-width: auto;
+}
+.app--custom .composer-meta__params {
+  flex: 0 1 auto;
+}

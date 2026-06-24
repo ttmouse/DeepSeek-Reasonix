@@ -2139,20 +2139,7 @@ export function Composer({
           />
         )
       )}
-      {runActivity && (
-        <div className="composer-toolbar composer-toolbar--status-only">
-          <div className="composer-runstatus" role="status" aria-live="polite">
-            <span className="composer-runstatus__dot" />
-            <span className="composer-runstatus__text">{runActivity}</span>
-            <Tooltip label={t("composer.stop")}>
-              <button className="composer-runstatus__stop" type="button" onClick={handleCancel}>
-                <Square size={10} fill="currentColor" />
-                <span>{t("composer.stopShort")}</span>
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-      )}
+
       {(attachments.length > 0 || workspaceRefs.length > 0 || sessionRefs.length > 0) && (
         <div className="composer-context" aria-label={t("composer.contextItems")}>
           {sortComposerAttachments(attachments).map((a) => {
@@ -2301,17 +2288,6 @@ export function Composer({
               {composerPrompt}
             </span>
           )}
-          {!running && (
-            <Tooltip label={t("composer.send")}>
-              <button
-                className="composer__btn composer__btn--send"
-                onClick={submit}
-                disabled={submitting || pendingPaste > 0 || ((!text.trim() && attachments.length === 0 && workspaceRefs.length === 0) && !(goalModeOn && !activeGoal)) || disabled || submitDisabled || readOnly}
-              >
-                <ArrowUp size={16} />
-              </button>
-            </Tooltip>
-          )}
         </div>
         <div className={composerMetaClass}>
           <div className="composer-meta__params">
@@ -2458,8 +2434,31 @@ export function Composer({
                 </Tooltip>
               </div>
             )}
+          </div>  {/* end of composer-meta__params */}
+          <div className="composer-meta__control composer-meta__control--send">
+            {running ? (
+              <Tooltip label={t("composer.stop")}>
+                <button
+                  className="composer__btn composer__btn--send composer__btn--stop"
+                  type="button"
+                  onClick={handleCancel}
+                >
+                  <Square size={12} fill="currentColor" />
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip label={t("composer.send")}>
+                <button
+                  className="composer__btn composer__btn--send"
+                  onClick={submit}
+                  disabled={submitting || pendingPaste > 0 || ((!text.trim() && attachments.length === 0 && workspaceRefs.length === 0) && !(goalModeOn && !activeGoal)) || disabled || submitDisabled || readOnly}
+                >
+                  <ArrowUp size={16} />
+                </button>
+              </Tooltip>
+            )}
           </div>
-        </div>
+        </div>  {/* end of composerMetaClass */}
       </div>
     </div>
   );
