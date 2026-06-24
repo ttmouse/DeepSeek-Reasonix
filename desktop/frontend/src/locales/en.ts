@@ -1499,6 +1499,7 @@ export const en = {
   "msg.workspaceReference": "Workspace reference",
   "msg.folderReference": "Folder · Workspace reference",
   "turnActions.summary": "Summary",
+  "turnActions.fork": "Fork conversation",
   "turnActions.rewind": "Rewind",
   "transcript.jumpToBottom": "Jump to bottom",
   "transcript.showEarlierHistory": "Show {n} earlier turns",

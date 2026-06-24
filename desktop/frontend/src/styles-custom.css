@@ -384,6 +384,7 @@
 :root[data-theme-style] .app--custom .composer-mode-chip:hover:not(:disabled) {
   transform: none;
 }
+
 :root[data-theme-style] .app--custom .composer-meta__control .composer-modebar__item:hover,
 :root[data-theme-style] .app--custom .composer-meta__control .composer-mode-chip:hover,
 :root[data-theme-style] .app--custom .composer-meta__control .composer-more-trigger:hover,
@@ -419,9 +420,10 @@
   height: 15px;
 }
 :root[data-theme-style] .app--custom .modelsw__trigger {
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0 20px 0 10px;
+  padding: 0 10px;
+  transition: none;
 }
 :root[data-theme-style] .app--custom .modelsw__trigger:hover {
   background: var(--button-bg-hover) !important;
@@ -442,6 +444,19 @@
   border-top: none;
 }
 
+:root[data-theme-style] .app--custom .composer-mode-chip__icon--dismiss {
+  background: var(--fg-dim);
+  width: 16px;
+  height: 16px;
+  left: 13px;
+  border-radius: 999px;
+  color: #fff;
+}
+:root[data-theme-style] .app--custom .composer-mode-chip__icon--dismiss svg {
+  width: 10px;
+  height: 10px;
+}
+
 /* ── Custom skin: model menu width adapts to name ── */
 .app--custom .modelsw__menu,
 :root[data-theme-style] .app--custom .modelsw__menu,
@@ -460,6 +475,14 @@
   border-color: transparent !important;
 }
 
+/* ── Custom skin: intent chip hover matches model switcher ── */
+:root[data-theme-style] .app--custom .composer-action-trigger:hover:not(:disabled) {
+  background: var(--button-bg-hover) !important;
+  border-color: var(--border) !important;
+  color: var(--fg);
+  transform: none;
+}
+
 /* ── Custom skin: hide more button, enough space ── */
 .app--custom .composer-meta__control--more {
   display: none;
@@ -470,15 +493,11 @@
   min-width: unset !important;
   width: max-content !important;
 }
-:root[data-theme-style] .app--custom .composer-meta__params {
+:root[data-theme-style] .app--custom .composer-meta {
   overflow: visible;
 }
 :root[data-theme-style] .app--custom .composer-meta__control--model {
   max-width: max-content;
-  overflow: visible;
-}
-:root[data-theme-style] .app--custom .composer-meta{
-  overflow: visible;
 }
 :root[data-theme-style] .app--custom .composer-meta__control--model .modelsw__trigger {
   max-width: max-content;
@@ -504,5 +523,104 @@
   min-width: auto;
 }
 .app--custom .composer-meta__params {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+}
+
+/* ── Custom skin: show effort switcher even in narrow container ── */
+@container (max-width: 760px) {
+  .app--custom .composer-meta__control--effort {
+    display: flex !important;
+  }
+}
+@container (max-width: 460px) {
+  .app--custom .composer-meta__control--effort {
+    display: flex !important;
+  }
+}
+
+/* ── Custom skin: approval modebar lighter ── */
+:root[data-theme-style] .app--custom .composer-modebar {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: none;
+}
+:root[data-theme-style] .app--custom .composer-modebar__thumb {
+  box-shadow: none;
+}
+
+/* ── Custom skin: no blue focus highlight on model search ── */
+:root[data-theme-style] .app--custom .modelsw__search-input,
+:root[data-theme-style] .app--custom .modelsw__search-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--border);
+}
+
+/* ── Custom skin: hide chevron on turn-action buttons ── */
+:root[data-theme-style] .app--custom .turn-actions__btn .lucide-chevron-down {
+  display: none;
+}
+
+/* ── Custom skin: turn-action spacing + hover circle ── */
+:root[data-theme-style] .app--custom .turn-actions {
+  gap: 16px;
+}
+:root[data-theme-style] .app--custom .turn-actions .tooltip-trigger {
+  display: inline-flex;
+  min-width: 0;
+  padding: 2px;
+}
+:root[data-theme-style] .app--custom .turn-actions__btn:hover:not(:disabled),
+:root[data-theme-style] .app--custom .turn-actions .copybtn:hover {
+  background: var(--button-bg-hover);
+  border-radius: 999px;
+  border: none;
+  padding: 4px 6px;
+  margin: -4px -6px;
+}
+
+/* ── Custom skin: dark tooltip, no shadow ── */
+:root:has(.app--custom) .tooltip {
+  background: #2a2a2a;
+  color: #fff;
+  box-shadow: none;
+  border-color: #444;
+}
+:root:has(.app--custom) .tooltip::before {
+  background: #2a2a2a;
+  border-color: #444;
+}
+:root:has(.app--custom) .tooltip {
+  animation: none;
+  opacity: 1;
+}
+
+/* ── Custom skin: user msg icons match turn-action size ── */
+:root[data-theme-style] .app--custom .msg-meta__btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Custom skin: mode chip light background ── */
+:root[data-theme-style] .app--custom .composer-mode-chip,
+:root[data-theme-style] .app--custom .composer-mode-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none;
+}
+
+/* ── Custom skin: distinct mode chip colors ── */
+:root[data-theme-style] .app--custom .composer-mode-chip--plan {
+  background: color-mix(in srgb, #3b82f6 14%, transparent) !important;
+}
+:root[data-theme-style] .app--custom .composer-mode-chip--goal {
+  background: color-mix(in srgb, #22c55e 14%, transparent) !important;
+}
+:root[data-theme-style] .app--custom .composer-mode-chip--token {
+  background: color-mix(in srgb, #a855f7 14%, transparent) !important;
+}
+
+/* ── Custom skin: neutral mode chip icons ── */
+:root[data-theme-style] .app--custom .composer-mode-chip__icon--mode {
+  color: var(--fg-dim);
 }

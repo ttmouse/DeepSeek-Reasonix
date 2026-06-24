@@ -1501,6 +1501,7 @@ export const zh: Record<DictKey, string> = {
   "msg.workspaceReference": "工作区引用",
   "msg.folderReference": "文件夹 · 工作区引用",
   "turnActions.summary": "总结",
+  "turnActions.fork": "分叉对话",
   "turnActions.rewind": "回溯",
   "transcript.jumpToBottom": "跳到底部",
   "transcript.showEarlierHistory": "展开前 {n} 轮对话",

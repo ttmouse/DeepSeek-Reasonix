@@ -941,6 +941,7 @@ export const zhTW: Record<DictKey, string> = {
   "msg.workspaceReference": "工作區引用",
   "msg.folderReference": "資料夾 · 工作區引用",
   "turnActions.summary": "總結",
+  "turnActions.fork": "分叉對話",
   "turnActions.rewind": "回溯",
   "transcript.jumpToBottom": "跳到底部",
   "transcript.showEarlierHistory": "展開前 {n} 輪對話",

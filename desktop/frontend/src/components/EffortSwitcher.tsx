@@ -52,7 +52,18 @@ export function EffortSwitcher({
     });
   };
 
-  if (!effort?.supported || levels.length === 0) return null;
+  if (!effort?.supported || levels.length === 0) {
+    // [CUSTOM-SKIN] show a default trigger even without effort data
+    return (
+      <div className="modelsw effortsw">
+        <button type="button" className="modelsw__trigger effortsw__trigger" disabled>
+          <Gauge size={13} className="modelsw__kind" />
+          <span className="modelsw__label">{current}</span>
+          <ChevronsUpDown size={11} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="modelsw effortsw">
