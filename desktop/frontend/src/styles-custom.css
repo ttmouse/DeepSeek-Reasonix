@@ -340,14 +340,17 @@
 :root[data-theme-style] .app--custom .reasoning__body {
   margin-left: 14px;
 }
+:root[data-theme-style] .app--custom .reasoning__meta {
+  display: none;
+}
 .app--custom .msg--assistant .msg__body,
 :root[data-theme-style] .app--custom .msg--assistant .msg__body {
   margin-left: 8px;
 }
-.app--custom .msg--assistant > .process-card,
-:root[data-theme-style] .app--custom .msg--assistant > .process-card,
-.app--custom .msg--assistant > .tool,
-:root[data-theme-style] .app--custom .msg--assistant > .tool {
+.app--custom .process-card,
+:root[data-theme-style] .app--custom .process-card,
+.app--custom .tool,
+:root[data-theme-style] .app--custom .tool {
   margin-left: 8px !important;
 }
 .app--custom .topicbar__title-row h1,
@@ -705,6 +708,17 @@
 }
 
 /* ── Custom skin: title edit input gray focus ── */
+.app--custom .tool__subject {
+  display: none;
+}
+:root[data-theme-style] .app--custom .tool__body,
+:root[data-theme-style] .app--custom .tool--open .tool__body {
+  padding-left: 20px;
+}
+:root[data-theme-style] .app--custom .process-card__body {
+  padding-left: 20px;
+}
+
 :root[data-theme-style] .app--custom .topicbar__title-input:focus {
   border-color: var(--border);
   box-shadow: none;
