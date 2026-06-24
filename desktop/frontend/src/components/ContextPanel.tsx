@@ -348,7 +348,6 @@ export function ContextPanel({
               <MiniStat label={t("status.compactLabel")} value={compactPct > 0 ? `${compactPct}%` : "-"} />
               <MiniStat label={t("status.cacheAvgLabel")} value={fmtSessionCacheRate(usage)} />
               <MiniStat label={t("context.sessionCost")} value={sessionCostLabel} />
-              <MiniStat label={t("status.sessionTurnsLabel")} value={fmtTurns(sessionTurns, t)} />
             </div>
             <div className="context-panel__breakdown">
               <TokenLegend label={t("context.prompt")} value={breakdown.promptTokens} color="prompt" />
@@ -367,7 +366,6 @@ export function ContextPanel({
             <MetricCard label={t("status.cacheLabel")} value={fmtUsageCacheRate(usage)} tone="accent" />
             <MetricCard label={t("status.turnTokensLabel")} value={fmtOptionalTokens(turnTokens)} />
             <MetricCard label={t("status.turnCostLabel")} value={turnCostLabel} />
-            <MetricCard label={t("status.balanceLabel")} value={balanceLabel} tone="accent" />
           </section>
           <section className="context-panel__section">
             <SectionHeading title={t("context.runtimeMetrics")} />
@@ -375,6 +373,7 @@ export function ContextPanel({
               <MetricCard label={t("context.time")} value={fmtDuration(elapsed, t)} />
               <MetricCard label={t("context.requests")} value={requestCount > 0 ? String(requestCount) : "-"} />
               <MetricCard label={t("context.sessionTokens")} value={totalTokens > 0 ? totalTokens.toLocaleString() : "-"} wide />
+              <MetricCard label={t("status.sessionTurnsLabel")} value={fmtTurns(sessionTurns, t)} />
             </div>
           </section>
           <section className="context-panel__section">
@@ -382,6 +381,7 @@ export function ContextPanel({
             <div className="context-panel__stats">
               <MetricCard label={t("context.cacheHit")} value={cachePctDisplay} tone="accent" />
               <MetricCard label={t("context.sessionCost")} value={formatMoneyLocalized(cost.amount, cost.currency, { locale, empty: "dash" })} />
+              <MetricCard label={t("status.balanceLabel")} value={balanceLabel} tone="accent" />
             </div>
             {showCostSources && (
               <div className="context-panel__source-list" aria-label={t("context.costBreakdown")}>
