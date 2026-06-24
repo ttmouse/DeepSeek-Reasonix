@@ -694,6 +694,9 @@
   width: 14px;
   height: 14px;
 }
+:root[data-theme-style] .app--custom .project-tree__section--pinned .project-tree__folder-main > svg {
+  display: inline-flex;
+}
 
 /* ── Custom skin: right dock panel clean metrics ── */
 :root[data-theme-style] .app--custom .workbench-dock {
