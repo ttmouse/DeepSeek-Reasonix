@@ -705,9 +705,6 @@
 :root[data-theme-style] .app--custom .workbench-dock {
   border-left: none;
 }
-:root[data-theme-style] .app--custom .workbench-dock__tools {
-  border-bottom: none;
-}
 :root[data-theme-style] .app--custom .context-panel__usage,
 :root[data-theme-style] .app--custom .context-panel__section {
   border: none;
@@ -716,7 +713,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
   border: none;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
   box-shadow: none;
 }
 :root[data-theme-style] .app--custom .context-panel__total {
@@ -724,6 +721,11 @@
 }
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
+}
+
+/* ── Custom skin: hide session status section ── */
+:root[data-theme-style] .app--custom .context-panel__section--status {
+  display: none;
 }
 
 /* ── Custom skin: title edit input gray focus ── */
