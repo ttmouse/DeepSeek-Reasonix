@@ -726,9 +726,6 @@
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
 }
-:root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) .context-panel__section-head {
-  display: none;
-}
 
 /* ── Custom skin: hide session status section ── */
 :root[data-theme-style] .app--custom .context-panel__section--status {
