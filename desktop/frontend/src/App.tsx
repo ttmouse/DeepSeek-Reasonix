@@ -3152,6 +3152,7 @@ export default function App() {
                       size={sidebarCreation ? topicbarTitleEditSize : undefined}
                       value={topicTitleDraft}
                       onChange={(event) => setTopicTitleDraft(event.target.value)}
+                      onFocus={(e) => e.target.select()}
                       onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
                         if (event.key === "Enter") {
                           event.preventDefault();

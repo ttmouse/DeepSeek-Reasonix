@@ -245,9 +245,22 @@
 /* ── Custom skin: center-aligned topicbar title ── */
 .app--custom .topicbar__title-row {
   justify-content: center;
+  position: relative;
+  min-height: 28px;
 }
-.app--custom .topicbar__icon-btn {
-  display: none;
+.app--custom .topicbar__identity {
+  overflow: visible;
+}
+.app--custom .topicbar__title-row .tooltip-trigger {
+  position: absolute;
+  right: -30px;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.app--custom .topicbar__title-row:hover .tooltip-trigger {
+  visibility: visible;
+  opacity: 1;
 }
 
 /* ── Custom skin: no jump-bar focus highlight ── */
@@ -683,4 +696,10 @@
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='17' x2='12' y2='22'/%3E%3Cpath d='M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z'/%3E%3C/svg%3E") no-repeat center / contain;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='17' x2='12' y2='22'/%3E%3Cpath d='M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z'/%3E%3C/svg%3E") no-repeat center / contain;
   flex-shrink: 0;
+}
+
+/* ── Custom skin: title edit input gray focus ── */
+:root[data-theme-style] .app--custom .topicbar__title-input:focus {
+  border-color: var(--border);
+  box-shadow: none;
 }
