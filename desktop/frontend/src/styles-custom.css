@@ -708,7 +708,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__usage {
   border: none;
-  background: var(--bg-elev);
+  background: var(--bg-soft);
   box-shadow: none;
   padding-top: 14px;
 }
@@ -721,7 +721,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__metric {
   border: none;
-  background: var(--bg-elev);
+  background: var(--bg-soft);
   box-shadow: none;
 }
 :root[data-theme-style] .app--custom .context-panel__total {
@@ -729,7 +729,7 @@
 }
 :root[data-theme-style] .app--custom .context-panel__source-list {
   border-top: none;
-  background: var(--bg-elev);
+  background: var(--bg-soft);
   padding: 8px 10px;
   border-radius: 8px;
 }
