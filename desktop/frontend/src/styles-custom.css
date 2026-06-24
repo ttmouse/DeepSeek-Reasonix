@@ -150,7 +150,7 @@
   font-weight: 700;
 }
 .app--custom .todobar__status--in_progress {
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--fg-faint);
   border-radius: 50%;
 }
 .app--custom .todobar__status--in_progress::before {
@@ -158,7 +158,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--fg-faint);
 }
 .app--custom .todobar__status--pending {
   border: 1.5px solid var(--border);
