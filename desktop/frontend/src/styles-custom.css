@@ -139,7 +139,7 @@
   font-size: 0;
 }
 .app--custom .todobar__status--completed {
-  background: var(--border);
+  background: color-mix(in srgb, var(--fg-faint) 40%, var(--border));
   border-radius: 50%;
 }
 .app--custom .todobar__status--completed::before {
