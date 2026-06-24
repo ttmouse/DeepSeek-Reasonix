@@ -743,6 +743,10 @@
 }
 
 /* ── Custom skin: tighter section spacing ── */
+:root[data-theme-style] .app--custom .context-panel__body {
+  scrollbar-gutter: auto;
+  padding: 8px 10px 12px;
+}
 :root[data-theme-style] .app--custom .context-panel__overview {
   gap: 2px;
 }
