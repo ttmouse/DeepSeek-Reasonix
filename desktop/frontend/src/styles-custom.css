@@ -787,10 +787,6 @@
 :root[data-theme-style] .app--custom .context-panel__overview {
   gap: 2px;
 }
-/* ── Custom skin: runtime only session tokens + turns ── */
-.app--custom .context-panel__overview > .context-panel__section:nth-child(3) .context-panel__metric:nth-child(-n+2) {
-  display: none;
-}
 /* ── Custom skin: cost section 3 columns ── */
 .app--custom .context-panel__overview > .context-panel__section:nth-child(4) .context-panel__stats {
   grid-template-columns: repeat(3, 1fr);
