@@ -688,6 +688,17 @@ export const AssistantMessage = memo(function AssistantMessage({
     }
   }, [item.streaming, item.reasoningComplete, defaultExpanded, expandWhileStreaming]);
 
+  // [CUSTOM-SKIN] Auto-scroll reasoning body to latest content during streaming
+  useEffect(() => {
+    if (!item.streaming || !reasoningBodyRef.current) return;
+    const el = reasoningBodyRef.current.closest(".app--custom");
+    if (!el) return;
+    const body = reasoningBodyRef.current;
+    if (body.scrollHeight - body.scrollTop - body.clientHeight < 30) {
+      body.scrollTop = body.scrollHeight;
+    }
+  }, [item.reasoning, item.streaming]);
+
   const toggleReasoning = () => {
     userOverridden.current = true;
     setReasoningOpen((v) => !v);
