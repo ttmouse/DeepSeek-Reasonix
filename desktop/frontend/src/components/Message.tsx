@@ -678,18 +678,12 @@ export const AssistantMessage = memo(function AssistantMessage({
     } else if (nowRC && !wasRC) {
       // Reasoning just finished — auto-close while we wait for text.
       if (!defaultExpanded && !userOverridden.current) {
-        const isCustomSkin = reasoningBodyRef.current?.closest(".app--custom");
-        if (!isCustomSkin) {
-          setReasoningOpen(false);
-        }
+        setReasoningOpen(false);
       }
     } else if (wasStreaming) {
       // Stream fully ended — auto-close if user didn't interact.
       if (!defaultExpanded && !userOverridden.current) {
-        const isCustomSkin = reasoningBodyRef.current?.closest(".app--custom");
-        if (!isCustomSkin) {
-          setReasoningOpen(false);
-        }
+        setReasoningOpen(false);
       }
     }
   }, [item.streaming, item.reasoningComplete, defaultExpanded, expandWhileStreaming]);
