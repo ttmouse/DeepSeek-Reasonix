@@ -763,7 +763,14 @@
   padding: 8px 10px 12px;
 }
 :root[data-theme-style] .app--custom .context-panel__overview {
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+:root[data-theme-style] .app--custom .context-panel__overview > .context-panel__section,
+:root[data-theme-style] .app--custom .context-panel__overview > .context-panel__section--status {
+  grid-column: 1 / -1;
 }
 :root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) {
   padding-left: 0;
