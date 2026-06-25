@@ -769,6 +769,10 @@
 .app--custom .context-panel__overview > .context-panel__section:nth-of-type(1) .context-panel__metric:nth-child(-n+2) {
   display: none;
 }
+/* ── Custom skin: cost section 3 columns ── */
+.app--custom .context-panel__overview > .context-panel__section:nth-of-type(2) .context-panel__stats {
+  grid-template-columns: repeat(3, 1fr);
+}
 :root[data-theme-style] .app--custom .context-panel__stats .context-panel__metric--wide {
   grid-column: auto;
 }
