@@ -346,6 +346,8 @@
 .app--custom .reasoning__body,
 :root[data-theme-style] .app--custom .reasoning__body {
   margin-left: 14px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 :root[data-theme-style] .app--custom .reasoning__meta {
   display: none;
