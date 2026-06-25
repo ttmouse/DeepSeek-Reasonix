@@ -348,25 +348,26 @@
   margin-left: 14px;
   max-height: 240px;
   overflow-y: auto;
-  /* Firefox: hide scrollbar by default */
-  scrollbar-width: none;
-}
-.app--custom .reasoning__body::-webkit-scrollbar {
-  width: 1px; /* non-zero to keep pseudo-element alive */
-}
-.app--custom .reasoning__body::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-/* Show scrollbar on hover */
-.app--custom .reasoning__body:hover {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
-.app--custom .reasoning__body:hover::-webkit-scrollbar {
+/* Webkit: always show 6px track, thumb fades in on hover */
+.app--custom .reasoning__body::-webkit-scrollbar {
   width: 6px;
 }
-.app--custom .reasoning__body:hover::-webkit-scrollbar-thumb {
+.app--custom .reasoning__body::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg-faint) 40%, transparent);
   border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.app--custom .reasoning__body:hover::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
+/* Firefox: show colored scrollbar on hover */
+.app--custom .reasoning__body:hover,
+:root[data-theme-style] .app--custom .reasoning__body:hover {
+  scrollbar-color: color-mix(in srgb, var(--fg-faint) 40%, transparent) transparent;
 }
 :root[data-theme-style] .app--custom .reasoning__meta {
   display: none;
