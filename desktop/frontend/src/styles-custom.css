@@ -57,7 +57,7 @@
 }
 
 /* ── Stop button rotation animation (ported from codex/upstream-sync-20260613) ── */
-.composer__btn--stop:not(:disabled) svg {
+.app--custom .composer__btn--stop:not(:disabled) svg {
   animation: stop-step 1s ease-in-out infinite;
   transform-origin: center;
 }
@@ -68,7 +68,7 @@
 }
 
 /* ── Circular send/stop button ── */
-:root[data-theme-style] .composer-meta__control--send .composer__btn {
+:root[data-theme-style] .app--custom .composer-meta__control--send .composer__btn {
   width: 28px;
   height: 28px;
   border-radius: 999px;
@@ -525,7 +525,7 @@
 }
 
 /* ── Custom skin: model menu width adapts to name (portal in body) ── */
-.modelsw__menu--portal {
+:root:has(.app--custom) .modelsw__menu--portal {
   min-width: unset !important;
   width: max-content !important;
 }
