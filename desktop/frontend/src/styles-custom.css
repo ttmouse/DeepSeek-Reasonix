@@ -348,6 +348,24 @@
   margin-left: 14px;
   max-height: 250px;
   overflow-y: auto;
+  /* Hide scrollbar by default */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app--custom .reasoning__body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+/* Show thin scrollbar on hover */
+.app--custom .reasoning__body:hover {
+  scrollbar-width: thin;
+}
+.app--custom .reasoning__body:hover::-webkit-scrollbar {
+  width: 4px;
+}
+.app--custom .reasoning__body:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg-faint) 40%, transparent);
+  border-radius: 2px;
 }
 :root[data-theme-style] .app--custom .reasoning__meta {
   display: none;
