@@ -346,27 +346,8 @@
 .app--custom .reasoning__body,
 :root[data-theme-style] .app--custom .reasoning__body {
   margin-left: 14px;
-  max-height: 250px;
+  max-height: 240px;
   overflow-y: auto;
-  /* Firefox: transparent scrollbar by default */
-  scrollbar-color: transparent transparent;
-  scrollbar-width: thin;
-}
-/* Webkit: 4px track, thumb transparent by default */
-.app--custom .reasoning__body::-webkit-scrollbar {
-  width: 4px;
-}
-.app--custom .reasoning__body::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 2px;
-}
-/* Show scrollbar thumb on hover (Webkit) */
-.app--custom .reasoning__body:hover::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg-faint) 40%, transparent);
-}
-/* Firefox hover */
-.app--custom .reasoning__body:hover {
-  scrollbar-color: color-mix(in srgb, var(--fg-faint) 40%, transparent) transparent;
 }
 :root[data-theme-style] .app--custom .reasoning__meta {
   display: none;
