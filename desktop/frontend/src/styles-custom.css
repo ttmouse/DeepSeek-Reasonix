@@ -773,6 +773,9 @@
 .app--custom .context-panel__overview > .context-panel__section:nth-child(4) .context-panel__stats {
   grid-template-columns: repeat(3, 1fr);
 }
+.app--custom .context-panel__overview > .context-panel__section:nth-child(4) .context-panel__stats > .context-panel__metric:last-child:nth-child(odd) {
+  grid-column: auto;
+}
 :root[data-theme-style] .app--custom .context-panel__stats .context-panel__metric--wide {
   grid-column: auto;
 }
