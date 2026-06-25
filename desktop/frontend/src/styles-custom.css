@@ -763,14 +763,14 @@
   padding: 8px 10px 12px;
 }
 :root[data-theme-style] .app--custom .context-panel__overview {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: start;
+  gap: 2px;
 }
-:root[data-theme-style] .app--custom .context-panel__overview > .context-panel__section,
-:root[data-theme-style] .app--custom .context-panel__overview > .context-panel__section--status {
-  grid-column: 1 / -1;
+/* ── Custom skin: runtime only session tokens + turns ── */
+.app--custom .context-panel__overview > .context-panel__section:nth-of-type(1) .context-panel__metric:nth-child(-n+2) {
+  display: none;
+}
+:root[data-theme-style] .app--custom .context-panel__stats .context-panel__metric--wide {
+  grid-column: auto;
 }
 :root[data-theme-style] .app--custom .context-panel__section:not(.context-panel__section--status) {
   padding-left: 0;
