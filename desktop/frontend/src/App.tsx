@@ -8,6 +8,7 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 gsap.registerPlugin(useGSAP, Flip, ScrollToPlugin);
 import {
   Activity,
+  BookOpen,
   CircleHelp,
   Command,
   Download,
@@ -49,6 +50,7 @@ import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { ContextPanel } from "./components/ContextPanel";
+import { InstructionPanel } from "./components/InstructionPanel";
 import { WorkspacePanel } from "./components/WorkspacePanel";
 import { Tooltip } from "./components/Tooltip";
 import { StartupSplash } from "./components/StartupSplash";
@@ -3558,6 +3560,16 @@ export default function App() {
                   <GitBranch size={13} />
                   <span className="workbench-dock__tab-label">{t("workspace.changedTab")}</span>
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={rightDockMode === "instructions"}
+                  className={`workbench-dock__tab${rightDockMode === "instructions" ? " workbench-dock__tab--active" : ""}`}
+                  onClick={() => openRightDockMode("instructions")}
+                >
+                  <BookOpen size={13} />
+                  <span className="workbench-dock__tab-label">{t("instruction.title")}</span>
+                </button>
               </div>
             </div>
             <div className="workbench-dock__body">
@@ -3576,6 +3588,8 @@ export default function App() {
                   sessionGen={state.sessionGen}
                   refreshKey={dockRefreshKey}
                 />
+              ) : rightDockMode === "instructions" ? (
+                <InstructionPanel onPrompt={handleTranscriptPrompt} />
               ) : (
                 <WorkspacePanel
                   open={workspacePanelRenderable}

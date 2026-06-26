@@ -142,6 +142,17 @@ export const zh: Record<DictKey, string> = {
   "rightDock.views": "工作区视图",
   "rightDock.overview": "概览",
 
+  // 指令面板
+  "instruction.title": "指令",
+  "instruction.add": "添加",
+  "instruction.edit": "编辑",
+  "instruction.delete": "删除",
+  "instruction.save": "保存",
+  "instruction.cancel": "取消",
+  "instruction.empty": "还没有自定义指令，点击\"添加\"创建一个。",
+  "instruction.emptyPrompt": "[空提示词]",
+  "instruction.contentPlaceholder": "在此粘贴或输入你的提示词…",
+
   // 话题栏
   "topicBar.renameSession": "重命名会话",
   "topicBar.more": "更多",

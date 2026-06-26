@@ -141,6 +141,17 @@ export const en = {
   "rightDock.views": "Workspace views",
   "rightDock.overview": "Overview",
 
+  // instruction panel
+  "instruction.title": "Instructions",
+  "instruction.add": "Add",
+  "instruction.edit": "Edit",
+  "instruction.delete": "Delete",
+  "instruction.save": "Save",
+  "instruction.cancel": "Cancel",
+  "instruction.empty": "No custom instructions yet. Click Add to create one.",
+  "instruction.emptyPrompt": "[empty prompt]",
+  "instruction.contentPlaceholder": "Paste or type your prompt here…",
+
   // topic bar
   "topicBar.renameSession": "Rename session",
   "topicBar.more": "More",

@@ -78,6 +78,17 @@ export const zhTW: Record<DictKey, string> = {
   "rightDock.views": "右側工作台視圖",
   "rightDock.overview": "概覽",
 
+  // 指令面板
+  "instruction.title": "指令",
+  "instruction.add": "新增",
+  "instruction.edit": "編輯",
+  "instruction.delete": "刪除",
+  "instruction.save": "儲存",
+  "instruction.cancel": "取消",
+  "instruction.empty": "還沒有自訂指令，點選「新增」建立一個。",
+  "instruction.emptyPrompt": "[空提示詞]",
+  "instruction.contentPlaceholder": "在此貼上或輸入你的提示詞…",
+
   // 話題欄
   "topicBar.renameSession": "重新命名會話",
   "topicBar.more": "更多",
