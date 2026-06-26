@@ -292,7 +292,7 @@ await act(async () => {
 });
 eq(controller?.activeTabId, "tab-d", "openProjectTab activates the opened tab");
 eq(controller?.state.items.length, 0, "open topic keeps the new tab transcript empty while hydrating");
-ok(controller?.state.hydratePlaceholderItems?.some((item) => item.kind === "user" && item.text === "streaming C") ?? false, "open topic stores previous transcript only as a hydration placeholder");
+// shimmer + useLayoutEffect replaces the placeholder approach; old items no longer carried over
 
 await act(async () => {
   historyD.resolve([]);

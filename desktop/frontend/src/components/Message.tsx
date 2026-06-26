@@ -385,9 +385,11 @@ export function UserMessage({
             </time>
           )}
           {hasMemoryCompiler && (
-            <span className="msg-meta__indicator" title={t("msg.memoryCompilerApplied")} aria-hidden="true">
-              <BrainCircuit size={14} />
-            </span>
+            <Tooltip label={t("msg.memoryCompilerApplied")} side="top">
+              <span className="msg-meta__indicator" aria-hidden="true">
+                <BrainCircuit size={14} />
+              </span>
+            </Tooltip>
           )}
           <Tooltip label={t("msg.copy")} side="top">
             <CopyButton text={actionText} label={t("msg.copy")} showInlineLabel={false} className="msg-meta__btn msg-meta__copy" />

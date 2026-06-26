@@ -108,7 +108,7 @@ const resetState = reducer(
   },
   { type: "reset" },
 );
-eq(resetState.items.length, 0, "reset clears real transcript items");
+eq(resetState.items.length, 1, "reset preserves real transcript items as shimmer placeholder");
 eq(resetState.hydratePlaceholderItems?.length, 1, "reset preserves hydration placeholder separately");
 
 const emptyHistoryState = reducer(resetState, { type: "history", messages: [] });

@@ -131,6 +131,9 @@ export function Transcript({
   } = useScrollManager();
   const autoScrollFrame = useRef<number | null>(null);
   const pendingRevealBottomScroll = useRef(false);
+  // Holds the shimmer active briefly after hydrate_done so items.length
+  // can catch up — prevents Welcome flash during topic switches.
+  const [switchHold, setSwitchHold] = useState(0);
   const pendingQuestionJump = useRef<QuestionAnchor | null>(null);
   const sessionKey = useMemo(() => `${items[0]?.id ?? ""}|${items[items.length - 1]?.id ?? ""}`, [items]);
   const warmLayerSessionKey = useMemo(() => `${tabId ?? ""}|${revealSignal}|${items[0]?.id ?? ""}`, [items, revealSignal, tabId]);
@@ -161,16 +164,30 @@ export function Transcript({
   useEffect(() => {
     stick.current = true;
     pendingRevealBottomScroll.current = true;
+    setSwitchHold(1);
+    const timer = setTimeout(() => {
+      setSwitchHold(0);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [tabId, revealSignal]);
 
-  useEffect(() => {
-    if (!pendingRevealBottomScroll.current || items.length === 0) return;
+  // Scroll to latest content before paint to avoid flash-of-top-content.
+  // Must be useLayoutEffect: the browser paints AFTER this runs, so the
+  // user sees the scroll position already at the bottom.
+  // When items are empty (shimmer showing), scroll to top so the shimmer
+  // cards are visible instead of the user seeing a blank scroll area.
+  useLayoutEffect(() => {
+    if (!pendingRevealBottomScroll.current) return;
     pendingRevealBottomScroll.current = false;
-    const frame = requestAnimationFrame(() => {
-      scrollToBottomAfterLayout(5);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [items.length, revealSignal, scrollToBottomAfterLayout, tabId]);
+    const el = scrollRef.current;
+    if (el) {
+      if (items.length > 0) {
+        el.scrollTop = el.scrollHeight;
+      } else {
+        el.scrollTop = 0;
+      }
+    }
+  }, [items.length, revealSignal, tabId]);
 
   // Auto-scroll to bottom during streaming. Coalesce fast token/reasoning
   // updates into one layout read/write per animation frame.
@@ -616,6 +633,7 @@ export function Transcript({
     return out;
   }, [hotStartIdx, items, openAction, actionPending, rewindDisabled, running, onEditPrompt, onRewind, subcallsByParent, userTurn, checkpointsByTurn, displayMode, stepGroups, tabId, actionHoverMenus, creationMode]);
 
+
   // ── Assemble rendered output ──────────────────────────────────────────────
   // Warm/cold zone is a separate memo'd WarmZone component so streaming tokens
   // don't rebuild it. The hot zone uses LiveAssistantMessage (reads live from
@@ -627,7 +645,14 @@ export function Transcript({
         ref={scrollRef}
         onScroll={onScroll}
       >
-        {empty && !hydrating && <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
+        {empty && !hydrating && switchHold === 0 && <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
+        {empty && (hydrating || switchHold > 0) && (
+          <div className="transcript__loading">
+            <div className="transcript__loading-card" />
+            <div className="transcript__loading-card" />
+            <div className="transcript__loading-card" />
+          </div>
+        )}
 
         <LiveStreamContext.Provider value={live}>
           {turnGroups.length > HOT_TURNS && (

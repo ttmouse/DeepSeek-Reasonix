@@ -152,6 +152,7 @@ export interface AppBindings {
   ClearSession(): Promise<void>;
   History(): Promise<HistoryMessage[]>;
   HistoryForTab(tabID: string): Promise<HistoryMessage[]>;
+  RecentRoundsForTab(tabID: string, maxRounds: number): Promise<HistoryMessage[]>;
   Checkpoints(): Promise<CheckpointMeta[]>;
   CheckpointsForTab(tabID: string): Promise<CheckpointMeta[]>;
   Rewind(turn: number, scope: string): Promise<void>;
@@ -1813,6 +1814,9 @@ function makeMockApp(): AppBindings {
             return mockTopicHistory(tab.topicId);
           }
           return this.History();
+        },
+        async RecentRoundsForTab(tabID?: string, _maxRounds?: number) {
+          return this.HistoryForTab(tabID ?? "");
         },
     async ListSessions() {
       return sessions.map((s) => ({ ...s }));
