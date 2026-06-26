@@ -10,6 +10,7 @@ const STORAGE_KEY = "reasonix.customInstructions";
 interface PromptItem {
   id: string;
   text: string;
+  count: number;
 }
 
 let _idSeq = Date.now();
@@ -26,10 +27,10 @@ function loadPrompts(): PromptItem[] {
     // migration: plain strings → { id, text } objects
     return parsed.map((p: unknown) => {
       if (typeof p === "object" && p !== null) {
-        const obj = p as { id?: string; text?: string; content?: string };
-        return { id: obj.id ?? genId(), text: obj.text ?? obj.content ?? "" };
+        const obj = p as { id?: string; text?: string; content?: string; count?: number };
+        return { id: obj.id ?? genId(), text: obj.text ?? obj.content ?? "", count: obj.count ?? 0 };
       }
-      return { id: genId(), text: String(p) };
+      return { id: genId(), text: String(p), count: 0 };
     });
   } catch {
     return [];
@@ -63,7 +64,7 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
 
   const addPrompt = useCallback(() => {
     const id = genId();
-    setPrompts((prev) => [...prev, { id, text: "" }]);
+    setPrompts((prev) => [...prev, { id, text: "", count: 0 }]);
     setEditingId(id);
     setEditValue("");
   }, []);
@@ -104,6 +105,8 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
   const handleCardClick = useCallback(
     (prompt: PromptItem) => {
       if (!prompt.text.trim() || editingId) return;
+      // increment usage count
+      setPrompts((prev) => prev.map((p) => (p.id === prompt.id ? { ...p, count: p.count + 1 } : p)));
       onPrompt?.(prompt.text.trim());
     },
     [onPrompt, editingId],
@@ -170,6 +173,7 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
               >
                 <div className="instruction-panel__card-header">
                   <span className="instruction-panel__card-text">{prompt.text || t("instruction.emptyPrompt")}</span>
+                  <span className="instruction-panel__count">{prompt.count}</span>
                   <div className="instruction-panel__card-actions">
                     <button
                       type="button"

@@ -26059,13 +26059,16 @@ a[href] {
   transition: box-shadow 0.15s;
 }
 .instruction-panel__card-body {
-  padding: 5px 10px;
+  padding: 8px 12px;
   background: var(--bg-soft);
   border-radius: 8px;
   cursor: pointer;
   user-select: none;
   display: flex;
   align-items: center;
+}
+.instruction-panel__card-body:hover .instruction-panel__count {
+  opacity: 0;
 }
 .instruction-panel__card-body:hover {
   background: color-mix(in srgb, var(--bg-soft) 96%, var(--fg));
@@ -26079,6 +26082,7 @@ a[href] {
   gap: 8px;
   width: 100%;
   min-width: 0;
+  position: relative;
 }
 .instruction-panel__card-text {
   flex: 1;
@@ -26090,10 +26094,22 @@ a[href] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.instruction-panel__count {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--fg-faint);
+  padding: 0 4px;
+  min-width: 16px;
+  text-align: center;
+}
 .instruction-panel__card-actions {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 2px;
-  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.12s;
 }
@@ -26123,7 +26139,7 @@ a[href] {
 }
 /* Editing mode */
 .instruction-panel__edit {
-  padding: 5px 10px;
+  padding: 8px 12px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 8px;
