@@ -103,6 +103,11 @@
   padding: 8px 16px;
   border-radius: 20px;
   background: var(--bg-soft);
+  max-width: 100%;
+}
+.app--custom .prompt-shelf,
+:root[data-theme-style] .app--custom .prompt-shelf {
+  max-width: min(var(--maxw), calc(100% - 4px));
 }
 .app--custom .prompt-shelf__header {
   cursor: pointer;
@@ -746,7 +751,7 @@
   background: #f5f6f9 !important;
   transition: opacity 0.22s, transform 0.28s cubic-bezier(0.2, 0.72, 0.2, 1);
 }
-:root[data-theme-style] .app--custom .layout:not(.layout--workspace-open) .workbench-dock {
+:root[data-theme-style] .app--custom .layout:not(.layout--workspace-open):not(.layout--workspace-maximized) .workbench-dock {
   opacity: 0;
   transform: translateX(18px);
 }
