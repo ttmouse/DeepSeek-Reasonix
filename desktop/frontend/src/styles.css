@@ -26003,6 +26003,7 @@ a[href] {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background: inherit;
 }
 .instruction-panel__header {
   display: flex;
