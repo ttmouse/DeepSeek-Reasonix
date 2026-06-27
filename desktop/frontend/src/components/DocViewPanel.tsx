@@ -211,6 +211,22 @@ export function DocViewPanel({
     } else {
       docs = KNOWN_DOCS.filter((d) => !d.id.endsWith(".zh-CN"));
     }
+    // Append any locally-cached docs not in the known list
+    // (handles docs manually added or pulled from upstream that aren't in KNOWN_DOCS)
+    if (localDocs.length > 0) {
+      const knownIds = new Set(docs.map((d) => d.id));
+      const extra = localDocs
+        .filter((id) => !knownIds.has(id))
+        .map((id) => ({
+          id,
+          title: id,
+          titleZh: id,
+          desc: "Cached locally",
+        }));
+      if (extra.length > 0) {
+        docs = [...docs, ...extra];
+      }
+    }
     // Apply title/description search only (when no content search results)
     if (searchQuery.trim() && !searchResults) {
       const q = searchQuery.toLowerCase();
@@ -222,7 +238,7 @@ export function DocViewPanel({
       );
     }
     return docs;
-  }, [locale, searchQuery, searchResults]);
+  }, [locale, searchQuery, searchResults, localDocs]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
