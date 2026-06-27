@@ -1007,6 +1007,11 @@
   margin-top: 2px;
 }
 
+.doc-view__cached-icon {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
 .doc-view__cached-badge {
   font-size: 10px;
   color: var(--success);
