@@ -185,12 +185,26 @@
 .app--custom .todobar__text {
   font-size: 12.5px;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Custom skin: instruction panel header shorter ── */
 .app--custom .instruction-panel__header {
   height: 38px;
   padding: 6px 12px;
+}
+
+/* ── Custom skin: instruction card text wraps instead of expanding panel ── */
+.app--custom .instruction-panel__card-text {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 /* ── Custom skin: remove composer focus effects ── */
@@ -359,6 +373,9 @@
   margin-left: 14px;
   max-height: 240px;
   overflow-y: auto;
+  overflow-x: auto;
+  word-break: break-word;
+  overflow-wrap: break-word;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
@@ -386,10 +403,15 @@
 .app--custom .msg--assistant .msg__body,
 :root[data-theme-style] .app--custom .msg--assistant .msg__body {
   margin-left: 8px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .app--custom .topicbar__title-row h1,
 .app--custom .topicbar__subtitle {
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .app--custom .topicbar__identity {
   align-items: center;
