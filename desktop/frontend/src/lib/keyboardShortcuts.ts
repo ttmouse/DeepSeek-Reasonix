@@ -159,7 +159,11 @@ export const SHORTCUT_DEFINITIONS: readonly ShortcutDefinition[] = [
     section: "help",
     labelKey: "shortcuts.action.docs",
     descriptionKey: "shortcuts.desc.docs",
-    defaults: modCombo("?"),
+    defaults: {
+      darwin: { key: "?", meta: true, shift: true },
+      windows: { key: "?", ctrl: true, shift: true },
+      linux: { key: "?", ctrl: true, shift: true },
+    },
     preventDefault: true,
     allowInEditable: true,
   },
