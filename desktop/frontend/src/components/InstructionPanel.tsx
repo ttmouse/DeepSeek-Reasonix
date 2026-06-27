@@ -22,15 +22,16 @@ async function migrateFromLocalStorage(): Promise<string | null> {
     const raw = localStorage.getItem("reasonix.customInstructions");
     if (!raw) return null;
     // Try to save via Go backend
-    if (window.go?.main?.App) {
+    const app = window.go?.main?.App as Record<string, unknown> | undefined;
+    if (app && typeof app.LoadCustomInstructions === "function" && typeof app.SaveCustomInstructions === "function") {
       try {
-        const existing = await window.go.main.App.LoadCustomInstructions();
+        const existing = await (app.LoadCustomInstructions as () => Promise<string>)();
         if (existing) {
           // File already has data — don't overwrite, just clean up localStorage
           localStorage.removeItem("reasonix.customInstructions");
           return null;
         }
-        await window.go.main.App.SaveCustomInstructions(raw);
+        await (app.SaveCustomInstructions as (data: string) => Promise<void>)(raw);
         // Only delete localStorage after successful save
         localStorage.removeItem("reasonix.customInstructions");
       } catch {
@@ -87,8 +88,13 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
       const migratedRaw = await migrateFromLocalStorage();
       if (cancelled) return;
       let data = "";
-      if (window.go?.main?.App) {
-        data = await window.go.main.App.LoadCustomInstructions();
+      const loadApp = window.go?.main?.App as Record<string, unknown> | undefined;
+      if (loadApp && typeof loadApp.LoadCustomInstructions === "function") {
+        try {
+          data = await (loadApp.LoadCustomInstructions as () => Promise<string>)();
+        } catch {
+          // Go method not available or error — continue to fallbacks
+        }
       }
       if (cancelled) return;
       let items: PromptItem[];
@@ -98,8 +104,9 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
         // Migration queued but Go backend wasn't ready — use localStorage data
         items = parsePrompts(migratedRaw);
         // Retry saving to Go backend on next change
-        if (window.go?.main?.App) {
-          window.go.main.App.SaveCustomInstructions(migratedRaw).catch(() => {});
+        const retryApp = window.go?.main?.App as Record<string, unknown> | undefined;
+        if (retryApp && typeof retryApp.SaveCustomInstructions === "function") {
+          (retryApp.SaveCustomInstructions as (data: string) => Promise<void>)(migratedRaw).catch(() => {});
         }
       } else {
         // fallback to localStorage for backwards compat
@@ -119,9 +126,17 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
     }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      const json = JSON.stringify(prompts);
-      if (window.go?.main?.App) {
-        window.go.main.App.SaveCustomInstructions(json).catch(() => {});
+      try {
+        const json = JSON.stringify(prompts);
+        // Always save to localStorage as fallback
+        localStorage.setItem("reasonix.customInstructions", json);
+        // Also try Go backend if available
+        const app = window.go?.main?.App as Record<string, unknown> | undefined;
+        if (app && typeof app.SaveCustomInstructions === "function") {
+          (app.SaveCustomInstructions as (data: string) => Promise<void>)(json).catch(() => {});
+        }
+      } catch {
+        // Save failed — keep data in React state until next save attempt
       }
     }, 300);
     return () => {
