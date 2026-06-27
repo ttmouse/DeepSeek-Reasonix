@@ -17,21 +17,30 @@ function genId(): string {
 }
 
 /** Migrate from old localStorage key to ~/.reasonix file on first load. */
-async function migrateFromLocalStorage(): Promise<boolean> {
+async function migrateFromLocalStorage(): Promise<string | null> {
   try {
     const raw = localStorage.getItem("reasonix.customInstructions");
-    if (!raw) return false;
-    localStorage.removeItem("reasonix.customInstructions");
-    // Already in ~/.reasonix via Go backend? Don't overwrite.
-    const existing = window.go?.main?.App ? await window.go.main.App.LoadCustomInstructions() : "";
-    if (existing) return false;
-    // Write to Go backend
+    if (!raw) return null;
+    // Try to save via Go backend
     if (window.go?.main?.App) {
-      await window.go.main.App.SaveCustomInstructions(raw);
+      try {
+        const existing = await window.go.main.App.LoadCustomInstructions();
+        if (existing) {
+          // File already has data — don't overwrite, just clean up localStorage
+          localStorage.removeItem("reasonix.customInstructions");
+          return null;
+        }
+        await window.go.main.App.SaveCustomInstructions(raw);
+        // Only delete localStorage after successful save
+        localStorage.removeItem("reasonix.customInstructions");
+      } catch {
+        // Go backend not ready yet — keep localStorage as fallback
+        return raw;
+      }
     }
-    return true;
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -74,7 +83,9 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await migrateFromLocalStorage();
+      // Try migration first; returns raw data if Go backend unavailable
+      const migratedRaw = await migrateFromLocalStorage();
+      if (cancelled) return;
       let data = "";
       if (window.go?.main?.App) {
         data = await window.go.main.App.LoadCustomInstructions();
@@ -83,6 +94,13 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
       let items: PromptItem[];
       if (data) {
         items = parsePrompts(data);
+      } else if (migratedRaw) {
+        // Migration queued but Go backend wasn't ready — use localStorage data
+        items = parsePrompts(migratedRaw);
+        // Retry saving to Go backend on next change
+        if (window.go?.main?.App) {
+          window.go.main.App.SaveCustomInstructions(migratedRaw).catch(() => {});
+        }
       } else {
         // fallback to localStorage for backwards compat
         items = readLocalFallback();

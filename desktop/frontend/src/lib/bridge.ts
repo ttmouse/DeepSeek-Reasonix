@@ -248,6 +248,10 @@ export interface AppBindings {
   SaveDocForTab(tabID: string, path: string, body: string): Promise<string>;
   LoadCustomInstructions(): Promise<string>;
   SaveCustomInstructions(data: string): Promise<void>;
+  /** Documentation viewer */
+  ListHelpDocs(): Promise<string[]>;
+  LoadHelpDoc(name: string): Promise<string>;
+  SaveHelpDoc(name: string, content: string): Promise<void>;
   DesktopStartupSettings(): Promise<DesktopStartupSettingsView>;
   Settings(): Promise<SettingsView>;
   HooksSettings(scope: string): Promise<HooksSettingsView>;
@@ -2498,6 +2502,9 @@ function makeMockApp(): AppBindings {
         localStorage.setItem("reasonix.customInstructions", data);
       } catch { /* ignore */ }
     },
+    async ListHelpDocs() { return []; },
+    async LoadHelpDoc(_name: string) { return ""; },
+    async SaveHelpDoc(_name: string, _content: string) { },
     async DesktopStartupSettings() {
       const { bot, desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, displayMode, statusBarStyle, statusBarItems, checkUpdates } = settings;
       return JSON.parse(JSON.stringify({

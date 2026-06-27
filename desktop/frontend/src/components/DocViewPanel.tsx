@@ -11,7 +11,6 @@ import { Tooltip } from "./Tooltip";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 const UPSTREAM_DOCS_BASE = "https://raw.githubusercontent.com/esengine/DeepSeek-Reasonix/main-v2/docs";
-const DOC_INDEX_URL = `${UPSTREAM_DOCS_BASE}/index.json`;
 
 // Known doc files in the upstream docs/ directory.
 // This is the fallback list used when index.json is not available.
@@ -200,10 +199,6 @@ export function DocViewPanel({
     return docs;
   }, [locale, searchQuery]);
 
-  const selectedMeta = useMemo(() => {
-    return KNOWN_DOCS.find((d) => d.id === selectedDoc);
-  }, [selectedDoc]);
-
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       requestClose();
@@ -279,7 +274,7 @@ export function DocViewPanel({
                   className="doc-view__search-clear"
                   type="button"
                   onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
-                  aria-label={t("common.clear")}
+                  aria-label={t("common.close")}
                 >
                   <X size={12} />
                 </button>
@@ -368,7 +363,7 @@ export function DocViewPanel({
               </div>
             ) : (
               <div className="doc-view__markdown">
-                <MarkdownRenderer markdown={docContent} />
+                <MarkdownRenderer text={docContent} />
               </div>
             )}
           </main>
