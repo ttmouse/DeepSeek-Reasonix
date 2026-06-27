@@ -1,11 +1,9 @@
 // InstructionPanel shows user-customizable prompt cards in the right dock.
 // Each card is one prompt text. Click to send, hover to edit/delete.
-// Data is persisted to localStorage.
+// Data is persisted to ~/.reasonix/custom-instructions.json via Go backend.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { useT } from "../lib/i18n";
-
-const STORAGE_KEY = "reasonix.customInstructions";
 
 interface PromptItem {
   id: string;
@@ -18,13 +16,29 @@ function genId(): string {
   return `p_${++_idSeq}`;
 }
 
-function loadPrompts(): PromptItem[] {
+/** Migrate from old localStorage key to ~/.reasonix file on first load. */
+async function migrateFromLocalStorage(): Promise<boolean> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    const raw = localStorage.getItem("reasonix.customInstructions");
+    if (!raw) return false;
+    localStorage.removeItem("reasonix.customInstructions");
+    // Already in ~/.reasonix via Go backend? Don't overwrite.
+    const existing = window.go?.main?.App ? await window.go.main.App.LoadCustomInstructions() : "";
+    if (existing) return false;
+    // Write to Go backend
+    if (window.go?.main?.App) {
+      await window.go.main.App.SaveCustomInstructions(raw);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parsePrompts(raw: string): PromptItem[] {
+  try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // migration: plain strings → { id, text } objects
     return parsed.map((p: unknown) => {
       if (typeof p === "object" && p !== null) {
         const obj = p as { id?: string; text?: string; content?: string; count?: number };
@@ -37,24 +51,65 @@ function loadPrompts(): PromptItem[] {
   }
 }
 
-function savePrompts(prompts: PromptItem[]): void {
+function readLocalFallback(): PromptItem[] {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prompts));
+    const raw = localStorage.getItem("reasonix.customInstructions");
+    return raw ? parsePrompts(raw) : [];
   } catch {
-    /* ignore storage errors */
+    return [];
   }
 }
 
 export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => void }) {
   const t = useT();
-  const [prompts, setPrompts] = useState<PromptItem[]>(loadPrompts);
+  const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initialRef = useRef(true);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Initial load: try Go backend → localStorage fallback → migration
   useEffect(() => {
-    savePrompts(prompts);
-  }, [prompts]);
+    let cancelled = false;
+    (async () => {
+      await migrateFromLocalStorage();
+      let data = "";
+      if (window.go?.main?.App) {
+        data = await window.go.main.App.LoadCustomInstructions();
+      }
+      if (cancelled) return;
+      let items: PromptItem[];
+      if (data) {
+        items = parsePrompts(data);
+      } else {
+        // fallback to localStorage for backwards compat
+        items = readLocalFallback();
+      }
+      setPrompts(items);
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Debounced save to Go backend when prompts change
+  useEffect(() => {
+    if (!loaded || initialRef.current) {
+      initialRef.current = false;
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const json = JSON.stringify(prompts);
+      if (window.go?.main?.App) {
+        window.go.main.App.SaveCustomInstructions(json).catch(() => {});
+      }
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [prompts, loaded]);
 
   useEffect(() => {
     if (editingId) {

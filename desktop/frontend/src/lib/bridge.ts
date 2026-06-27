@@ -246,6 +246,8 @@ export interface AppBindings {
   ForgetForTab(tabID: string, name: string): Promise<void>;
   SaveDoc(path: string, body: string): Promise<string>;
   SaveDocForTab(tabID: string, path: string, body: string): Promise<string>;
+  LoadCustomInstructions(): Promise<string>;
+  SaveCustomInstructions(data: string): Promise<void>;
   DesktopStartupSettings(): Promise<DesktopStartupSettingsView>;
   Settings(): Promise<SettingsView>;
   HooksSettings(scope: string): Promise<HooksSettingsView>;
@@ -2483,6 +2485,18 @@ function makeMockApp(): AppBindings {
     },
     async SaveDocForTab(_tabID: string, path: string, body: string) {
       return this.SaveDoc(path, body);
+    },
+    async LoadCustomInstructions() {
+      try {
+        return localStorage.getItem("reasonix.customInstructions") ?? "";
+      } catch {
+        return "";
+      }
+    },
+    async SaveCustomInstructions(data: string) {
+      try {
+        localStorage.setItem("reasonix.customInstructions", data);
+      } catch { /* ignore */ }
     },
     async DesktopStartupSettings() {
       const { bot, desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, displayMode, statusBarStyle, statusBarItems, checkUpdates } = settings;

@@ -6731,6 +6731,46 @@ func (a *App) SaveDocForTab(tabID, path, body string) (string, error) {
 	return a.saveDocForCtrl(a.ctrlByTabID(tabID), path, body, false)
 }
 
+// customInstructionsPath returns ~/.reasonix/custom-instructions.json
+func customInstructionsPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".reasonix")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "custom-instructions.json"), nil
+}
+
+// LoadCustomInstructions reads the custom instructions JSON file from
+// ~/.reasonix/custom-instructions.json. Returns empty string if not found.
+func (a *App) LoadCustomInstructions() (string, error) {
+	path, err := customInstructionsPath()
+	if err != nil {
+		return "", nil // silently degrade
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(data), nil
+}
+
+// SaveCustomInstructions writes the custom instructions JSON to
+// ~/.reasonix/custom-instructions.json.
+func (a *App) SaveCustomInstructions(data string) error {
+	path, err := customInstructionsPath()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(data), 0644)
+}
+
 func (a *App) saveDocForCtrl(ctrl control.SessionAPI, path, body string, fallback bool) (string, error) {
 	if ctrl == nil {
 		if !fallback {
