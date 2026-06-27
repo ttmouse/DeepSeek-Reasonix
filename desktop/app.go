@@ -6900,3 +6900,82 @@ func (a *App) ConnectKey(apiKey string) (string, error) {
 	}
 	return warning, nil
 }
+
+// helpDir returns ~/.reasonix/help/.
+func helpDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".reasonix", "help")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// ListHelpDocs returns the list of available help document names
+// (without .md extension) found in ~/.reasonix/help/. If the directory
+// is empty or absent it returns an empty list — caller should then pull.
+func (a *App) ListHelpDocs() ([]string, error) {
+	dir, err := helpDir()
+	if err != nil {
+		return nil, nil // silently degrade
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		// Only .md files
+		if !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		// Skip dotfiles
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		names = append(names, strings.TrimSuffix(name, ".md"))
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// LoadHelpDoc returns the content of ~/.reasonix/help/<name>.md.
+// Returns empty string with no error if the file does not exist.
+func (a *App) LoadHelpDoc(name string) (string, error) {
+	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") {
+		return "", fmt.Errorf("invalid doc name: %q", name)
+	}
+	dir, err := helpDir()
+	if err != nil {
+		return "", nil
+	}
+	path := filepath.Join(dir, name+".md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(data), nil
+}
+
+// SaveHelpDoc writes content to ~/.reasonix/help/<name>.md.
+func (a *App) SaveHelpDoc(name, content string) error {
+	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") {
+		return fmt.Errorf("invalid doc name: %q", name)
+	}
+	dir, err := helpDir()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, name+".md")
+	return os.WriteFile(path, []byte(content), 0644)
+}

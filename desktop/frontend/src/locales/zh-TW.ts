@@ -1741,5 +1741,20 @@ export const zhTW: Record<DictKey, string> = {
   "performanceReport.title": "Reasonix 偵測到回應卡頓",
   "performanceReport.dismiss": "關閉",
   "performanceReport.privacyNote": "上傳前桌面端會移除路徑與密鑰；診斷資訊只用於記錄耗時、記憶體、網路狀態、近期 breadcrumbs、應用版本和作業系統。",
+
+  "docView.title": "文件",
+  "docView.pullDocs": "從上游拉取文件",
+  "docView.pullFromUpstream": "從 GitHub 載入",
+  "docView.pulling": "載入中…",
+  "docView.refresh": "重新整理文件",
+  "docView.searchPlaceholder": "搜尋文件…",
+  "docView.noMatch": "沒有符合的文件",
+  "docView.noDocs": "暫無本地快取的文件",
+  "docView.loadingDoc": "載入文件中…",
+  "docView.cached": "已快取到本地",
+  "docView.viewOnGitHub": "在 GitHub 上查看",
+  "docView.welcomeTitle": "文件",
+  "docView.welcomeDesc": "在此查看 Reasonix 文件。點選下方按鈕從 GitHub 拉取文件。",
+
   "mock.topicSysException": "異常處理與恢復演練",
 };

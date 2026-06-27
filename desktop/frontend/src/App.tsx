@@ -155,6 +155,7 @@ import logoWordmark from "./assets/logo-wordmark.svg";
 
 const HistoryPanel = lazy(() => import("./components/HistoryPanel").then((module) => ({ default: module.HistoryPanel })));
 const SettingsPanel = lazy(() => import("./components/SettingsPanel").then((module) => ({ default: module.SettingsPanel })));
+const DocViewPanel = lazy(() => import("./components/DocViewPanel").then((module) => ({ default: module.DocViewPanel })));
 
 const CHAT_MIN_WIDTH = 400;
 const CHAT_COMFORT_MIN_WIDTH = 560;
@@ -1031,6 +1032,7 @@ export default function App() {
   const setSidebarSearchFocusSignal = useOverlayStore((s) => s.setSidebarSearchFocusSignal);
   const [sidebarTogglePressed, setSidebarTogglePressed] = useState(false);
   const [workspaceTogglePressed, setWorkspaceTogglePressed] = useState(false);
+  const [docViewOpen, setDocViewOpen] = useState(false);
   const [clearContextPending, setClearContextPending] = useState(false);
   const topicRenameSkipCommitRef = useRef(false);
   const topicRenameCommitHandledRef = useRef(false);
@@ -3309,6 +3311,19 @@ export default function App() {
                   <CircleHelp size={14} />
                 </button>
               </Tooltip>
+              <Tooltip label={t("docView.title")}>
+                <button
+                  className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
+                  type="button"
+                  aria-label={t("docView.title")}
+                  onClick={() => {
+                    closeTransientOverlays();
+                    setDocViewOpen(true);
+                  }}
+                >
+                  <BookOpen size={14} />
+                </button>
+              </Tooltip>
               <Tooltip label={t("topicBar.command")}>
                 <button
                   className="topicbar__action-btn topicbar__action-btn--label topicbar__action-btn--accent"
@@ -3673,6 +3688,12 @@ export default function App() {
         onClose={() => setShortcutsOpen(false)}
         t={t}
       />
+
+      {docViewOpen && (
+        <Suspense fallback={null}>
+          <DocViewPanel onClose={() => setDocViewOpen(false)} />
+        </Suspense>
+      )}
 
       {startupSplashVisible && (
         <StartupSplash hold={startupSplashHold} onDone={() => setStartupSplashVisible(false)} />
