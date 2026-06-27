@@ -6920,13 +6920,13 @@ func helpDir() (string, error) {
 func (a *App) ListHelpDocs() ([]string, error) {
 	dir, err := helpDir()
 	if err != nil {
-		return nil, nil // silently degrade
+		return []string{}, nil // silently degrade; never return nil
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, nil
+		return []string{}, nil
 	}
-	var names []string
+	names := make([]string, 0)
 	for _, e := range entries {
 		if e.IsDir() {
 			continue

@@ -67,11 +67,12 @@ export function DocViewPanel({
   useEffect(() => {
     if (window.go?.main?.App) {
       window.go.main.App.ListHelpDocs().then((names: string[]) => {
-        setLocalDocs(names);
+        const safe: string[] = names ?? [];
+        setLocalDocs(safe);
         setLoaded(true);
         // Auto-select first doc if we have any
-        if (names.length > 0 && !selectedDoc) {
-          setSelectedDoc(names[0]);
+        if (safe.length > 0 && !selectedDoc) {
+          setSelectedDoc(safe[0]);
         }
       }).catch(() => {
         setLoaded(true);
@@ -163,9 +164,10 @@ export function DocViewPanel({
       // Refresh local docs list
       if (window.go?.main?.App) {
         const names = await window.go.main.App.ListHelpDocs();
-        setLocalDocs(names);
-        if (names.length > 0 && !selectedDoc) {
-          setSelectedDoc(names[0]);
+        const safe: string[] = names ?? [];
+        setLocalDocs(safe);
+        if (safe.length > 0 && !selectedDoc) {
+          setSelectedDoc(safe[0]);
         }
       }
       setPullStatus("done");
