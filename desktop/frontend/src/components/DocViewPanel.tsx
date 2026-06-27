@@ -3,7 +3,7 @@
 // The component is self-contained: on mount it lists local docs and offers
 // a pull-from-upstream action when the cache is empty.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, ExternalLink, FileText, Loader2, RefreshCw, Search, X, FileSearch, HardDrive } from "lucide-react";
+import { BookOpen, Download, ExternalLink, FileText, Loader2, RefreshCw, Search, X, FileSearch } from "lucide-react";
 import { useI18n, useT } from "../lib/i18n";
 import { useDeferredClose } from "../lib/useMountTransition";
 import type { HelpSearchHit } from "../lib/bridge";
@@ -389,7 +389,7 @@ export function DocViewPanel({
                         <div className="doc-view__nav-item-desc">{doc.desc}</div>
                       </div>
                       <div className="doc-view__nav-item-meta">
-                        {isCached && <HardDrive size={11} className="doc-view__cached-icon" />}
+                        {isCached && <Download size={10} className="doc-view__cached-icon" />}
                       </div>
                     </button>
                   );
