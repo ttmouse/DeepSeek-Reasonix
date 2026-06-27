@@ -66,6 +66,7 @@ export function DocViewPanel({
   const [remoteIndex, setRemoteIndex] = useState<DocMeta[] | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const markdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch remote doc index from GitHub (when upstream has docs/index.json)
   useEffect(() => {
@@ -115,6 +116,43 @@ export function DocViewPanel({
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [searchQuery]);
+
+  // Intercept link clicks in rendered markdown:
+  // .md links → navigate to that doc in the viewer
+  // #anchor links → scroll within the same doc
+  // other links → openExternal (handled by MarkdownRenderer's default behavior)
+  useEffect(() => {
+    const el = markdownRef.current;
+    if (!el) return;
+    const onClick = (e: MouseEvent) => {
+      const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!link) return;
+      const href = (link as HTMLAnchorElement).getAttribute("href");
+      if (!href) return;
+      // .md link — navigate to that doc
+      const mdMatch = href.match(/^([\w.-]+\.md)(?:#.*)?$/);
+      if (mdMatch) {
+        e.preventDefault();
+        e.stopPropagation();
+        const docId = mdMatch[1].replace(/\.md$/, "");
+        setSelectedDoc(docId);
+        return;
+      }
+      // #anchor link — scroll within the doc
+      if (href.startsWith("#")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = href.slice(1);
+        const heading = el.querySelector(`[id="${CSS.escape(id)}"], a[name="${CSS.escape(id)}"]`);
+        if (heading) {
+          heading.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        return;
+      }
+    };
+    el.addEventListener("click", onClick);
+    return () => el.removeEventListener("click", onClick);
+  }, [docContent]);
 
   // Load doc content when selection changes
   useEffect(() => {
@@ -439,7 +477,7 @@ export function DocViewPanel({
                 <span>{t("docView.loadingDoc")}</span>
               </div>
             ) : (
-              <div className="doc-view__markdown">
+              <div className="doc-view__markdown" ref={markdownRef}>
                 <MarkdownRenderer text={docContent} />
               </div>
             )}
