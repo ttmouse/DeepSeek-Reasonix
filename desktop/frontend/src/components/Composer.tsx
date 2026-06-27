@@ -409,6 +409,7 @@ export function Composer({
   transientDismissSignal,
   sessionKey,
   onTextChange,
+  clearComposerTrigger,
 }: {
   running: boolean;
   collaborationMode: CollaborationMode;
@@ -447,6 +448,7 @@ export function Composer({
   transientDismissSignal?: number;
   sessionKey?: string;
   onTextChange?: (text: string) => void;
+  clearComposerTrigger?: number;
 }) {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -797,6 +799,14 @@ export function Composer({
     lastTransientDismissSignal.current = transientDismissSignal;
     setDismissed(true);
   }, [transientDismissSignal]);
+
+  const lastClearTrigger = useRef(clearComposerTrigger);
+  useEffect(() => {
+    if (clearComposerTrigger === undefined || clearComposerTrigger === lastClearTrigger.current) return;
+    lastClearTrigger.current = clearComposerTrigger;
+    const key = activeDraftKeyRef.current;
+    clearSubmittedDraft(key);
+  }, [clearComposerTrigger]);
 
   // When the @ trigger disappears (user deleted the @), close the past:chats
   // sub-menu and reset related state. Without this, showPastChats can outlive

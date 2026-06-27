@@ -1039,6 +1039,7 @@ export default function App() {
   const appRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const composerTextRef = useRef("");
+  const [clearComposerTrigger, setClearComposerTrigger] = useState(0);
   const sidebarTogglePressTimerRef = useRef<number | null>(null);
   const workspaceTogglePressTimerRef = useRef<number | null>(null);
 
@@ -2268,6 +2269,8 @@ export default function App() {
     // If composer has content, merge: existing text + newline + instruction
     const existing = composerTextRef.current.trim();
     const merged = existing ? `${existing}\n${trimmed}` : trimmed;
+    composerTextRef.current = "";
+    setClearComposerTrigger((v) => v + 1);
     void commitThenSend(merged).catch((err) => {
       console.warn("Failed to submit transcript prompt", err);
     });
@@ -3495,6 +3498,7 @@ export default function App() {
               onTextChange={(t) => { composerTextRef.current = t; }}
               transientDismissSignal={transientOverlayDismissSignal}
               sessionKey={composerSessionKey}
+              clearComposerTrigger={clearComposerTrigger}
             />
             {!sidebarCustom && (  // [CUSTOM-SKIN] hide status bar
             <StatusBar
