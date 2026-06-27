@@ -141,17 +141,6 @@ export const en = {
   "rightDock.views": "Workspace views",
   "rightDock.overview": "Overview",
 
-  // instruction panel
-  "instruction.title": "Instructions",
-  "instruction.add": "Add",
-  "instruction.edit": "Edit",
-  "instruction.delete": "Delete",
-  "instruction.save": "Save",
-  "instruction.cancel": "Cancel",
-  "instruction.empty": "No custom instructions yet. Click Add to create one.",
-  "instruction.emptyPrompt": "[empty prompt]",
-  "instruction.contentPlaceholder": "Paste or type your prompt here…",
-
   // topic bar
   "topicBar.renameSession": "Rename session",
   "topicBar.more": "More",
@@ -519,7 +508,9 @@ export const en = {
   "heartbeat.noProjects": "No projects found",
   "heartbeat.currentWorkspace": "current",
   "heartbeat.freqCycle": "Cycle",
-  "heartbeat.freqInterval": "By interval",
+  "heartbeat.freqInterval": "Interval",
+  "heartbeat.freqCron": "Custom",
+  "heartbeat.cronPlaceholder": "0 * * * *",
   "heartbeat.freqDaily": "Every day",
   "heartbeat.freqEvery": "Every",
   "heartbeat.everyJoiner": " ",
@@ -883,7 +874,6 @@ export const en = {
   "settings.desktopLayoutStyle.classic": "Classic",
   "settings.desktopLayoutStyle.workbench": "Workbench",
   "settings.desktopLayoutStyle.creation": "Creation",
-  "settings.desktopLayoutStyle.custom": "Custom",
   "settings.displayMode": "Transcript display mode",
   "settings.displayMode.standard": "Standard",
   "settings.displayMode.compact": "Compact",
@@ -1294,8 +1284,6 @@ export const en = {
   "shortcuts.action.topicGoto8": "Go to chat 8",
   "shortcuts.action.topicGoto9": "Go to chat 9",
   "shortcuts.desc.topicGoto": "Jump to the corresponding chat in the sidebar.",
-  "shortcuts.action.docs": "Open documentation",
-  "shortcuts.desc.docs": "Open the documentation viewer panel.",
   "settings.textSize": "Interface text size",
   "settings.textSizeSmall": "Small",
   "settings.textSizeDefault": "Default",
@@ -1512,7 +1500,6 @@ export const en = {
   "msg.workspaceReference": "Workspace reference",
   "msg.folderReference": "Folder · Workspace reference",
   "turnActions.summary": "Summary",
-  "turnActions.fork": "Fork conversation",
   "turnActions.rewind": "Rewind",
   "transcript.jumpToBottom": "Jump to bottom",
   "transcript.showEarlierHistory": "Show {n} earlier turns",
@@ -1735,20 +1722,6 @@ export const en = {
   "mock.askQ2Opt2Label": "Check build config",
   "mock.askQ2Opt2Desc": "Check desktop/wails.json and main.go to infer the entry point",
   "mock.askQ2Opt3Label": "Let me try building",
-  "docView.title": "Documentation",
-  "docView.pullDocs": "Pull documentation from upstream",
-  "docView.pullFromUpstream": "Load from GitHub",
-  "docView.pulling": "Loading…",
-  "docView.refresh": "Refresh docs",
-  "docView.searchPlaceholder": "Search docs…",
-  "docView.noMatch": "No matching documents",
-  "docView.noDocs": "No documentation cached",
-  "docView.loadingDoc": "Loading document…",
-  "docView.cached": "Cached locally",
-  "docView.viewOnGitHub": "View on GitHub",
-  "docView.welcomeTitle": "Documentation",
-  "docView.welcomeDesc": "View Reasonix documentation here. Pull docs from GitHub to get started.",
-
   "mock.askQ2Opt3Desc": "Handle git conflicts first, then attempt local build and report results",
   "mock.todo1": "Review current frontend structure",
   "mock.todo2": "Optimize approval and Ask decision bar layout",
@@ -1760,6 +1733,41 @@ export const en = {
   "mock.changedFile2Prompt": "Record project context",
   "mock.changedFile1Path": "docs/dev-standard.md",
   "mock.changedFile2Path": ".reasonix/project.md",
+
+  // ── Instruction panel ──
+  "instruction.title": "Custom instructions",
+  "instruction.add": "Add",
+  "instruction.empty": "No custom instructions yet. Click Add to create one.",
+  "instruction.contentPlaceholder": "Write your instruction…",
+  "instruction.save": "Save",
+  "instruction.cancel": "Cancel",
+  "instruction.emptyPrompt": "(empty)",
+  "instruction.edit": "Edit",
+  "instruction.delete": "Delete",
+
+  // ── Doc viewer ──
+  "docView.title": "Documentation",
+  "docView.pullDocs": "Pull docs",
+  "docView.pulling": "Pulling…",
+  "docView.pullFromUpstream": "Pull from upstream",
+  "docView.refresh": "Refresh docs",
+  "docView.searchPlaceholder": "Search docs…",
+  "docView.noMatch": "No matching docs.",
+  "docView.noDocs": "No documentation available.\nPull from upstream to get started.",
+  "docView.viewOnGitHub": "View on GitHub",
+  "docView.welcomeTitle": "Welcome to Docs",
+  "docView.welcomeDesc": "Browse project documentation pulled from upstream.",
+  "docView.loadingDoc": "Loading…",
+
+  // ── Turn actions ──
+  "turnActions.fork": "Fork from here",
+
+  // ── Layout style ──
+  "settings.desktopLayoutStyle.custom": "Custom",
+
+  // ── Shortcuts ──
+  "shortcuts.action.docs": "Toggle docs",
+  "shortcuts.desc.docs": "Open or close the documentation panel.",
 };
 
 export type DictKey = keyof typeof en;

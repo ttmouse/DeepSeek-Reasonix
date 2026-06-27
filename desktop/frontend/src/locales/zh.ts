@@ -142,17 +142,6 @@ export const zh: Record<DictKey, string> = {
   "rightDock.views": "工作区视图",
   "rightDock.overview": "概览",
 
-  // 指令面板
-  "instruction.title": "指令",
-  "instruction.add": "添加",
-  "instruction.edit": "编辑",
-  "instruction.delete": "删除",
-  "instruction.save": "保存",
-  "instruction.cancel": "取消",
-  "instruction.empty": "还没有自定义指令，点击\"添加\"创建一个。",
-  "instruction.emptyPrompt": "[空提示词]",
-  "instruction.contentPlaceholder": "在此粘贴或输入你的提示词…",
-
   // 话题栏
   "topicBar.renameSession": "重命名会话",
   "topicBar.more": "更多",
@@ -520,7 +509,9 @@ export const zh: Record<DictKey, string> = {
   "heartbeat.noProjects": "未找到项目",
   "heartbeat.currentWorkspace": "当前",
   "heartbeat.freqCycle": "周期",
-  "heartbeat.freqInterval": "按间隔",
+  "heartbeat.freqInterval": "间隔",
+  "heartbeat.freqCron": "自定义",
+  "heartbeat.cronPlaceholder": "0 * * * *",
   "heartbeat.freqDaily": "每天",
   "heartbeat.freqEvery": "每",
   "heartbeat.everyJoiner": "",
@@ -885,7 +876,6 @@ export const zh: Record<DictKey, string> = {
   "settings.desktopLayoutStyle.classic": "经典",
   "settings.desktopLayoutStyle.workbench": "工作台",
   "settings.desktopLayoutStyle.creation": "创作",
-  "settings.desktopLayoutStyle.custom": "自定义",
   "settings.displayMode": "会话展示模式",
   "settings.displayMode.standard": "标准",
   "settings.displayMode.compact": "紧凑",
@@ -1296,8 +1286,6 @@ export const zh: Record<DictKey, string> = {
   "shortcuts.action.topicGoto8": "转到聊天 8",
   "shortcuts.action.topicGoto9": "转到聊天 9",
   "shortcuts.desc.topicGoto": "跳转到侧边栏中对应的对话。",
-  "shortcuts.action.docs": "打开文档",
-  "shortcuts.desc.docs": "打开文档查看面板。",
   "settings.textSize": "界面字号",
   "settings.textSizeSmall": "小",
   "settings.textSizeDefault": "默认",
@@ -1514,7 +1502,6 @@ export const zh: Record<DictKey, string> = {
   "msg.workspaceReference": "工作区引用",
   "msg.folderReference": "文件夹 · 工作区引用",
   "turnActions.summary": "总结",
-  "turnActions.fork": "分叉对话",
   "turnActions.rewind": "回溯",
   "transcript.jumpToBottom": "跳到底部",
   "transcript.showEarlierHistory": "展开前 {n} 轮对话",
@@ -1734,20 +1721,6 @@ export const zh: Record<DictKey, string> = {
   "mock.askQ2Prompt": "对于 reasonix 二进制缺失的问题，你想怎么做？",
   "mock.askQ2Opt1Label": "先查文档",
   "mock.askQ2Opt1Desc": "查看 README / 构建文档来确定正确的构建命令",
-  "docView.title": "文档",
-  "docView.pullDocs": "从上游拉取文档",
-  "docView.pullFromUpstream": "从 GitHub 加载",
-  "docView.pulling": "加载中…",
-  "docView.refresh": "刷新文档",
-  "docView.searchPlaceholder": "搜索文档…",
-  "docView.noMatch": "没有匹配的文档",
-  "docView.noDocs": "暂无本地缓存的文档",
-  "docView.loadingDoc": "加载文档中…",
-  "docView.cached": "已缓存到本地",
-  "docView.viewOnGitHub": "在 GitHub 上查看",
-  "docView.welcomeTitle": "文档",
-  "docView.welcomeDesc": "在此查看 Reasonix 文档。点击下方按钮从 GitHub 拉取文档。",
-
   "mock.askQ2Opt2Label": "看构建配置",
   "mock.askQ2Opt2Desc": "查看 desktop/wails.json 与 main.go 来推断入口",
   "mock.askQ2Opt3Label": "我先帮你尝试构建",
@@ -1762,4 +1735,39 @@ export const zh: Record<DictKey, string> = {
   "mock.changedFile2Prompt": "记录项目上下文",
   "mock.changedFile1Path": "docs/dev-standard.md",
   "mock.changedFile2Path": ".reasonix/project.md",
+
+  // ── Instruction panel ──
+  "instruction.title": "自定义指令",
+  "instruction.add": "添加",
+  "instruction.empty": "还没有自定义指令，点击「添加」创建一个。",
+  "instruction.contentPlaceholder": "写下你的指令…",
+  "instruction.save": "保存",
+  "instruction.cancel": "取消",
+  "instruction.emptyPrompt": "(空)",
+  "instruction.edit": "编辑",
+  "instruction.delete": "删除",
+
+  // ── Doc viewer ──
+  "docView.title": "文档",
+  "docView.pullDocs": "拉取文档",
+  "docView.pulling": "拉取中…",
+  "docView.pullFromUpstream": "从上游拉取",
+  "docView.refresh": "刷新文档",
+  "docView.searchPlaceholder": "搜索文档…",
+  "docView.noMatch": "没有匹配的文档。",
+  "docView.noDocs": "暂无可用的文档。\n从上游拉取以开始。",
+  "docView.viewOnGitHub": "在 GitHub 上查看",
+  "docView.welcomeTitle": "欢迎使用文档",
+  "docView.welcomeDesc": "浏览从上游拉取的项目文档。",
+  "docView.loadingDoc": "加载中…",
+
+  // ── Turn actions ──
+  "turnActions.fork": "从此处分支",
+
+  // ── Layout style ──
+  "settings.desktopLayoutStyle.custom": "自定义",
+
+  // ── Shortcuts ──
+  "shortcuts.action.docs": "切换文档面板",
+  "shortcuts.desc.docs": "打开或关闭文档面板。",
 };

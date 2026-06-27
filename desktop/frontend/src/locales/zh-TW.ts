@@ -78,17 +78,6 @@ export const zhTW: Record<DictKey, string> = {
   "rightDock.views": "右側工作台視圖",
   "rightDock.overview": "概覽",
 
-  // 指令面板
-  "instruction.title": "指令",
-  "instruction.add": "新增",
-  "instruction.edit": "編輯",
-  "instruction.delete": "刪除",
-  "instruction.save": "儲存",
-  "instruction.cancel": "取消",
-  "instruction.empty": "還沒有自訂指令，點選「新增」建立一個。",
-  "instruction.emptyPrompt": "[空提示詞]",
-  "instruction.contentPlaceholder": "在此貼上或輸入你的提示詞…",
-
   // 話題欄
   "topicBar.renameSession": "重新命名會話",
   "topicBar.more": "更多",
@@ -372,7 +361,9 @@ export const zhTW: Record<DictKey, string> = {
   "heartbeat.noProjects": "未找到項目",
   "heartbeat.currentWorkspace": "當前",
   "heartbeat.freqCycle": "週期",
-  "heartbeat.freqInterval": "按間隔",
+  "heartbeat.freqInterval": "間隔",
+  "heartbeat.freqCron": "自訂",
+  "heartbeat.cronPlaceholder": "0 * * * *",
   "heartbeat.freqDaily": "每天",
   "heartbeat.freqEvery": "每",
   "heartbeat.everyJoiner": "",
@@ -659,7 +650,6 @@ export const zhTW: Record<DictKey, string> = {
   "settings.desktopLayoutStyle.classic": "經典",
   "settings.desktopLayoutStyle.workbench": "工作臺",
   "settings.desktopLayoutStyle.creation": "創作",
-  "settings.desktopLayoutStyle.custom": "自定義",
   "settings.manageProviders": "管理模型服務",
   "settings.activeProvider": "當前模型服務",
   "settings.plannerStatus": "規劃方式",
@@ -952,7 +942,6 @@ export const zhTW: Record<DictKey, string> = {
   "msg.workspaceReference": "工作區引用",
   "msg.folderReference": "資料夾 · 工作區引用",
   "turnActions.summary": "總結",
-  "turnActions.fork": "分叉對話",
   "turnActions.rewind": "回溯",
   "transcript.jumpToBottom": "跳到底部",
   "transcript.showEarlierHistory": "展開前 {n} 輪對話",
@@ -1626,8 +1615,6 @@ export const zhTW: Record<DictKey, string> = {
   "shortcuts.desc.textSizeReset": "恢復預設字號。",
   "shortcuts.desc.yoloToggle": "在輸入時切換 YOLO 工具審批模式。",
   "shortcuts.desc.showShortcuts": "開啟這張鍵盤快捷鍵幫助表。",
-  "shortcuts.action.docs": "開啟文件",
-  "shortcuts.desc.docs": "開啟文件查看面板。",
   "shortcuts.action.topicGoto1": "轉到聊天 1",
   "shortcuts.action.topicGoto2": "轉到聊天 2",
   "shortcuts.action.topicGoto3": "轉到聊天 3",
@@ -1743,20 +1730,40 @@ export const zhTW: Record<DictKey, string> = {
   "performanceReport.title": "Reasonix 偵測到回應卡頓",
   "performanceReport.dismiss": "關閉",
   "performanceReport.privacyNote": "上傳前桌面端會移除路徑與密鑰；診斷資訊只用於記錄耗時、記憶體、網路狀態、近期 breadcrumbs、應用版本和作業系統。",
+  "mock.topicSysException": "異常處理與恢復演練",
 
+  // ── Instruction panel ──
+  "instruction.title": "自訂指令",
+  "instruction.add": "新增",
+  "instruction.empty": "還沒有自訂指令，點擊「新增」建立一個。",
+  "instruction.contentPlaceholder": "寫下你的指令…",
+  "instruction.save": "儲存",
+  "instruction.cancel": "取消",
+  "instruction.emptyPrompt": "(空)",
+  "instruction.edit": "編輯",
+  "instruction.delete": "刪除",
+
+  // ── Doc viewer ──
   "docView.title": "文件",
-  "docView.pullDocs": "從上游拉取文件",
-  "docView.pullFromUpstream": "從 GitHub 載入",
-  "docView.pulling": "載入中…",
+  "docView.pullDocs": "拉取文件",
+  "docView.pulling": "拉取中…",
+  "docView.pullFromUpstream": "從上游拉取",
   "docView.refresh": "重新整理文件",
   "docView.searchPlaceholder": "搜尋文件…",
-  "docView.noMatch": "沒有符合的文件",
-  "docView.noDocs": "暫無本地快取的文件",
-  "docView.loadingDoc": "載入文件中…",
-  "docView.cached": "已快取到本地",
-  "docView.viewOnGitHub": "在 GitHub 上查看",
-  "docView.welcomeTitle": "文件",
-  "docView.welcomeDesc": "在此查看 Reasonix 文件。點選下方按鈕從 GitHub 拉取文件。",
+  "docView.noMatch": "沒有相符的文件。",
+  "docView.noDocs": "暫無可用的文件。\n從上游拉取以開始。",
+  "docView.viewOnGitHub": "在 GitHub 上檢視",
+  "docView.welcomeTitle": "歡迎使用文件",
+  "docView.welcomeDesc": "瀏覽從上游拉取的專案文件。",
+  "docView.loadingDoc": "載入中…",
 
-  "mock.topicSysException": "異常處理與恢復演練",
+  // ── Turn actions ──
+  "turnActions.fork": "從此處分支",
+
+  // ── Layout style ──
+  "settings.desktopLayoutStyle.custom": "自訂",
+
+  // ── Shortcuts ──
+  "shortcuts.action.docs": "切換文件面板",
+  "shortcuts.desc.docs": "開啟或關閉文件面板。",
 };
