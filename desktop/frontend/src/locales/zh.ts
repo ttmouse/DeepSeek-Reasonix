@@ -1296,6 +1296,8 @@ export const zh: Record<DictKey, string> = {
   "shortcuts.action.topicGoto8": "转到聊天 8",
   "shortcuts.action.topicGoto9": "转到聊天 9",
   "shortcuts.desc.topicGoto": "跳转到侧边栏中对应的对话。",
+  "shortcuts.action.docs": "打开文档",
+  "shortcuts.desc.docs": "打开文档查看面板。",
   "settings.textSize": "界面字号",
   "settings.textSizeSmall": "小",
   "settings.textSizeDefault": "默认",

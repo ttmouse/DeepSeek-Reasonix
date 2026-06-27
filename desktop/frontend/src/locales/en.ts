@@ -1294,6 +1294,8 @@ export const en = {
   "shortcuts.action.topicGoto8": "Go to chat 8",
   "shortcuts.action.topicGoto9": "Go to chat 9",
   "shortcuts.desc.topicGoto": "Jump to the corresponding chat in the sidebar.",
+  "shortcuts.action.docs": "Open documentation",
+  "shortcuts.desc.docs": "Open the documentation viewer panel.",
   "settings.textSize": "Interface text size",
   "settings.textSizeSmall": "Small",
   "settings.textSizeDefault": "Default",

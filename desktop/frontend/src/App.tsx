@@ -2579,6 +2579,7 @@ export default function App() {
     if (activeTabId) void handleTabClose(activeTabId);
   }, [activeTabId, handleTabClose], Boolean(activeTabId));
   useGlobalShortcut("shortcuts.show", () => setShortcutsOpen(true));
+  useGlobalShortcut("docs.show", () => setDocViewOpen(true));
   useGlobalShortcut("sidebar.toggle", toggleSidebar, [toggleSidebar]);
 
   // --- Topic shortcut navigation (Cmd/Ctrl+1-9) ---
