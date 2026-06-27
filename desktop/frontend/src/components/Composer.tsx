@@ -2372,11 +2372,9 @@ export function Composer({
             <div className="composer-meta__control composer-meta__control--model">
               <ModelSwitcher label={modelLabel} tabId={tabId} onPick={onSwitchModel} />
             </div>
-            {hasEffort && (
             <div className="composer-meta__control composer-meta__control--effort">
               <EffortSwitcher effort={effort} disabled={running} onPick={onSetEffort} />
             </div>
-            )}
             {hasEffort && (
               <div className="composer-meta__control composer-meta__control--more">
                 <Tooltip label={t("composer.moreControls")} disabled={moreMenuOpen || moreMenuClosing}>
