@@ -64,7 +64,7 @@ export function Tooltip({
     showTimerRef.current = null;
   };
 
-  const show = (delay = 0) => {  // [CUSTOM-SKIN] no hover delay
+  const show = (delay = 180) => {
     if (!active) return;
     clearTimer();
     showTimerRef.current = window.setTimeout(() => setOpen(true), delay);

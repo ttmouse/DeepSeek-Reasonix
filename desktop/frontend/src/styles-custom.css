@@ -95,7 +95,6 @@
 }
 
 /* ── Custom skin todo panel ── */
-/* ── Custom skin todo panel ── */
 .app--custom .prompt-shelf__card,
 :root[data-theme-style] .app--custom .prompt-shelf__card {
   border: none;
@@ -120,10 +119,13 @@
 /* ── Custom skin todo close button: show on hover ── */
 .app--custom .prompt-shelf__header-actions {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.12s;
 }
-.app--custom .prompt-shelf__card:hover .prompt-shelf__header-actions {
+.app--custom .prompt-shelf__card:hover .prompt-shelf__header-actions,
+.app--custom .prompt-shelf__card:focus-within .prompt-shelf__header-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* ── Custom skin todo: checklist style ── */
