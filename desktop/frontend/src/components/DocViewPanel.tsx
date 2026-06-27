@@ -63,8 +63,19 @@ export function DocViewPanel({
   const [pullStatus, setPullStatus] = useState<PullStatus>("idle");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<HelpSearchHit[] | null>(null);
+  const [remoteIndex, setRemoteIndex] = useState<DocMeta[] | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch remote doc index from GitHub (when upstream has docs/index.json)
+  useEffect(() => {
+    fetch(`${UPSTREAM_DOCS_BASE}/index.json`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && Array.isArray(data)) setRemoteIndex(data);
+      })
+      .catch(() => {/* ignore — fall back to KNOWN_DOCS */});
+  }, []);
 
   // List local docs on mount
   useEffect(() => {
@@ -166,7 +177,7 @@ export function DocViewPanel({
     let successCount = 0;
     const isZh = locale === "zh" || locale === "zh-TW";
     // Only pull relevant language docs
-    const toPull = KNOWN_DOCS.filter((d) => {
+    const toPull = (remoteIndex ?? KNOWN_DOCS).filter((d) => {
       const isChinese = d.id.endsWith(".zh-CN");
       return isZh ? isChinese : !isChinese;
     });
@@ -199,17 +210,18 @@ export function DocViewPanel({
       setPullStatus("error");
       setTimeout(() => setPullStatus("idle"), 5000);
     }
-  }, [locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [locale, remoteIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Compute filtered doc list based on locale and search
+  const docIndex = useMemo(() => remoteIndex ?? KNOWN_DOCS, [remoteIndex]);
   const filteredDocs = useMemo(() => {
     const isZh = locale === "zh" || locale === "zh-TW";
-    let docs = KNOWN_DOCS;
+    let docs = docIndex;
     // Filter by locale: prefer matching language
     if (isZh) {
-      docs = KNOWN_DOCS.filter((d) => d.id.endsWith(".zh-CN"));
+      docs = docIndex.filter((d) => d.id.endsWith(".zh-CN"));
     } else {
-      docs = KNOWN_DOCS.filter((d) => !d.id.endsWith(".zh-CN"));
+      docs = docIndex.filter((d) => !d.id.endsWith(".zh-CN"));
     }
     // Append any locally-cached docs not in the known list
     // (handles docs manually added or pulled from upstream that aren't in KNOWN_DOCS)
