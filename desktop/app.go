@@ -6967,7 +6967,67 @@ func (a *App) LoadHelpDoc(name string) (string, error) {
 	return string(data), nil
 }
 
-// SaveHelpDoc writes content to ~/.reasonix/help/<name>.md.
+// SearchHelpDocs searches the content of all cached .md files in
+// ~/.reasonix/help/ for the given query (case-insensitive). Returns
+// up to 10 matches, each with doc name and a content snippet.
+type HelpSearchHit struct {
+	DocID   string `json:"docID"`
+	Snippet string `json:"snippet"`
+}
+
+func (a *App) SearchHelpDocs(query string) ([]HelpSearchHit, error) {
+	if query == "" {
+		return []HelpSearchHit{}, nil
+	}
+	dir, err := helpDir()
+	if err != nil {
+		return []HelpSearchHit{}, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []HelpSearchHit{}, nil
+	}
+	q := strings.ToLower(query)
+	var hits []HelpSearchHit
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		lower := strings.ToLower(content)
+		idx := strings.Index(lower, q)
+		if idx < 0 {
+			continue
+		}
+		// Build a snippet around the match
+		start := idx - 40
+		if start < 0 {
+			start = 0
+		}
+		end := idx + len(q) + 60
+		if end > len(content) {
+			end = len(content)
+		}
+		snippet := content[start:end]
+		// Clean up snippet boundaries
+		if start > 0 {
+			snippet = "…" + snippet
+		}
+		if end < len(content) {
+			snippet = snippet + "…"
+		}
+		docName := strings.TrimSuffix(e.Name(), ".md")
+		hits = append(hits, HelpSearchHit{DocID: docName, Snippet: snippet})
+		if len(hits) >= 10 {
+			break
+		}
+	}
+	return hits, nil
+}
 func (a *App) SaveHelpDoc(name, content string) error {
 	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") {
 		return fmt.Errorf("invalid doc name: %q", name)

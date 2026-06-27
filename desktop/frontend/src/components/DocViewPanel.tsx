@@ -3,9 +3,10 @@
 // The component is self-contained: on mount it lists local docs and offers
 // a pull-from-upstream action when the cache is empty.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronRight, Download, ExternalLink, FileText, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { BookOpen, ChevronRight, Download, ExternalLink, FileText, Loader2, RefreshCw, Search, X, FileSearch } from "lucide-react";
 import { useI18n, useT } from "../lib/i18n";
 import { useDeferredClose } from "../lib/useMountTransition";
+import type { HelpSearchHit } from "../lib/bridge";
 import { ModalCloseButton } from "./ModalCloseButton";
 import { Tooltip } from "./Tooltip";
 import MarkdownRenderer from "./MarkdownRenderer";
@@ -61,6 +62,8 @@ export function DocViewPanel({
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [pullStatus, setPullStatus] = useState<PullStatus>("idle");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<HelpSearchHit[] | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // List local docs on mount
@@ -81,6 +84,26 @@ export function DocViewPanel({
       setLoaded(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced content search when query changes (3+ chars)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    searchTimerRef.current = setTimeout(() => {
+      if (window.go?.main?.App) {
+        window.go.main.App.SearchHelpDocs(q).then((hits: HelpSearchHit[]) => {
+          setSearchResults(hits ?? []);
+        }).catch(() => setSearchResults([]));
+      }
+    }, 250);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
 
   // Load doc content when selection changes
   useEffect(() => {
@@ -188,8 +211,8 @@ export function DocViewPanel({
     } else {
       docs = KNOWN_DOCS.filter((d) => !d.id.endsWith(".zh-CN"));
     }
-    // Apply search
-    if (searchQuery.trim()) {
+    // Apply title/description search only (when no content search results)
+    if (searchQuery.trim() && !searchResults) {
       const q = searchQuery.toLowerCase();
       docs = docs.filter((d) =>
         d.title.toLowerCase().includes(q) ||
@@ -199,7 +222,7 @@ export function DocViewPanel({
       );
     }
     return docs;
-  }, [locale, searchQuery]);
+  }, [locale, searchQuery, searchResults]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -284,7 +307,32 @@ export function DocViewPanel({
             </div>
 
             <nav className="doc-view__nav" aria-label={t("docView.title")}>
-              {filteredDocs.length === 0 ? (
+              {searchResults !== null ? (
+                // Content search results
+                searchResults.length === 0 ? (
+                  <div className="doc-view__empty">{t("docView.noMatch")}</div>
+                ) : (
+                  searchResults.map((hit) => {
+                    const isSelected = selectedDoc === hit.docID;
+                    return (
+                      <button
+                        key={hit.docID}
+                        className={`doc-view__nav-item${isSelected ? " doc-view__nav-item--active" : ""}`}
+                        type="button"
+                        onClick={() => setSelectedDoc(hit.docID)}
+                      >
+                        <div className="doc-view__nav-item-icon">
+                          <FileSearch size={13} />
+                        </div>
+                        <div className="doc-view__nav-item-text">
+                          <div className="doc-view__nav-item-title">{hit.docID}</div>
+                          <div className="doc-view__nav-item-desc doc-view__nav-item-snippet">{hit.snippet}</div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )
+              ) : filteredDocs.length === 0 ? (
                 <div className="doc-view__empty">
                   {searchQuery ? t("docView.noMatch") : t("docView.noDocs")}
                 </div>

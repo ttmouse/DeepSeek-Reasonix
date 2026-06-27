@@ -992,6 +992,13 @@
   overflow: hidden;
 }
 
+.doc-view__nav-item-snippet {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  -webkit-line-clamp: 3;
+  word-break: break-all;
+}
+
 .doc-view__nav-item-meta {
   display: flex;
   align-items: center;

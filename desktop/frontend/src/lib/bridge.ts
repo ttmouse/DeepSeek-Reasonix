@@ -112,6 +112,12 @@ interface DesktopWindowState {
 // added or renamed, the generated types shift, and a key present in GeneratedApp
 // but missing from AppBindings causes a type error here. Fix: add the new method
 // to AppBindings, then run `pnpm typecheck` to verify.
+
+export interface HelpSearchHit {
+  docID: string;
+  snippet: string;
+}
+
 export interface AppBindings {
   Platform(): Promise<string>;
   // ── Heartbeat ──
@@ -252,6 +258,7 @@ export interface AppBindings {
   ListHelpDocs(): Promise<string[]>;
   LoadHelpDoc(name: string): Promise<string>;
   SaveHelpDoc(name: string, content: string): Promise<void>;
+  SearchHelpDocs(query: string): Promise<HelpSearchHit[]>;
   DesktopStartupSettings(): Promise<DesktopStartupSettingsView>;
   Settings(): Promise<SettingsView>;
   HooksSettings(scope: string): Promise<HooksSettingsView>;
@@ -2505,6 +2512,7 @@ function makeMockApp(): AppBindings {
     async ListHelpDocs() { return []; },
     async LoadHelpDoc(_name: string) { return ""; },
     async SaveHelpDoc(_name: string, _content: string) { },
+    async SearchHelpDocs(_query: string) { return []; },
     async DesktopStartupSettings() {
       const { bot, desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, displayMode, statusBarStyle, statusBarItems, checkUpdates } = settings;
       return JSON.parse(JSON.stringify({
