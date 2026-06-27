@@ -408,6 +408,7 @@ export function Composer({
 
   transientDismissSignal,
   sessionKey,
+  onTextChange,
 }: {
   running: boolean;
   collaborationMode: CollaborationMode;
@@ -445,6 +446,7 @@ export function Composer({
 
   transientDismissSignal?: number;
   sessionKey?: string;
+  onTextChange?: (text: string) => void;
 }) {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -520,6 +522,11 @@ export function Composer({
   pastedBlocksRef.current = pastedBlocks;
   openPastedLabelsRef.current = openPastedLabels;
   sessionRefsRef.current = sessionRefs;
+
+  // Notify parent of text changes for instruction panel merge logic
+  useEffect(() => {
+    onTextChange?.(text);
+  }, [text, onTextChange]);
 
   const snapshotComposerDraft = (): ComposerDraft => ({
     text: textRef.current,

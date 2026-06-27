@@ -1038,6 +1038,7 @@ export default function App() {
   const topicRenameCommitHandledRef = useRef(false);
   const appRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
+  const composerTextRef = useRef("");
   const sidebarTogglePressTimerRef = useRef<number | null>(null);
   const workspaceTogglePressTimerRef = useRef<number | null>(null);
 
@@ -2262,7 +2263,12 @@ export default function App() {
 
   const handleTranscriptPrompt = useCallback((text: string) => {
     if (!controllerReady) return;
-    void commitThenSend(text).catch((err) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    // If composer has content, merge: existing text + newline + instruction
+    const existing = composerTextRef.current.trim();
+    const merged = existing ? `${existing}\n${trimmed}` : trimmed;
+    void commitThenSend(merged).catch((err) => {
       console.warn("Failed to submit transcript prompt", err);
     });
   }, [commitThenSend, controllerReady]);
@@ -3486,6 +3492,7 @@ export default function App() {
               submitDisabled={!controllerReady}
               decisionPending={rewindCommitting || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending}
               ready={controllerReady}
+              onTextChange={(t) => { composerTextRef.current = t; }}
               transientDismissSignal={transientOverlayDismissSignal}
               sessionKey={composerSessionKey}
             />
