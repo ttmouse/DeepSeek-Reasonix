@@ -42,7 +42,7 @@
 
 .topicbar__more-dropdown button[role="menuitem"]:hover,
 .topicbar__more-dropdown button[role="menuitem"]:focus-visible {
-  background: var(--accent);
+  background: var(--bg-soft);
 }
 
 .topicbar__more-dropdown button[role="menuitem"] svg {
