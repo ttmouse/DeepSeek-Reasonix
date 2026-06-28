@@ -3,13 +3,16 @@
 // Renders a list of tasks with add/edit/delete controls, plus a manual
 // "run now" button for each. The panel is opened from the sidebar nav item.
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
-  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   ChevronsUpDown,
-  Clock,
   Check,
+  Filter,
+  Folder,
+  Globe,
   Heart,
   MessageSquare,
   Play,
@@ -30,104 +33,163 @@ import {
 import type { HeartbeatTask } from "./heartbeat.types";
 import type { WorkspaceView } from "../../../lib/types";
 
-const INTERVAL_MS: Record<"s" | "m" | "h", number> = {
-  s: 1000,
-  m: 60_000,
-  h: 3_600_000,
-};
-
-function heartbeatIntervalMs(interval?: string): number | null {
-  const clean = (interval || "").replace(/\|.*$/, "");
-  const m = clean.match(/^(\d+)([smh])$/);
-  if (!m) return null;
-  return parseInt(m[1], 10) * INTERVAL_MS[m[2] as "s" | "m" | "h"];
-}
-
-function heartbeatClockMinutes(value?: string): number | null {
-  const m = (value || "").match(/^(\d{2}):(\d{2})$/);
-  if (!m) return null;
-  const hour = parseInt(m[1], 10);
-  const minute = parseInt(m[2], 10);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
-  return hour * 60 + minute;
-}
-
-function dateAtMinutes(base: Date, minutes: number): Date {
-  const d = new Date(base);
-  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-  return d;
-}
-
-function heartbeatWithinWindow(date: Date, start: number | null, end: number | null): boolean {
-  if (start === null && end === null) return true;
-  const minutes = date.getHours() * 60 + date.getMinutes();
-  if (start !== null && end === null) return minutes >= start;
-  if (start === null && end !== null) return minutes < end;
-  if (start === end) return true;
-  if (start! < end!) return minutes >= start! && minutes < end!;
-  return minutes >= start! || minutes < end!;
-}
-
-function nextHeartbeatWindowTime(from: Date, start: number | null, end: number | null): Date {
-  if (heartbeatWithinWindow(from, start, end)) return from;
-  if (start !== null && end === null) return dateAtMinutes(from, start);
-  if (start === null && end !== null) {
-    const next = new Date(from);
-    next.setDate(next.getDate() + 1);
-    next.setHours(0, 0, 0, 0);
-    return next;
-  }
-  const minutes = from.getHours() * 60 + from.getMinutes();
-  if (start! < end! && minutes < start!) return dateAtMinutes(from, start!);
-  if (start! > end! && minutes < start! && minutes >= end!) return dateAtMinutes(from, start!);
-  const next = dateAtMinutes(from, start!);
-  next.setDate(next.getDate() + 1);
-  return next;
-}
-
-export function heartbeatNextRunAt(task: Pick<HeartbeatTask, "interval" | "lastRunAt" | "timeWindowStart" | "timeWindowEnd">, now = Date.now()): number | null {
-  if (!task.lastRunAt) return null;
-  const intervalMs = heartbeatIntervalMs(task.interval);
-  if (intervalMs === null) return null;
-  const rawNext = task.lastRunAt + intervalMs;
-  if ((task.interval || "").includes("|")) return rawNext;
-  const start = heartbeatClockMinutes(task.timeWindowStart);
-  const end = heartbeatClockMinutes(task.timeWindowEnd);
-  if (start === null && end === null) return rawNext;
-  const candidate = new Date(Math.max(rawNext, now));
-  return nextHeartbeatWindowTime(candidate, start, end).getTime();
-}
-
-function heartbeatIntervalLabel(interval: string | undefined, t: ReturnType<typeof useT>): string {
-  const cycleMatch = (interval || "").match(/^(\d+)[smh]\|(daily|weekly|biweekly|monthly|yearly)(?::([^@]*))?(?:@(\d{2}:\d{2}))?$/);
-  if (cycleMatch) {
-    const [, , type, days, time] = cycleMatch;
-    const timeStr = time ? ` ${time}` : "";
-    if (type === "daily") return `${t("heartbeat.cycleDaily")}${timeStr}`;
-    if (type === "weekly") return `${t("heartbeat.cycleWeekly")}${timeStr}`;
-    if (type === "biweekly") return `${t("heartbeat.cycleBiweekly")}${timeStr}`;
-    if (type === "monthly") return `${t("heartbeat.cycleMonthly")}${days ? ` ${days}` : ""}${timeStr}`;
-    if (type === "yearly") {
-      const parts = (days || "").split("-");
-      return `${t("heartbeat.cycleYearly")} ${parts[0] || "1"}/${parts[1] || "1"}${timeStr}`;
-    }
-  }
-  const clean = (interval || "").replace(/\|.*$/, "");
-  const m = clean.match(/^(\d+)([smh])$/);
-  if (!m) return clean;
-  const unitLabels: Record<string, string> = {
-    s: t("heartbeat.unitSec"),
-    m: t("heartbeat.unitMin"),
-    h: t("heartbeat.unitHour"),
-  };
-  return `${t("heartbeat.freqEvery")}${t("heartbeat.everyJoiner")}${m[1]}${unitLabels[m[2]] || m[2]}`;
-}
-
 interface HeartbeatPanelProps {
   open: boolean;
   onClose: () => void;
   startNew?: boolean;
-  onOpenTopic: (scope: string, workspaceRoot: string, topicId: string) => void;
+  onOpenTopic?: (scope: string, workspaceRoot: string, topicId: string) => void;
+}
+
+function formatInterval(interval: string): string {
+  const cycleMatch = interval.match(/^(\d+)[smh]\|(daily|weekly|biweekly|monthly|yearly)(?::([^@]*))?(?:@(\d{2}:\d{2}))?$/);
+  if (cycleMatch) {
+    const labels: Record<string, string> = {
+      daily: "daily", weekly: "weekly", biweekly: "biweekly",
+      monthly: "monthly", yearly: "yearly",
+    };
+    const days = cycleMatch[3] ? ` ${cycleMatch[3]}` : "";
+    return `${labels[cycleMatch[2]]}${days} ${cycleMatch[4] || ""}`;
+  }
+  const simple = interval.match(/^(\d+)([smh])$/);
+  if (simple) {
+    return `${simple[1]}${simple[2]}`;
+  }
+  return interval;
+}
+
+function intervalToCron(interval: string, timeWindowStart?: string, timeWindowEnd?: string): string {
+  // Try cycle format: 24h|daily@09:00
+  const cycleMatch = interval.match(/^\d+[smh]\|(daily|weekly|biweekly|monthly|yearly)(?::([^@]*))?(?:@(\d{2}:\d{2}))?$/);
+  if (cycleMatch) {
+    const kind = cycleMatch[1];
+    const days = cycleMatch[2] || "";
+    const time = cycleMatch[3] || "09:00";
+    const [h, m] = time.split(":").map(Number);
+    const hExpr = timeWindowStart && timeWindowEnd
+      ? `${Math.max(0, parseInt(timeWindowStart.split(":")[0]))}-${Math.min(23, parseInt(timeWindowEnd.split(":")[0]))}`
+      : h.toString();
+    switch (kind) {
+      case "daily": return `${m} ${timeWindowStart ? hExpr : h} * * *`;
+      case "weekly": {
+        const dayMap: Record<string, number> = {mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0};
+        const d = days.split(",").map(d => dayMap[d.toLowerCase()] ?? "*").join(",");
+        return `${m} ${timeWindowStart ? hExpr : h} * * ${d}`;
+      }
+      case "biweekly": {
+        const dayMap2: Record<string, number> = {mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0};
+        const d = days.split(",").map(d => dayMap2[d.toLowerCase()] ?? "*").join(",");
+        return `${m} ${timeWindowStart ? hExpr : h} 1-15 * ${d}`;
+      }
+      case "monthly": return `${m} ${timeWindowStart ? hExpr : h} ${days || "1"} * *`;
+      case "yearly": {
+        const [mo, dy] = days.split("-");
+        return `${m} ${timeWindowStart ? hExpr : h} ${dy || "1"} ${mo || "1"} *`;
+      }
+    }
+  }
+  // Simple duration: 30m, 1h
+  const simple = interval.match(/^(\d+)([smh])$/);
+  if (simple) {
+    const n = parseInt(simple[1]);
+    const unit = simple[2];
+    const hExpr = timeWindowStart && timeWindowEnd
+      ? `${Math.max(0, parseInt(timeWindowStart.split(":")[0]))}-${Math.min(23, parseInt(timeWindowEnd.split(":")[0]))}`
+      : "*";
+    if (unit === "m") return `*/${n} ${hExpr} * * *`;
+    if (unit === "h") return `0 */${n} ${hExpr} * * *`;
+    if (unit === "s") return `*/${n} ${hExpr} * * *`;
+  }
+  // Already cron-looking
+  if (/^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(interval.trim())) return interval.trim();
+  // Fallback: return as-is
+  return interval;
+}
+
+function describeCron(expr: string): string {
+  const f = expr.trim().split(/\s+/);
+  if (f.length !== 5) return "";
+  const min = f[0], hour = f[1], dom = f[2], mon = f[3], dow = f[4];
+
+  // Helper: extract hour range from field like "9-22" or "*"
+  const hourRange = (h: string): string => {
+    if (!h || h === "*") return "";
+    if (h.includes("/")) {
+      const base = h.split("/")[0];
+      if (base.includes("-")) {
+        const parts = base.split("-");
+        return `${parts[0].padStart(2,"0")}:00-${parts[1].padStart(2,"0")}:00`;
+      }
+      return "";
+    }
+    if (h.includes("-")) {
+      const parts = h.split("-");
+      return `${parts[0].padStart(2,"0")}:00-${parts[1].padStart(2,"0")}:00`;
+    }
+    return "";
+  };
+  const wd = hourRange(hour);
+
+  if (min.startsWith("*/") && hour !== "*" && hour.includes("-")) {
+    return `每${min.slice(2)}分钟 (${wd})`;
+  }
+  if (min.startsWith("*/") && hour === "*") return `每 ${min.slice(2)} 分钟`;
+  if (min.startsWith("*/") && hour !== "*") return `每${min.slice(2)}分钟 ${wd}`;
+  if (min === "0" && hour !== "*" && dom === "*" && mon === "*" && dow === "*") {
+    if (hour.includes("/")) return `每 ${hour.replace("*/","")} 小时 ${wd}`.trim();
+    if (hour.includes("-")) return `整点 (${wd})`;
+    return `在 ${hour.padStart(2,"0")}:00`;
+  }
+  if (min === "0" && hour === "*" && dom === "*" && mon === "*" && dow === "*") return "整点";
+  if (min !== "*" && !min.includes("/") && hour === "*" && dom === "*" && mon === "*" && dow === "*") {
+    return `每小时 ${min} 分`;
+  }
+  if (dow !== "*" && dow !== "") {
+    const weekdays: Record<string, string> = {"0":"周日","1":"周一","2":"周二","3":"周三","4":"周四","5":"周五","6":"周六"};
+    const days = dow.split(",").map(d => weekdays[d] || d).join("、");
+    const suffix = wd ? ` (${wd})` : "";
+    return `${days} ${hour.padStart(2,"0")}:${min.padStart(2,"0")}${suffix}`;
+  }
+  const suffix = wd ? ` (${wd})` : "";
+  return `${hour.padStart(2,"0")}:${min.padStart(2,"0")}${suffix}`;
+}
+
+function nextCronRun(expr: string): string | null {
+  try {
+    const f = expr.trim().split(/\s+/);
+    if (f.length !== 5) return null;
+    const now = new Date();
+    const minTarget = parseInt(f[0]) || 0;
+    const hourTarget = parseInt(f[1]) || 0;
+    const domTarget = f[2];
+    const monTarget = f[3];
+    const dowTarget = f[4];
+
+    // Search up to 366 days ahead for the next matching date
+    for (let d = 0; d <= 366; d++) {
+      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, hourTarget, minTarget, 0);
+      if (candidate <= now) continue;
+      // Check day-of-month
+      if (domTarget !== "*") {
+        const dom = parseInt(domTarget);
+        if (!isNaN(dom) && candidate.getDate() !== dom) continue;
+      }
+      // Check month
+      if (monTarget !== "*") {
+        const mon = parseInt(monTarget);
+        if (!isNaN(mon) && candidate.getMonth() + 1 !== mon) continue;
+      }
+      // Check day-of-week (simple: supports comma-separated numbers)
+      if (dowTarget !== "*") {
+        const dayNum = candidate.getDay();
+        const dowValues = dowTarget.split(",").map(s => parseInt(s.trim()));
+        if (!dowValues.includes(dayNum)) continue;
+      }
+      return candidate.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: HeartbeatPanelProps) {
@@ -137,11 +199,9 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
   const [editing, setEditing] = useState<HeartbeatTask | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
-  const [scopeFilter, setScopeFilter] = useState<string>("all");
-  const [scopeFilterOpen, setScopeFilterOpen] = useState(false);
-  const scopeFilterRef = useRef<HTMLButtonElement>(null);
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const statusFilterRef = useRef<HTMLButtonElement>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string> | null>(null);
   const [workspaceMap, setWorkspaceMap] = useState<Record<string, string>>({});
   const backdropRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
@@ -171,7 +231,6 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
       setEditing(null);
       setSearchQuery("");
       setStatusFilter("all");
-      setScopeFilter("all");
       startedRef.current = false;
       void loadTasks();
     }
@@ -188,8 +247,6 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
           prompt: "",
           interval: "30m",
           enabled: true,
-          approvalMode: "yolo",
-          newConversationEachRun: false,
           createdAt: Date.now(),
         });
       });
@@ -216,9 +273,22 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
       prompt: "",
       interval: "30m",
       enabled: true,
-      approvalMode: "yolo",
-      newConversationEachRun: false,
       createdAt: Date.now(),
+    });
+  }, []);
+
+  const handleAddToScope = useCallback(async (scopeKey: string) => {
+    const id = await heartbeatGenerateID();
+    const isProject = scopeKey !== "global";
+    setEditing({
+      id,
+      title: "",
+      prompt: "",
+      interval: "30m",
+      enabled: true,
+      createdAt: Date.now(),
+      scope: isProject ? "project" : "global",
+      workspaceRoot: isProject ? scopeKey : "",
     });
   }, []);
 
@@ -252,7 +322,7 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
         next.push(task);
       }
       await save(next);
-      setEditing(null);
+      setEditing({ ...task });
     },
     [tasks, save],
   );
@@ -275,12 +345,6 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
 
   if (!open) return null;
 
-  const scopeFilterLabel = (filter: string, map: Record<string, string>): string => {
-    if (filter === "all") return "全部项目";
-    if (filter === "global") return "全局";
-    return map[filter] || filter.split("/").pop() || filter;
-  };
-
   const statusFilterLabel = (filter: string): string => {
     if (filter === "all") return t("heartbeat.filterAll" as any);
     if (filter === "enabled") return t("heartbeat.filterEnabled" as any);
@@ -291,14 +355,8 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
     <div ref={backdropRef} className="heartbeat-backdrop" onClick={handleBackdrop}>
       <div className="heartbeat-modal">
         <header className="heartbeat-modal__header">
-          {editing ? (
-            <button className="heartbeat-modal__back" onClick={() => setEditing(null)}>
-              <ChevronLeft size={16} />
-            </button>
-          ) : (
-            <Activity size={16} />
-          )}
-          <span>{editing ? t("heartbeat.editTask") : "自动化任务"}</span>
+          <Activity size={16} />
+          <span>{t("heartbeat.title")}</span>
           <button
             className="heartbeat-modal__close"
             onClick={onClose}
@@ -308,12 +366,11 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
           </button>
         </header>
 
-        {editing ? (
-          <TaskEditor key={editing.id} task={editing} onSave={handleSaveEdit} onCancel={() => setEditing(null)} onDelete={() => { handleDelete(editing.id); setEditing(null); }} />
-        ) : (
-          <div className="heartbeat-modal__body">
+        <div className="heartbeat-split">
+          {/* ── Left column: task list ── */}
+          <div className="heartbeat-split__left">
             <div className="heartbeat-toolbar">
-              <div className="heartbeat-toolbar__search">
+              <div className="heartbeat-toolbar__search heartbeat-toolbar__search--active">
                 <Search size={13} className="heartbeat-toolbar__search-icon" />
                 <input
                   className="heartbeat-toolbar__search-input"
@@ -330,12 +387,12 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
               <div className="heartbeat-scope-filter">
                 <button
                   ref={statusFilterRef}
-                  className="heartbeat-toolbar__btn heartbeat-toolbar__btn--select"
+                  className={`heartbeat-toolbar__btn heartbeat-toolbar__btn--icon${statusFilter !== "all" ? " heartbeat-toolbar__btn--active" : ""}`}
                   type="button"
                   onClick={() => setStatusFilterOpen((v) => !v)}
+                  title={statusFilterLabel(statusFilter)}
                 >
-                  <span>{statusFilterLabel(statusFilter)}</span>
-                  <ChevronsUpDown size={12} />
+                  <Filter size={13} />
                 </button>
                 <AnchoredPopover
                   open={statusFilterOpen}
@@ -361,148 +418,180 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
                   </div>
                 </AnchoredPopover>
               </div>
-              <div className="heartbeat-scope-filter">
-                <button
-                  ref={scopeFilterRef}
-                  className="heartbeat-toolbar__btn heartbeat-toolbar__btn--select"
-                  type="button"
-                  onClick={() => setScopeFilterOpen((v) => !v)}
-                >
-                  <span>{scopeFilterLabel(scopeFilter, workspaceMap)}</span>
-                  <ChevronsUpDown size={12} />
-                </button>
-                <AnchoredPopover
-                  open={scopeFilterOpen}
-                  anchorRef={scopeFilterRef}
-                  onClose={() => setScopeFilterOpen(false)}
-                  className="heartbeat-filter-menu"
-                  placement="bottom"
-                >
-                  <div className="heartbeat-filter-menu__list" role="listbox">
-                    <button
-                      className={`heartbeat-filter-menu__option${scopeFilter === "all" ? " heartbeat-filter-menu__option--selected" : ""}`}
-                      role="option"
-                      aria-selected={scopeFilter === "all"}
-                      type="button"
-                      onClick={() => { setScopeFilter("all"); setScopeFilterOpen(false); }}
-                    >
-                      <span>全部项目</span>
-                      {scopeFilter === "all" && <Check size={12} className="heartbeat-filter-menu__check" />}
-                    </button>
-                    <button
-                      className={`heartbeat-filter-menu__option${scopeFilter === "global" ? " heartbeat-filter-menu__option--selected" : ""}`}
-                      role="option"
-                      aria-selected={scopeFilter === "global"}
-                      type="button"
-                      onClick={() => { setScopeFilter("global"); setScopeFilterOpen(false); }}
-                    >
-                      <span>全局</span>
-                      {scopeFilter === "global" && <Check size={12} className="heartbeat-filter-menu__check" />}
-                    </button>
-                    {(() => {
-                      const seen = new Set<string>();
-                      const items: { value: string; label: string }[] = [];
-                      for (const task of tasks) {
-                        const key = task.scope !== "project" || !task.workspaceRoot ? "global" : task.workspaceRoot;
-                        if (seen.has(key)) continue;
-                        seen.add(key);
-                        if (key !== "global") {
-                          items.push({
-                            value: key,
-                            label: workspaceMap[key] || key.split("/").pop() || key,
-                          });
-                        }
-                      }
-                      return items.map((item) => (
-                        <button
-                          key={item.value}
-                          className={`heartbeat-filter-menu__option${scopeFilter === item.value ? " heartbeat-filter-menu__option--selected" : ""}`}
-                          role="option"
-                          aria-selected={scopeFilter === item.value}
-                          type="button"
-                          onClick={() => { setScopeFilter(item.value); setScopeFilterOpen(false); }}
-                        >
-                          <span>{item.label}</span>
-                          {scopeFilter === item.value && <Check size={12} className="heartbeat-filter-menu__check" />}
-                        </button>
-                      ));
-                    })()}
-                  </div>
-                </AnchoredPopover>
-              </div>
-              <button className="heartbeat-toolbar__btn heartbeat-toolbar__btn--primary" style={{ marginLeft: "auto" }} onClick={handleAdd}>
+              <button className="heartbeat-toolbar__btn heartbeat-toolbar__btn--icon" style={{ marginLeft: "auto" }} onClick={handleAdd} title={t("heartbeat.addTask")}>
                 <Plus size={14} />
-                {t("heartbeat.addTask")}
               </button>
             </div>
 
-            {(() => {
-              const filtered = tasks
-                .filter((task) => {
-                  if (statusFilter === "enabled" && !task.enabled) return false;
-                  if (statusFilter === "disabled" && task.enabled) return false;
-                  if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-                  if (scopeFilter === "global" && (task.scope === "project" && task.workspaceRoot)) return false;
-                  if (scopeFilter !== "all" && scopeFilter !== "global") {
-                    if (task.scope !== "project" || task.workspaceRoot !== scopeFilter) return false;
-                  }
-                  return true;
-                })
-                .sort((a, b) => {
-                  if (a.enabled && !b.enabled) return -1;
-                  if (!a.enabled && b.enabled) return 1;
-                  return 0;
+            <div className="heartbeat-split__list">
+              {(() => {
+                const filtered = tasks
+                  .filter((task) => {
+                    if (statusFilter === "enabled" && !task.enabled) return false;
+                    if (statusFilter === "disabled" && task.enabled) return false;
+                    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                    return true;
+                  })
+                  .sort((a, b) => {
+                    if (a.enabled && !b.enabled) return -1;
+                    if (!a.enabled && b.enabled) return 1;
+                    return 0;
+                  });
+
+                // Group tasks by scope
+                const groups = new Map<string, HeartbeatTask[]>();
+                for (const task of filtered) {
+                  const key = task.scope === "project" && task.workspaceRoot
+                    ? task.workspaceRoot : "global";
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(task);
+                }
+
+                const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+                  if (a === "global") return -1;
+                  if (b === "global") return 1;
+                  return (workspaceMap[a] || a).localeCompare(workspaceMap[b] || b);
                 });
 
-              const scopeLabel = (task: HeartbeatTask): string => {
-                if (task.scope !== "project" || !task.workspaceRoot) return t("heartbeat.scopeGlobal");
-                return workspaceMap[task.workspaceRoot] || task.workspaceRoot.split("/").pop() || task.workspaceRoot;
-              };
+                const toggleProject = (key: string) => {
+                  setExpandedProjects((prev) => {
+                    if (prev === null) {
+                      return new Set([key]);
+                    }
+                    const next = new Set(prev);
+                    if (next.has(key)) next.delete(key);
+                    else next.add(key);
+                    return next;
+                  });
+                };
 
-              return loading ? (
-                <div className="heartbeat-empty">
-                  <Heart size={24} className="heartbeat-pulse" />
-                  <span>{t("workspace.loading")}</span>
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="heartbeat-empty">
-                  <Heart size={24} />
-                  <span>{tasks.length === 0 ? t("heartbeat.noTasks") : "没有匹配的任务"}</span>
-                </div>
-              ) : (
-                <ul className="heartbeat-tasklist">
-                  {filtered.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      scopeLabel={scopeLabel(task)}
-                      onToggle={() => {
-                        const next = tasks.map((t) =>
-                          t.id === task.id ? { ...t, enabled: !t.enabled } : t,
-                        );
-                        save(next);
-                      }}
-                      onEdit={() => handleEdit(task)}
-                      onTrigger={() => void handleTrigger(task.id)}
-                      onOpenTopic={onOpenTopic}
-                      onClose={onClose}
-                    />
-                  ))}
-                </ul>
-              );
-            })()}
+                const isGroupExpanded = (key: string): boolean => {
+                  if (expandedProjects === null) return true;
+                  return expandedProjects.has(key);
+                };
+
+                return loading ? (
+                  <div className="heartbeat-empty">
+                    <Heart size={24} className="heartbeat-pulse" />
+                    <span>{t("workspace.loading")}</span>
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="heartbeat-empty">
+                    <Heart size={24} />
+                    <span>{tasks.length === 0 ? t("heartbeat.noTasks") : "没有匹配的任务"}</span>
+                  </div>
+                ) : (
+                  <div className="worktree-tree">
+                    {sortedGroups.map(([key, groupTasks]) => {
+                      const isExpanded = isGroupExpanded(key);
+                      const label = key === "global"
+                        ? "全局"
+                        : workspaceMap[key] || key.split("/").pop() || key;
+
+                      return (
+                        <div key={key}>
+                          {/* ── Group header (depth 0: 8px indent) ── */}
+                          <div
+                            className={`worktree-node worktree-node--scope${editing && groupTasks.some(t => t.id === editing.id) ? " worktree-node--scope-active" : ""}`}
+                            style={{ paddingLeft: "8px" }}
+                            onClick={() => toggleProject(key)}
+                          >
+                            <span className="worktree-node__icon">
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </span>
+                            <span className="worktree-node__marker">
+                              {key === "global" ? <Globe size={13} /> : <Folder size={13} />}
+                            </span>
+                            <span className="worktree-node__label">{label}</span>
+                            <span className="worktree-node__scope-add" onClick={(e) => { e.stopPropagation(); void handleAddToScope(key); }} title={`在 ${label} 中添加任务`}>
+                              <Plus size={12} strokeWidth={2.5} />
+                            </span>
+                          </div>
+
+                          {/* ── Tasks under group (depth 1: 14 + 16 = 30px indent) ── */}
+                          {isExpanded && groupTasks.map((task) => {
+                            const isSelected = editing?.id === task.id;
+                            return (
+                              <div
+                                key={task.id}
+                                className={`worktree-node worktree-node--task${isSelected ? " worktree-node--selected" : ""}`}
+                                style={{ paddingLeft: "21px" }}
+                                onClick={() => handleEdit(task)}
+                              >
+                                <span className="worktree-node__marker">
+                                  <span className={`worktree-node__dot${task.enabled ? " worktree-node__dot--on" : ""}`} />
+                                </span>
+                                <span className="worktree-node__label">{task.title || "(untitled)"}</span>
+                                <span className="worktree-node__tail">
+                                  <span className="worktree-node__interval">{formatInterval(task.interval)}</span>
+                                  <span className="worktree-node__actions">
+                                  <button
+                                    className="worktree-node__action-btn"
+                                    onClick={(e) => { e.stopPropagation(); void handleTrigger(task.id); }}
+                                    title="立即运行"
+                                  >
+                                    <Play size={14} strokeWidth={1.9} />
+                                  </button>
+                                  <button
+                                    className="worktree-node__action-btn"
+                                    type="button"
+                                    disabled={!task.topicId}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (task.topicId && onOpenTopic) {
+                                        onClose();
+                                        onOpenTopic(task.scope || "global", task.workspaceRoot || "", task.topicId);
+                                      }
+                                    }}
+                                    title={task.topicId ? "打开对话" : ""}
+                                  >
+                                    <MessageSquare size={14} strokeWidth={1.9} />
+                                  </button>
+                                </span>
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
           </div>
-        )}
+
+          {/* ── Vertical divider ── */}
+          <div className="heartbeat-split__divider" />
+
+          {/* ── Right column: detail / editor ── */}
+          <div className="heartbeat-split__right">
+            {editing ? (
+              <TaskEditor key={editing.id} task={editing} onSave={handleSaveEdit} onCancel={() => setEditing(null)} onDelete={() => { handleDelete(editing.id); setEditing(null); }} />
+            ) : (
+              <div className="heartbeat-split__empty">
+                <div className="heartbeat-split__empty-inner">
+                  <Activity size={28} />
+                  <span>{t("heartbeat.noSelection" as any) || "选择一个任务查看详情"}</span>
+                  <span className="heartbeat-split__empty-hint">{t("heartbeat.configHint")}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Task Card ─────────────────────────────────────────────────────────────────
-
+// ── Task Card (kept for reference, no longer rendered in tree view) ──
+/*
 function TaskCard({
   task,
   scopeLabel,
+  selected,
+  onSelect,
   onToggle,
   onEdit,
   onTrigger,
@@ -511,6 +600,8 @@ function TaskCard({
 }: {
   task: HeartbeatTask;
   scopeLabel: string;
+  selected?: boolean;
+  onSelect: () => void;
   onToggle: () => void;
   onEdit: () => void;
   onTrigger: () => void;
@@ -519,13 +610,24 @@ function TaskCard({
 }) {
   const t = useT();
 
-  const intervalLabel = heartbeatIntervalLabel(task.interval, t);
+  // Parse interval for display and next-run calculation
+  const intervalLabel = (() => {
+    const clean = task.interval.replace(/\|.*$/, "");
+    const m = clean.match(/^(\d+)([smh])$/);
+    if (!m) return clean;
+    const unitMap: Record<string, string> = { s: "s", m: "m", h: "h" };
+    return `${m[1]}${unitMap[m[2]] || m[2]}`;
+  })();
 
   const nextRunLabel = (() => {
     if (!task.enabled) return t("heartbeat.disabled");
+    const clean = task.interval.replace(/\|.*$/, "");
+    const m = clean.match(/^(\d+)([smh])$/);
+    if (!m) return "";
+    const ms = parseInt(m[1]) * { s: 1000, m: 60000, h: 3600000 }[m[2] as "s" | "m" | "h"];
+    if (!task.lastRunAt) return t("heartbeat.neverRun");
+    const next = task.lastRunAt + ms;
     const now = Date.now();
-    const next = heartbeatNextRunAt(task, now);
-    if (next === null) return task.lastRunAt ? "" : t("heartbeat.neverRun");
     const diff = next - now;
     if (diff <= 0) return t("heartbeat.due" as any);
     if (diff < 60000) return t("heartbeat.soon" as any);
@@ -548,14 +650,14 @@ function TaskCard({
     : t("heartbeat.neverRun");
 
   return (
-    <li className={`heartbeat-card${!task.enabled ? " heartbeat-card--disabled" : ""}`}>
-      <div className="heartbeat-card__head">
+    <li className={`heartbeat-card${!task.enabled ? " heartbeat-card--disabled" : ""}${selected ? " heartbeat-card--selected" : ""}`}>
+      <div className="heartbeat-card__head" onClick={onSelect} style={{ cursor: "pointer" }}>
         <span className={`heartbeat-card__dot${task.enabled ? " heartbeat-card__dot--on" : ""}`} />
         <span className="heartbeat-card__title">
           <button
             type="button"
             className="heartbeat-card__title-btn"
-            onClick={onEdit}
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
           >
             <span className="heartbeat-card__title-text">{task.title || t("heartbeat.untitled")}</span>
             <span className="heartbeat-card__title-scope">{scopeLabel}</span>
@@ -570,7 +672,7 @@ function TaskCard({
         <span className="heartbeat-card__head-actions">
           <button
             className="heartbeat-card__open-btn heartbeat-card__open-btn--play"
-            onClick={onTrigger}
+            onClick={(e) => { e.stopPropagation(); onTrigger(); }}
             title={t("heartbeat.runNow")}
           >
             <Play size={12} />
@@ -579,7 +681,8 @@ function TaskCard({
             className="heartbeat-card__open-btn"
             type="button"
             disabled={!task.topicId}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (task.topicId) {
                 onClose();
                 onOpenTopic(task.scope || "global", task.workspaceRoot || "", task.topicId);
@@ -591,7 +694,7 @@ function TaskCard({
           </button>
           <button
             className={`heartbeat-card__toggle${task.enabled ? " heartbeat-card__toggle--on" : ""}`}
-            onClick={onToggle}
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
             aria-label={task.enabled ? t("heartbeat.disable") : t("heartbeat.enabled")}
           >
             <span className="heartbeat-card__toggle-knob" />
@@ -601,6 +704,7 @@ function TaskCard({
     </li>
   );
 }
+*/
 
 // ── Cycle Editor ──────────────────────────────────────────────────────────────
 
@@ -614,44 +718,6 @@ const WEEKDAYS = [
   { key: "sun", label: "周日" },
 ] as const;
 
-const ALL_WEEKDAYS = WEEKDAYS.map(w => w.key);
-const DEFAULT_WEEKLY_DAY = "mon";
-
-function defaultHeartbeatCycleDays(cycleType: string): string[] {
-  if (cycleType === "daily") return [...ALL_WEEKDAYS];
-  if (cycleType === "weekly" || cycleType === "biweekly") return [DEFAULT_WEEKLY_DAY];
-  return [];
-}
-
-export function heartbeatBuildCycleInterval(cycleType: string, days: string[], time: string): string {
-  const base: Record<string, string> = {
-    daily: "24h",
-    weekly: "168h",
-    biweekly: "336h",
-    monthly: "720h",
-    yearly: "8760h",
-  };
-  const selectedDays = days.filter(Boolean);
-  const isDailyWithSelection = cycleType === "daily" && selectedDays.length > 0 && selectedDays.length < 7;
-  const isDailyWithoutSelection = cycleType === "daily" && selectedDays.length === 0;
-  const effectiveType = isDailyWithoutSelection || isDailyWithSelection ? "weekly" : cycleType;
-  const scheduleDays =
-    (effectiveType === "weekly" || effectiveType === "biweekly") && selectedDays.length === 0
-      ? defaultHeartbeatCycleDays(effectiveType)
-      : selectedDays;
-
-  let suffix = `|${effectiveType}`;
-  if (effectiveType === "weekly" || effectiveType === "biweekly") {
-    suffix += `:${scheduleDays.join(",")}`;
-  } else if (effectiveType === "monthly") {
-    suffix += `:${scheduleDays[0] || "1"}`;
-  } else if (effectiveType === "yearly") {
-    suffix += `:${scheduleDays[0] || "1"}-${scheduleDays[1] || "1"}`;
-  }
-  suffix += `@${time}`;
-  return (base[cycleType] || "24h") + suffix;
-}
-
 function CycleEditor({
   draft,
   setDraft,
@@ -660,39 +726,71 @@ function CycleEditor({
   setDraft: (field: keyof HeartbeatTask, value: string | boolean) => void;
 }) {
   const t = useT();
-  const cycleMatch = (draft.interval || "").match(/^(\d+)[smh]\|(daily|weekly|biweekly|monthly|yearly)(?::([^@]*))?(?:@(\d{2}:\d{2}))?$/);
+  const cycleMatch = draft.interval.match(/^(\d+)[smh]\|(daily|weekly|biweekly|monthly|yearly)(?::([^@]*))?(?:@(\d{2}:\d{2}))?$/);
   const [cycleType, setCycleType] = useState<string>(
     cycleMatch ? cycleMatch[2] : "daily"
   );
   const cycleDays = cycleMatch?.[3] || "";
   const cycleTime = cycleMatch?.[4] || "09:00";
   const [selectedDays, setSelectedDays] = useState<string[]>(
-    cycleDays ? cycleDays.split(",").filter(Boolean) :
-    defaultHeartbeatCycleDays(cycleMatch ? cycleMatch[2] : "daily")
+    cycleDays ? cycleDays.split(",") : ["mon","tue","wed","thu","fri","sat","sun"]
   );
   const [monthDay, setMonthDay] = useState(cycleDays || "1");
   const [yearMonth, setYearMonth] = useState(cycleDays.split("-")[0] || "1");
   const [yearDay, setYearDay] = useState(cycleDays.split("-")[1] || "1");
   const [timeVal, setTimeVal] = useState(cycleTime);
+  const [cycleOpen, setCycleOpen] = useState(false);
+  const cycleRef = useRef<HTMLDivElement>(null);
 
-  const hasWeekdays = cycleType === "daily" || cycleType === "weekly" || cycleType === "biweekly";
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!cycleOpen) return;
+    const close = (e: MouseEvent) => {
+      if (cycleRef.current && !cycleRef.current.contains(e.target as Node)) {
+        setCycleOpen(false);
+      }
+    };
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [cycleOpen]);
 
   // Build interval string when config changes
-  const buildInterval = useCallback(heartbeatBuildCycleInterval, []);
+  const buildInterval = useCallback((ct: string, days: string[], tm: string) => {
+    const base: Record<string, string> = {
+      daily: "24h",
+      weekly: "168h",
+      biweekly: "336h",
+      monthly: "720h",
+      yearly: "8760h",
+    };
+    let suffix = `|${ct}`;
+    if (ct === "daily" || ct === "weekly" || ct === "biweekly") {
+      suffix += `:${days.join(",")}`;
+    } else if (ct === "monthly") {
+      suffix += `:${days[0] || "1"}`;
+    } else if (ct === "yearly") {
+      // days[0] = month, days[1] = day — each is a plain number, no dash
+      suffix += `:${days[0] || "1"}-${days[1] || "1"}`;
+    }
+    suffix += `@${tm}`;
+    return (base[ct] || "24h") + suffix;
+  }, []);
 
   const onCycleTypeChange = useCallback((ct: string) => {
     setCycleType(ct);
-    const days = defaultHeartbeatCycleDays(ct);
+    const days: string[] = [];
     setSelectedDays(days);
     setMonthDay("1");
     setYearMonth("1");
     setYearDay("1");
+    if (ct !== "daily" && ct !== "weekly" && ct !== "biweekly") {
+      setSelectedDays([]);
+    }
     setDraft("interval", buildInterval(ct, days, timeVal));
   }, [buildInterval, setDraft, timeVal]);
 
   const onDayToggle = useCallback((day: string) => {
     setSelectedDays((prev) => {
-      if (prev.includes(day) && prev.length <= 1) return prev;
       const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
       setDraft("interval", buildInterval(cycleType, next, timeVal));
       return next;
@@ -716,7 +814,7 @@ function CycleEditor({
 
   const onTimeChange = useCallback((tm: string) => {
     setTimeVal(tm);
-    const days = hasWeekdays ? selectedDays
+    const days = cycleType === "daily" || cycleType === "weekly" || cycleType === "biweekly" ? selectedDays
       : cycleType === "monthly" ? [monthDay]
       : cycleType === "yearly" ? [yearMonth, yearDay]
       : [];
@@ -735,17 +833,29 @@ function CycleEditor({
   return (
     <div className="heartbeat-editor__cycle-wrap">
       <div className="heartbeat-editor__cycle-row">
-        <select
-          className="heartbeat-editor__freq-select"
-          value={cycleType}
-          onChange={(e) => onCycleTypeChange(e.target.value)}
-        >
-          <option value="daily">{t("heartbeat.cycleDaily")}</option>
-          <option value="weekly">{t("heartbeat.cycleWeekly")}</option>
-          <option value="biweekly">{t("heartbeat.cycleBiweekly")}</option>
-          <option value="monthly">{t("heartbeat.cycleMonthly")}</option>
-          <option value="yearly">{t("heartbeat.cycleYearly")}</option>
-        </select>
+        <div className="heartbeat-scope-wrap" ref={cycleRef}>
+          <button
+            className="heartbeat-scope-select"
+            onClick={() => setCycleOpen((v) => !v)}
+          >
+            {t(`heartbeat.cycle${cycleType.charAt(0).toUpperCase() + cycleType.slice(1)}` as any)}
+            <ChevronsUpDown size={12} />
+          </button>
+          {cycleOpen && (
+            <div className="heartbeat-project-menu heartbeat-project-menu--up">
+              {["daily", "weekly", "biweekly", "monthly", "yearly"].map((ct) => (
+                <button
+                  key={ct}
+                  className={`heartbeat-project-menu__item${cycleType === ct ? " heartbeat-project-menu__item--active" : ""}`}
+                  onClick={() => { onCycleTypeChange(ct); setCycleOpen(false); }}
+                >
+                  {t(`heartbeat.cycle${ct.charAt(0).toUpperCase() + ct.slice(1)}` as any)}
+                  {cycleType === ct && <Check size={12} className="heartbeat-filter-menu__check" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {cycleType === "monthly" && (
           <select
@@ -789,7 +899,7 @@ function CycleEditor({
           onChange={(e) => onTimeChange(e.target.value)}
         />
 
-        {hasWeekdays && (
+        {(cycleType === "weekly" || cycleType === "biweekly") && (
           <div className="set-seg">
             {WEEKDAYS.map((wd) => (
               <button
@@ -835,7 +945,6 @@ function TaskEditor({
   const projectRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    titleRef.current?.focus();
     app.ListWorkspaces().then((list) => setWorkspaces(list ?? [])).catch(() => {});
   }, []);
 
@@ -851,27 +960,13 @@ function TaskEditor({
   }, [projectOpen]);
 
   const [draft, setDraft] = useState(task);
-  const intervalBeforeCycle = useRef<string | null>(null);
-  const promptRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-grow prompt textarea: shrink-to-fit then cap at 180px
-  const autoGrowPrompt = useCallback(() => {
-    const el = promptRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 180) + "px";
-  }, []);
-
-  useLayoutEffect(() => {
-    autoGrowPrompt();
-  }, [draft.prompt, autoGrowPrompt]);
   const set = useCallback((field: keyof HeartbeatTask, value: string | boolean) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   // Detect frequency type from interval value
-  const [freqType, setFreqType] = useState<"cycle" | "interval">(
-    (task.interval && task.interval.includes("|")) ? "cycle" : "interval"
+  const [freqType, setFreqType] = useState<"cycle" | "interval" | "cron">(
+    task.interval.includes("|") ? "cycle" : "interval"
   );
 
   const isNew = !task.createdAt;
@@ -879,12 +974,12 @@ function TaskEditor({
     ? workspaces.find((w) => w.path === draft.workspaceRoot)
     : null;
 
+  const isDirty = draft.title !== task.title || draft.prompt !== task.prompt || draft.interval !== task.interval || draft.enabled !== task.enabled || draft.scope !== task.scope || draft.workspaceRoot !== task.workspaceRoot || draft.approvalMode !== task.approvalMode || draft.newConversationEachRun !== task.newConversationEachRun || draft.timeWindowStart !== task.timeWindowStart || draft.timeWindowEnd !== task.timeWindowEnd;
+
   return (
     <div className="heartbeat-editor">
-      <div className="heartbeat-editor__fields">
-        {/* Title */}
-        <div className="heartbeat-editor__field">
-        <label>{t("heartbeat.fieldTitle")}</label>
+      {/* Title */}
+      <div className="heartbeat-editor__field">
         <input
           ref={titleRef}
           className="heartbeat-editor__input"
@@ -896,28 +991,32 @@ function TaskEditor({
 
       {/* Scope */}
       <div className="heartbeat-editor__field">
-        <label>{t("heartbeat.fieldScope")} <span className="heartbeat-editor__optional">{t("heartbeat.optional")}</span></label>
-        <div className="heartbeat-editor__scope-row">
+        <label>项目</label>
+        <div className="heartbeat-scope-wrap" ref={projectRef}>
           <button
-            className={`heartbeat-scope-btn${draft.scope !== "project" ? " heartbeat-scope-btn--active" : ""}`}
-            onClick={() => setDraft((prev) => ({ ...prev, scope: "global", workspaceRoot: "" }))}
+            className="heartbeat-scope-select"
+            onClick={() => setProjectOpen((v) => !v)}
           >
-            {t("heartbeat.scopeGlobal")}
+            {selectedWorkspace ? selectedWorkspace.name : t("heartbeat.scopeGlobal")}
+            <ChevronsUpDown size={12} />
           </button>
-          <div className="heartbeat-project-wrap" ref={projectRef}>
-            <button
-              className={`heartbeat-scope-btn${draft.scope === "project" ? " heartbeat-scope-btn--active" : ""}`}
-              onClick={() => setProjectOpen((v) => !v)}
-            >
-              {selectedWorkspace ? selectedWorkspace.name : t("heartbeat.scopeProject")}
-              <ChevronsUpDown size={12} />
-            </button>
-            {projectOpen && (
-              <div className="heartbeat-project-menu">
-                {workspaces.length === 0 ? (
-                  <div className="heartbeat-project-menu__empty">{t("heartbeat.noProjects")}</div>
-                ) : (
-                  workspaces.map((ws) => (
+          {projectOpen && (
+            <div className="heartbeat-project-menu">
+              {workspaces.length === 0 ? (
+                <div className="heartbeat-project-menu__empty">{t("heartbeat.noProjects")}</div>
+              ) : (
+                <>
+                  <button
+                    className={`heartbeat-project-menu__item${!draft.scope || draft.scope === "global" || !draft.workspaceRoot ? " heartbeat-project-menu__item--active" : ""}`}
+                    onClick={() => {
+                      setDraft((prev) => ({ ...prev, scope: "global", workspaceRoot: "" }));
+                      setProjectOpen(false);
+                    }}
+                  >
+                    {t("heartbeat.scopeGlobal")}
+                    {(!draft.scope || draft.scope === "global" || !draft.workspaceRoot) && <Check size={12} className="heartbeat-filter-menu__check" />}
+                  </button>
+                  {workspaces.map((ws) => (
                     <button
                       key={ws.path}
                       className={`heartbeat-project-menu__item${draft.workspaceRoot === ws.path ? " heartbeat-project-menu__item--active" : ""}`}
@@ -928,12 +1027,13 @@ function TaskEditor({
                     >
                       {ws.name}
                       {ws.current && <span className="heartbeat-project-menu__current">{t("heartbeat.currentWorkspace")}</span>}
+                      {draft.workspaceRoot === ws.path && <Check size={12} className="heartbeat-filter-menu__check" />}
                     </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -941,14 +1041,11 @@ function TaskEditor({
       <div className="heartbeat-editor__field">
         <label>{t("heartbeat.fieldPrompt")}</label>
         <textarea
-          ref={promptRef}
           className="heartbeat-editor__textarea"
           value={draft.prompt}
-          onChange={(e) => {
-            set("prompt", e.target.value);
-            // autoGrowPrompt is called via useEffect watching draft.prompt
-          }}
+          onChange={(e) => set("prompt", e.target.value)}
           placeholder={t("heartbeat.promptPlaceholder")}
+          rows={5}
         />
       </div>
 
@@ -1009,89 +1106,115 @@ function TaskEditor({
         <label>{t("heartbeat.fieldInterval")}</label>
         <div className="set-seg" style={{ alignSelf: "flex-start" }}>
           <button
-            className={`set-seg__btn${freqType === "cycle" ? " set-seg__btn--on" : ""}`}
-            onClick={() => {
-              setFreqType("cycle");
-              // Save the original interval so switching back can restore it
-              const cur = draft.interval || "";
-              const nextInterval = cur.includes("|") ? cur : "24h|daily@09:00";
-              if (!cur.includes("|")) {
-                intervalBeforeCycle.current = cur;
-              }
-              setDraft((prev) => ({ ...prev, interval: nextInterval, timeWindowStart: undefined, timeWindowEnd: undefined }));
-            }}
-          >
-            {t("heartbeat.freqCycle")}
-          </button>
-          <button
             className={`set-seg__btn${freqType === "interval" ? " set-seg__btn--on" : ""}`}
             onClick={() => {
               setFreqType("interval");
-              // Restore original interval if user toggled cycle and back without saving
-              if (intervalBeforeCycle.current !== null) {
-                setDraft((prev) => ({ ...prev, interval: intervalBeforeCycle.current! }));
-                intervalBeforeCycle.current = null;
-              } else if ((draft.interval || "").includes("|")) {
-                // Fallback: strip cycle suffix
-                setDraft((prev) => ({ ...prev, interval: (prev.interval || "").replace(/\|.*$/, "") }));
+              // Try to reverse-convert cron to interval
+              const cronToInterval = (cron: string): string => {
+                const f = cron.trim().split(/\s+/);
+                if (f.length !== 5) return "30m";
+                const min = f[0], hour = f[1];
+                if (min.startsWith("*/")) return `${min.slice(2)}m`;
+                if (min === "0" && hour.startsWith("*/")) return `${hour.slice(2)}h`;
+                if (min === "0") return "1h";
+                return "30m";
+              };
+              if (/[\s|]/.test(draft.interval) || !/^\d+[smh]$/.test(draft.interval)) {
+                setDraft((prev) => ({ ...prev, interval: cronToInterval(draft.interval) }));
               }
             }}
           >
             {t("heartbeat.freqInterval")}
           </button>
+          <button
+            className={`set-seg__btn${freqType === "cycle" ? " set-seg__btn--on" : ""}`}
+            onClick={() => {
+              setFreqType("cycle");
+              // Initialize interval to daily schedule when switching to cycle mode
+              if (!draft.interval.includes("|")) {
+                setDraft((prev) => ({ ...prev, interval: "24h|daily@09:00" }));
+              }
+            }}
+          >
+            {t("heartbeat.freqCycle")}
+          </button>
+          <button
+            className={`set-seg__btn${freqType === "cron" ? " set-seg__btn--on" : ""}`}
+            onClick={() => {
+              setFreqType("cron");
+              if (draft.interval && !/^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(draft.interval.trim())) {
+                setDraft((prev) => ({ ...prev, interval: intervalToCron(prev.interval, prev.timeWindowStart, prev.timeWindowEnd) }));
+              }
+            }}
+          >
+            {t("heartbeat.freqCron")}
+          </button>
         </div>
 
-        {freqType === "cycle" ? <CycleEditor draft={draft} setDraft={set} /> : (
+        {freqType === "cycle" ? <CycleEditor draft={draft} setDraft={set} /> :
+         freqType === "cron" ? (
+          <div className="heartbeat-editor__freq-interval">
+            <input
+              className="heartbeat-editor__freq-input heartbeat-editor__freq-input--cron"
+              value={draft.interval}
+              onChange={(e) => setDraft((prev) => ({ ...prev, interval: e.target.value }))}
+              placeholder="0 * * * *"
+            />
+            <span className="heartbeat-editor__cron-hint">
+              {describeCron(draft.interval)}{nextCronRun(draft.interval) ? ` · 下次运行: ${nextCronRun(draft.interval)}` : ""}
+            </span>
+          </div>
+        ) : (
           <div className="heartbeat-editor__freq-interval">
             <span className="heartbeat-editor__freq-label">{t("heartbeat.freqEvery")}</span>
             <input
               className="heartbeat-editor__freq-input"
               value={(() => {
-                const m = (draft.interval || "").match(/^(\d+)/);
+                const m = draft.interval.match(/^(\d+)/);
                 return m ? m[1] : "1";
               })()}
               onChange={(e) => {
                 const num = e.target.value.replace(/\D/g, "");
-                const mUnit = (draft.interval || "").match(/^(\d+)([smh])/);
+                const mUnit = draft.interval.match(/^(\d+)([smh])/);
                 const unit = mUnit ? mUnit[2] : "h";
-                // Guard: never save a bare unit string like "h" or "m"
                 setDraft((prev) => ({ ...prev, interval: num ? num + unit : "1" + unit }));
               }}
               placeholder="1"
             />
-            <select
-              className="heartbeat-editor__freq-select"
-              value={(() => {
-                const m = (draft.interval || "").match(/^(\d+)([smh])/);
-                return m ? m[2] : "h";
-              })()}
-              onChange={(e) => {
-                const num = (draft.interval || "").match(/^(\d+)/)?.[1] || "1";
-                setDraft((prev) => ({ ...prev, interval: num + e.target.value }));
-              }}
-            >
-              <option value="m">{t("heartbeat.unitMin")}</option>
-              <option value="h">{t("heartbeat.unitHour")}</option>
-            </select>
-            <span className="heartbeat-editor__freq-label" style={{ marginLeft: "6px" }}>
-              {draft.timeWindowStart || draft.timeWindowEnd ? (
-                <>{t("heartbeat.timeWindow")}</>
-              ) : (
-                <span className="heartbeat-editor__tw-add"
-                  onClick={() => setDraft((prev) => ({ ...prev, timeWindowStart: "09:00", timeWindowEnd: "17:00" }))}
-                >
-                  + {t("heartbeat.timeWindow")}
-                </span>
-              )}
-            </span>
-            {(draft.timeWindowStart || draft.timeWindowEnd) && (
-              <>
+            <div className="set-seg">
+              <button
+                className={`set-seg__btn${(() => {
+                  const m = draft.interval.match(/^(\d+)([smh])/);
+                  return (m ? m[2] : "h") === "m" ? " set-seg__btn--on" : "";
+                })()}`}
+                onClick={() => {
+                  const num = draft.interval.match(/^(\d+)/)?.[1] || "1";
+                  setDraft((prev) => ({ ...prev, interval: num + "m" }));
+                }}
+              >
+                {t("heartbeat.unitMin")}
+              </button>
+              <button
+                className={`set-seg__btn${(() => {
+                  const m = draft.interval.match(/^(\d+)([smh])/);
+                  return (m ? m[2] : "h") === "h" ? " set-seg__btn--on" : "";
+                })()}`}
+                onClick={() => {
+                  const num = draft.interval.match(/^(\d+)/)?.[1] || "1";
+                  setDraft((prev) => ({ ...prev, interval: num + "h" }));
+                }}
+              >
+                {t("heartbeat.unitHour")}
+              </button>
+            </div>
+            {draft.timeWindowStart || draft.timeWindowEnd ? (
+              <div className="heartbeat-editor__tw-inputs" style={{ marginLeft: "8px" }}>
                 <input
                   className="heartbeat-editor__freq-input heartbeat-editor__freq-input--time"
                   type="time"
                   value={draft.timeWindowStart || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, timeWindowStart: e.target.value || undefined }))}
-                  placeholder="09:00"
+                  style={{ width: "90px" }}
                 />
                 <span className="heartbeat-editor__freq-label heartbeat-editor__tw-sep">—</span>
                 <input
@@ -1099,52 +1222,66 @@ function TaskEditor({
                   type="time"
                   value={draft.timeWindowEnd || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, timeWindowEnd: e.target.value || undefined }))}
-                  placeholder="17:00"
+                  style={{ width: "90px" }}
                 />
                 <button
-                  className="heartbeat-card__open-btn heartbeat-editor__tw-clear"
+                  className="heartbeat-editor__tw-remove"
                   onClick={() => setDraft((prev) => ({ ...prev, timeWindowStart: undefined, timeWindowEnd: undefined }))}
-                  title={t("heartbeat.clearTimeWindow")}
+                  title="移除时间区间"
                 >
-                  ×
+                  <X size={12} />
                 </button>
-              </>
+              </div>
+            ) : (
+              <span className="heartbeat-editor__tw-add" style={{ marginLeft: "8px" }}
+                onClick={() => setDraft((prev) => ({ ...prev, timeWindowStart: "09:00", timeWindowEnd: "17:00" }))}
+              >
+                + {t("heartbeat.timeWindow")}
+              </span>
             )}
           </div>
         )}
       </div>
 
-      </div>
-
       {/* Actions */}
       <div className="heartbeat-editor__actions">
-        {!isNew && !confirmingDelete && (
-          <button className="heartbeat-btn heartbeat-btn--danger" onClick={() => setConfirmingDelete(true)} style={{ marginRight: "auto" }}>
+        {!isNew && (
+          <button
+            className={`heartbeat-btn${confirmingDelete ? "" : " heartbeat-btn--danger"}`}
+            onClick={() => {
+              if (confirmingDelete) {
+                onDelete();
+              } else {
+                setConfirmingDelete(true);
+              }
+            }}
+          >
             <Trash2 size={13} />
-            {t("heartbeat.delete")}
+            {confirmingDelete ? t("heartbeat.confirmDelete") : t("heartbeat.delete")}
           </button>
         )}
-        {!isNew && confirmingDelete && (
-          <span className="heartbeat-editor__confirm-del" style={{ marginRight: "auto" }}>
-            <span>{t("heartbeat.confirmDelete")}</span>
-            <button className="heartbeat-btn heartbeat-btn--danger" onClick={onDelete}>
-              {t("common.delete")}
-            </button>
-            <button className="heartbeat-btn" onClick={() => setConfirmingDelete(false)}>
-              {t("common.cancel")}
-            </button>
-          </span>
-        )}
         <button
-          className="heartbeat-btn heartbeat-btn--primary"
-          onClick={() => onSave(draft)}
-          disabled={!draft.title.trim() || !draft.prompt.trim()}
+          className="heartbeat-btn"
+          onClick={() => {
+            const updated = { ...draft, enabled: !draft.enabled };
+            setDraft(updated);
+            onSave(updated);
+          }}
         >
-          {isNew ? t("heartbeat.add") : t("heartbeat.save")}
+          {draft.enabled ? t("heartbeat.disable") : t("heartbeat.enabled")}
         </button>
-        <button className="heartbeat-btn" onClick={onCancel}>
-          {t("common.cancel")}
-        </button>
+        <span style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+          <button
+            className={`heartbeat-btn${isDirty ? " heartbeat-btn--primary" : ""}`}
+            onClick={() => onSave(draft)}
+            disabled={!draft.title.trim() || !draft.prompt.trim() || (!isDirty && !isNew)}
+          >
+            {isNew ? t("heartbeat.add") : t("heartbeat.save")}
+          </button>
+          <button className="heartbeat-btn" onClick={onCancel}>
+            {t("common.cancel")}
+          </button>
+        </span>
       </div>
     </div>
   );

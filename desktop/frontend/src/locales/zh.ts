@@ -481,6 +481,7 @@ export const zh: Record<DictKey, string> = {
   "heartbeat.runNow": "立即执行",
   "heartbeat.refresh": "刷新",
   "heartbeat.noTasks": "暂无心跳任务。点击「添加任务」创建一个。\n\n提示：AI 代理也可直接编辑 Reasonix 用户状态目录中的 heartbeat-tasks.json。",
+  "heartbeat.noSelection": "选择一个任务查看详情",
   "heartbeat.every": "每",
   "heartbeat.lastRun": "上次运行",
   "heartbeat.fieldTitle": "标题",

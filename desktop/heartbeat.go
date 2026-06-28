@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -458,7 +459,107 @@ func parseInterval(s string) (time.Duration, error) {
 	}
 }
 
+// isCronExpr returns true when s looks like a 5-field cron expression
+// (e.g. "0 * * * *", "*/15 * * * *", "0 9 * * 1-5").
+func isCronExpr(s string) bool {
+	fields := strings.Fields(s)
+	if len(fields) != 5 {
+		return false
+	}
+	// Each field must be non-empty and contain only cron-valid characters
+	for _, f := range fields {
+		if f == "" {
+			return false
+		}
+		for _, c := range f {
+			if !strings.ContainsRune("0123456789*/-,", c) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// cronMatchField checks whether a single value matches a cron field pattern.
+func cronMatchField(pattern string, value int) bool {
+	// Handle comma-separated lists
+	for _, part := range strings.Split(pattern, ",") {
+		part = strings.TrimSpace(part)
+		if cronMatchSingle(part, value) {
+			return true
+		}
+	}
+	return false
+}
+
+func cronMatchSingle(pattern string, value int) bool {
+	// Handle step values: */15, 1-10/2
+	if idx := strings.Index(pattern, "/"); idx >= 0 {
+		stepStr := pattern[idx+1:]
+		step, err := strconv.Atoi(stepStr)
+		if err != nil || step <= 0 {
+			return false
+		}
+		rangePart := pattern[:idx]
+		if rangePart == "*" {
+			return value%step == 0
+		}
+		// Range with step: 1-10/2
+		if idx2 := strings.Index(rangePart, "-"); idx2 >= 0 {
+			low, _ := strconv.Atoi(rangePart[:idx2])
+			high, _ := strconv.Atoi(rangePart[idx2+1:])
+			if value < low || value > high {
+				return false
+			}
+			return (value-low)%step == 0
+		}
+		return false
+	}
+	// Handle ranges: 1-5
+	if idx := strings.Index(pattern, "-"); idx >= 0 {
+		low, err1 := strconv.Atoi(pattern[:idx])
+		high, err2 := strconv.Atoi(pattern[idx+1:])
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		return value >= low && value <= high
+	}
+	// Handle wildcard
+	if pattern == "*" {
+		return true
+	}
+	// Handle literal value
+	v, err := strconv.Atoi(pattern)
+	if err != nil {
+		return false
+	}
+	return v == value
+}
+
+// cronDue checks whether a 5-field cron expression should fire at the given time.
+func cronDue(expr string, t time.Time) bool {
+	fields := strings.Fields(expr)
+	if len(fields) != 5 {
+		return false
+	}
+	return cronMatchField(fields[0], t.Minute()) &&
+		cronMatchField(fields[1], t.Hour()) &&
+		cronMatchField(fields[2], t.Day()) &&
+		cronMatchField(fields[3], int(t.Month())) &&
+		cronMatchField(fields[4], int(t.Weekday()))
+}
+
 func heartbeatTaskDueAt(t HeartbeatTask, now time.Time) bool {
+	// Try cron expression first
+	if isCronExpr(t.Interval) {
+		if cronDue(t.Interval, now) {
+			if t.LastRunAt == 0 || now.Sub(time.UnixMilli(t.LastRunAt)) > time.Minute {
+				return true
+			}
+		}
+		return false
+	}
+
 	if scheduled, ok := previousHeartbeatScheduleAt(t, now); ok {
 		if t.CreatedAt != 0 && scheduled.Before(time.UnixMilli(t.CreatedAt)) {
 			return false

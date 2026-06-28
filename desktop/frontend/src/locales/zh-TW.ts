@@ -333,6 +333,7 @@ export const zhTW: Record<DictKey, string> = {
   "heartbeat.runNow": "立即執行",
   "heartbeat.refresh": "重新整理",
   "heartbeat.noTasks": "暫無心跳任務。點擊「添加任務」創建一個。\n\n提示：AI 代理也可直接編輯 Reasonix 使用者狀態目錄中的 heartbeat-tasks.json。",
+  "heartbeat.noSelection": "選擇一個任務查看詳情",
   "heartbeat.every": "每",
   "heartbeat.lastRun": "上次執行",
   "heartbeat.fieldTitle": "標題",

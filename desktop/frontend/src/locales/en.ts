@@ -480,6 +480,7 @@ export const en = {
   "heartbeat.runNow": "Run now",
   "heartbeat.refresh": "Refresh",
   "heartbeat.noTasks": "No heartbeat tasks yet. Click \"Add task\" to create one.\n\nTip: AI agents can also edit heartbeat-tasks.json in the Reasonix user state folder.",
+  "heartbeat.noSelection": "Select a task to view details",
   "heartbeat.every": "every",
   "heartbeat.lastRun": "last run",
   "heartbeat.fieldTitle": "Title",
