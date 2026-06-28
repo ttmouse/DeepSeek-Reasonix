@@ -29,7 +29,7 @@ import {
   AlarmClock,
   Brain,
   Cpu,
-  Copy,
+  Eye,
   Palette,
   MoreHorizontal,
 } from "lucide-react";
@@ -805,7 +805,7 @@ function TopicActionsMenu({
   exportSession,
   openRightDockMode,
   closeTransientOverlays, setSettingsTarget, setSettingsFocus, openPalette,
-  topicId,
+  topicId, showTopicId, onToggleShowTopicId,
 }: {
   t: ReturnType<typeof useT>;
   sidebarImDetailConnection: any;
@@ -817,6 +817,8 @@ function TopicActionsMenu({
   setSettingsFocus: (focus: any) => void;
   openPalette: () => void;
   topicId?: string;
+  showTopicId?: boolean;
+  onToggleShowTopicId?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -881,9 +883,9 @@ function TopicActionsMenu({
             <span>{t("shortcuts.cheatsheetTitle")}</span>
           </button>
           {topicId && (
-            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigator.clipboard?.writeText(topicId); }}>
-              <Copy size={13} />
-              <span>{t("topicBar.copyId")}</span>
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onToggleShowTopicId?.(); }}>
+              <Eye size={13} />
+              <span>{showTopicId ? t("topicBar.hideId") : t("topicBar.showId")}</span>
             </button>
           )}
           <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void openPalette(); }}>
@@ -1041,6 +1043,18 @@ export default function App() {
   const setSidebarSearchFocusSignal = useOverlayStore((s) => s.setSidebarSearchFocusSignal);
   const [sidebarTogglePressed, setSidebarTogglePressed] = useState(false);
   const [workspaceTogglePressed, setWorkspaceTogglePressed] = useState(false);
+  const [showTopicId, setShowTopicId] = useState(() => {
+    try { return localStorage.getItem("reasonix.showTopicId") === "true"; }
+    catch { return false; }
+  });
+  // Persist showTopicId preference
+  const toggleShowTopicId = useCallback(() => {
+    setShowTopicId((v) => {
+      const next = !v;
+      try { localStorage.setItem("reasonix.showTopicId", next ? "true" : "false"); } catch {}
+      return next;
+    });
+  }, []);
   const [docViewOpen, setDocViewOpen] = useState(false);
   const [clearContextPending, setClearContextPending] = useState(false);
   const topicRenameSkipCommitRef = useRef(false);
@@ -3221,6 +3235,16 @@ export default function App() {
                       {topicbarImSourceLabel}
                     </span>
                   )}
+                  {showTopicId && activeTab?.topicId && (
+                    <span
+                      className="topicbar__topic-id"
+                      title={t("topicBar.copyId")}
+                      onClick={() => { navigator.clipboard?.writeText(activeTab.topicId!); }}
+                      style={{ cursor: "pointer", userSelect: "all" }}
+                    >
+                      {activeTab.topicId}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -3256,6 +3280,8 @@ export default function App() {
                   setSettingsFocus={setSettingsFocus}
                   openPalette={openPalette}
                   topicId={activeTab?.topicId || activeTab?.sessionPath}
+                  showTopicId={showTopicId}
+                  onToggleShowTopicId={toggleShowTopicId}
                 />
               ) : (
               <>{!sidebarImDetailConnection && (

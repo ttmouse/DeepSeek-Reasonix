@@ -83,6 +83,8 @@ export const zhTW: Record<DictKey, string> = {
   "topicBar.more": "更多",
   "topicBar.copyAll": "複製會話",
   "topicBar.copyId": "複製話題 ID",
+  "topicBar.showId": "顯示話題 ID",
+  "topicBar.hideId": "隱藏話題 ID",
   "topicBar.export": "匯出會話",
   "topicBar.exportMarkdown": "匯出 Markdown",
   "topicBar.exportJson": "匯出 JSON",
