@@ -157,6 +157,8 @@ function nextCronRun(expr: string): string | null {
   try {
     const f = expr.trim().split(/\s+/);
     if (f.length !== 5) return null;
+    // Only show "next run" for simple cron patterns (no */N steps or ranges)
+    if (f[0].includes("/") || f[0].includes("-") || f[1].includes("/") || f[1].includes("-")) return null;
     const now = new Date();
     const minTarget = parseInt(f[0]) || 0;
     const hourTarget = parseInt(f[1]) || 0;
