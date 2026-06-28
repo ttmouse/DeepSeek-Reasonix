@@ -82,6 +82,7 @@ export const zhTW: Record<DictKey, string> = {
   "topicBar.renameSession": "重新命名會話",
   "topicBar.more": "更多",
   "topicBar.copyAll": "複製會話",
+  "topicBar.copyId": "複製話題 ID",
   "topicBar.export": "匯出會話",
   "topicBar.exportMarkdown": "匯出 Markdown",
   "topicBar.exportJson": "匯出 JSON",

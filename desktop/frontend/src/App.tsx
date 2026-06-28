@@ -29,6 +29,7 @@ import {
   AlarmClock,
   Brain,
   Cpu,
+  Copy,
   Palette,
   MoreHorizontal,
 } from "lucide-react";
@@ -804,6 +805,7 @@ function TopicActionsMenu({
   exportSession,
   openRightDockMode,
   closeTransientOverlays, setSettingsTarget, setSettingsFocus, openPalette,
+  topicId,
 }: {
   t: ReturnType<typeof useT>;
   sidebarImDetailConnection: any;
@@ -814,6 +816,7 @@ function TopicActionsMenu({
   setSettingsTarget: Dispatch<SetStateAction<SettingsTab | null>>;
   setSettingsFocus: (focus: any) => void;
   openPalette: () => void;
+  topicId?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -877,6 +880,12 @@ function TopicActionsMenu({
             <CircleHelp size={13} />
             <span>{t("shortcuts.cheatsheetTitle")}</span>
           </button>
+          {topicId && (
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigator.clipboard?.writeText(topicId); }}>
+              <Copy size={13} />
+              <span>{t("topicBar.copyId")}</span>
+            </button>
+          )}
           <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void openPalette(); }}>
             <Command size={13} />
             <span>{t("topicBar.command")}</span>
@@ -3246,6 +3255,7 @@ export default function App() {
                   setSettingsTarget={setSettingsTarget}
                   setSettingsFocus={setSettingsFocus}
                   openPalette={openPalette}
+                  topicId={activeTab?.topicId || activeTab?.sessionPath}
                 />
               ) : (
               <>{!sidebarImDetailConnection && (

@@ -147,6 +147,7 @@ export const zh: Record<DictKey, string> = {
   "topicBar.more": "更多",
   "topicBar.command": "命令",
   "topicBar.copyAll": "复制会话",
+  "topicBar.copyId": "复制对话 ID",
   "topicBar.export": "导出会话",
   "topicBar.exportMarkdown": "导出 Markdown",
   "topicBar.exportJson": "导出 JSON",

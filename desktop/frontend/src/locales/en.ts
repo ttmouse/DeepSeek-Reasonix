@@ -146,6 +146,7 @@ export const en = {
   "topicBar.more": "More",
   "topicBar.command": "Command",
   "topicBar.copyAll": "Copy session",
+  "topicBar.copyId": "Copy topic ID",
   "topicBar.export": "Export session",
   "topicBar.exportMarkdown": "Export Markdown",
   "topicBar.exportJson": "Export JSON",
