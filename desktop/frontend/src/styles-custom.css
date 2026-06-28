@@ -198,15 +198,28 @@
   padding: 6px 12px;
 }
 
+/* ── Custom skin: tighter card list spacing ── */
+.app--custom .instruction-panel__list {
+  gap: 2px;
+  padding: 4px 6px 2px;
+  contain: layout style;
+}
+.app--custom .instruction-panel__card-body {
+  background: transparent;
+}
+.app--custom .instruction-panel__card-body:hover {
+  background: var(--bg-soft);
+}
+.app--custom .instruction-panel__card-body:active {
+  background: var(--bg-sub);
+}
+
 /* ── Custom skin: instruction card text wraps instead of expanding panel ── */
 .app--custom .instruction-panel__card-text {
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: break-word;
+  white-space: nowrap;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  padding-right: 52px;
 }
 
 /* ── Custom skin: remove composer focus effects ── */

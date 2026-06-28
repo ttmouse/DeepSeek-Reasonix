@@ -1738,7 +1738,7 @@ export const zh: Record<DictKey, string> = {
   "mock.changedFile2Path": ".reasonix/project.md",
 
   // ── Instruction panel ──
-  "instruction.title": "自定义指令",
+  "instruction.title": "自定指令",
   "instruction.add": "添加",
   "instruction.empty": "还没有自定义指令，点击「添加」创建一个。",
   "instruction.contentPlaceholder": "写下你的指令…",
