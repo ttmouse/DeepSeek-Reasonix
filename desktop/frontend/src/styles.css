@@ -15533,6 +15533,14 @@ body > .mermaid-diagram--fullscreen {
   margin-left: 16px;
 }
 
+/* ── streamed widget (```widget code blocks) ───────────────────────────────── */
+.widget-stream {
+  margin: 8px 0;
+}
+.widget-stream iframe {
+  border-radius: var(--radius);
+}
+
 /* ── live task list, pinned above the composer ─────────────────────────────── */
 .todobar {
   max-width: var(--maxw);

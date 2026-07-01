@@ -10,6 +10,7 @@ import type { Item } from "../lib/useController";
 import { isReadOnlyTool } from "../lib/useController";
 import { ReadOnlyBatch } from "./ReadOnlyBatch";
 
+
 type ToolItem = Extract<Item, { kind: "tool" }>;
 
 const SUBAGENT_TOOLS = new Set(["task", "run_skill", "explore", "research", "review", "security_review"]);
@@ -52,8 +53,7 @@ export const ToolCard = memo(function ToolCard({ item, subcalls, tabId, displayN
       : "";
 
   // All tools default to collapsed. Sub-agent tools open while running so the
-  // user sees nested calls; they collapse when done. Reasoning (AssistantMessage)
-  // also opens while streaming and closes on finish.
+  // user sees nested calls; they collapse when done.
   const defaultOpen = hasNested ? item.status === "running" : false;
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
   const open = userOpen ?? defaultOpen;
@@ -63,7 +63,9 @@ export const ToolCard = memo(function ToolCard({ item, subcalls, tabId, displayN
   // Lazy-load full tool data from the backend when the card is expanded and
   // the in-memory copy was archived for memory efficiency.
   const [fullData, setFullData] = useState<{ args: string; output?: string } | null>(null);
-  const archivedWithoutFullData = Boolean(item.dataArchived && !fullData);
+  // Track whether archived data restore has been attempted (and failed).
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const archivedWithoutFullData = Boolean(item.dataArchived && !fullData && !restoreFailed);
   const effectiveArgs = archivedWithoutFullData ? "" : fullData?.args ?? item.args;
   const effectiveOutput = fullData?.output ?? item.output;
   const previewDiff = item.fileDiff?.diff ? item.fileDiff : undefined;
@@ -86,14 +88,20 @@ export const ToolCard = memo(function ToolCard({ item, subcalls, tabId, displayN
   const hasBody = Boolean(previewDiff || diffs.length || hasNested || shellPreview || (!shellPreview && hasArgsOrOutput) || item.error);
   useEffect(() => {
     if (!open || !item.dataArchived || fullData || !tabId) return;
+    if (restoreFailed) return;
     let cancelled = false;
     import("../lib/bridge").then(({ app }) =>
       app.ToolResultForTab(tabId, item.id).then((d) => {
-        if (!cancelled && d) setFullData(d);
-      }).catch(() => {}),
+        if (cancelled) return;
+        if (d) {
+          setFullData(d);
+        } else {
+          setRestoreFailed(true);
+        }
+      }).catch(() => { if (!cancelled) setRestoreFailed(true); }),
     );
     return () => { cancelled = true; };
-  }, [open, item.id, item.dataArchived, fullData, tabId]);
+  }, [open, item.id, item.dataArchived, fullData, tabId, restoreFailed]);
 
   // Register this shell card's toggle with the global ShellExpand context so
   // Ctrl/Cmd+B can expand/collapse the most recent shell output. openRef keeps the
@@ -200,16 +208,16 @@ export const ToolCard = memo(function ToolCard({ item, subcalls, tabId, displayN
         )}
 
         {!shellPreview && hasArgsOrOutput && (
-          <>
-            {effectiveArgs && <CodeViewer value={pretty(effectiveArgs)} language="json" maxHeight={180} />}
-            {effectiveOutput && (
-              <>
-                <CodeViewer value={effectiveOutput} maxHeight={280} />
-                {item.truncated && <div className="tool__note">{t("tool.truncated")}</div>}
-              </>
-            )}
-          </>
-        )}
+            <>
+              {effectiveArgs && <CodeViewer value={pretty(effectiveArgs)} language="json" maxHeight={180} />}
+              {effectiveOutput && (
+                <>
+                  <CodeViewer value={effectiveOutput} maxHeight={280} />
+                  {item.truncated && <div className="tool__note">{t("tool.truncated")}</div>}
+                </>
+              )}
+            </>
+          )}
 
         {item.error && <div className="tool__err">{item.error}</div>}
       </div>

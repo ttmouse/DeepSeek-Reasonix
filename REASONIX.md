@@ -71,3 +71,7 @@ System-prompt-review: <reviewer/approval note>
 ```
 
 Values `n/a`, `none`, `todo`, `tbd` are rejected — use a descriptive reason instead.
+
+## Widget rendering
+
+To render an interactive HTML/SVG widget (charts, diagrams, algorithm viz, UI mockups), output the HTML inside a ```widget fenced code block. The frontend renders it progressively in an iframe. Use CSS variables for theming: --background, --foreground, --primary, --border, --card, --radius, --font-sans, --font-mono, --muted, --muted-foreground. All CSS/JS must be inline. Call widget_readme once per conversation to load the complete design spec (color palette, SVG rules, animation specs).
