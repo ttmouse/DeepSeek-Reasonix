@@ -2231,8 +2231,15 @@ func (m *chatTUI) moveToolRecordsAfterAnswer() {
 		toolNoun = "tool"
 	}
 
+	// Save tool records before removing so we can move them after the answer.
+	saved := make([]string, m.toolRecordsEnd-m.toolRecordsStart)
+	copy(saved, m.transcript[m.toolRecordsStart:m.toolRecordsEnd])
+
 	// Remove tool records from their current position (before the answer).
 	m.transcript = append(m.transcript[:m.toolRecordsStart], m.transcript[m.toolRecordsEnd:]...)
+
+	// Append tool records after the answer (Claude Code style).
+	m.transcript = append(m.transcript, saved...)
 
 	// Update or insert the tool count into the thinking summary.
 	if m.thoughtSummaryIdx >= 0 && m.thoughtSummaryIdx < len(m.transcript) {
@@ -2442,7 +2449,7 @@ func (m chatTUI) runningWorkingLine(cancelRequested, styled bool) string {
 			parts = append(parts, fmt.Sprintf(i18n.M.ChatStatusRunningFmt, m.turnShellCalls))
 		}
 		if len(parts) > 0 {
-			working += " · " + strings.Join(parts, " ")
+			working += " · " + strings.Join(parts, " · ")
 		}
 	}
 	if m.turnTokens > 0 {
@@ -4363,7 +4370,7 @@ func compactPermissionDesc(desc string) string {
 	switch {
 	case strings.Contains(lower, "failed") || strings.Contains(lower, "失败") || strings.Contains(lower, "失敗"):
 		return "failed"
-	case strings.Contains(lower, "already") || strings.Contains(lower, "已经") || strings.Contains(lower, "已经") || strings.Contains(lower, "已經"):
+	case strings.Contains(lower, "already") || strings.Contains(lower, "已经") || strings.Contains(lower, "已經"):
 		return "already allowed"
 	case strings.Contains(lower, "saved") || strings.Contains(lower, "保存") || strings.Contains(lower, "儲存"):
 		return "saved"

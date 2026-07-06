@@ -1,5 +1,5 @@
 // Formats a tool call as a Claude-style card line: a "● Verb(primary arg)"
-// header instead of the raw "-> name {json}", plus the "│" continuation gutter.
+// header instead of the raw "-> name {json}", plus the continuation gutter.
 package cli
 
 import (
@@ -10,12 +10,14 @@ import (
 	"reasonix/internal/tool"
 )
 
-// connector is the Claude-style "│" gutter that ties a continuation block (tool
-// output, streamed thinking) to the header line above it.
+// connector is the visual indent (two spaces) that ties a continuation block
+// (tool output, streamed thinking) to the header line above it, aligned to
+// match the answer and thinking bullet indentation.
 const connector = "  "
 
-// connectorBlock renders lines under the connector: the first carries the "│"
-// gutter, the rest align beneath it. Returns "" for no lines.
+// connectorBlock renders lines under the connector indent: the first is
+// prefixed with the connector, the rest align beneath it. Returns "" for no
+// lines.
 func connectorBlock(lines []string) string {
 	if len(lines) == 0 {
 		return ""
@@ -98,7 +100,7 @@ func toolCategory(name string) string {
 		"remember", "forget", "install_skill", "install_source",
 		"todo_write":
 		return "write"
-	case "bash":
+	case "bash", "wait", "kill_shell":
 		return "shell"
 	}
 	return ""

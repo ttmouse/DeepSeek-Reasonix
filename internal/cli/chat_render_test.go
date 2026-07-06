@@ -184,8 +184,8 @@ func TestFlushableMarkdownPrefixKeepsOpenFence(t *testing.T) {
 }
 
 // TestToolProgressStreamsThenCollapses proves a running tool's output streams
-// live under its card via the │ connector, then collapses to a line-count
-// summary when the result lands.
+// live under its card via the two-space connector, then collapses to
+// a line-count summary when the result lands.
 func TestToolProgressStreamsThenCollapses(t *testing.T) {
 	m := newTestChatTUI()
 	m.ingestEvent(event.Event{Kind: event.ToolDispatch, Tool: event.Tool{ID: "b1", Name: "bash", Args: `{"command":"go test ./..."}`}})
@@ -197,7 +197,7 @@ func TestToolProgressStreamsThenCollapses(t *testing.T) {
 		t.Fatalf("live output should be visible while running:\n%s", joined)
 	}
 	if !strings.Contains(joined, "  ") {
-		t.Fatalf("live output should use the │ connector:\n%s", joined)
+		t.Fatalf("live output should use the connector:\n%s", joined)
 	}
 
 	m.ingestEvent(event.Event{Kind: event.ToolResult, Tool: event.Tool{ID: "b1", Name: "bash", Output: "ok pkg/a\nok pkg/b\n"}})
@@ -241,7 +241,7 @@ func TestToolWorkingLineThenClears(t *testing.T) {
 // back-to-back Bash tool calls. Before the fix, the late ToolProgress for
 // the first tool (already superseded in the controller by a second
 // ToolDispatch) appended a fresh live block at the end of the transcript
-// under the *second* tool's card. Both "│" markers then stacked at the
+// under the *second* tool's card. Both markers then stacked at the
 // end, hiding which run produced which output. The fix threads the
 // transcript slot through shellTranscriptIdx so each tool's live block
 // stays directly under its own card regardless of the dispatch/progress
@@ -259,7 +259,7 @@ func TestConsecutiveToolCallsKeepMarkersUnderOwnCard(t *testing.T) {
 	// m.toolStreamID to "shell-2" and resets the live streaming state.
 	m.ingestEvent(event.Event{Kind: event.ToolDispatch, Tool: event.Tool{ID: "shell-2", Name: "bash", Args: `{"command":"git branch -a"}`}})
 	// The second bash also streams one chunk of output so its collapse
-	// produces a real │ marker (not the zero-output blank fallback).
+	// produces a real marker (not the zero-output blank fallback).
 	m.ingestEvent(event.Event{Kind: event.ToolProgress, Tool: event.Tool{ID: "shell-2", Output: "* main-v2\n"}})
 	// Late progress for the FIRST bash — the path that previously stacked
 	// its marker under the second card.
@@ -287,7 +287,7 @@ func TestConsecutiveToolCallsKeepMarkersUnderOwnCard(t *testing.T) {
 		t.Fatalf("expected two bash cards in dispatch order, got idx1=%d idx2=%d\n%s", idx1, idx2, strings.Join(transcript, "\n"))
 	}
 
-	// Each card must be followed by its own │-prefixed marker slot —
+	// Each card must be followed by its own marker slot —
 	// not just "some marker somewhere after the second card".
 	for _, pair := range []struct {
 		card string
@@ -298,7 +298,7 @@ func TestConsecutiveToolCallsKeepMarkersUnderOwnCard(t *testing.T) {
 	} {
 		next := transcript[pair.idx+1]
 		if !strings.Contains(next, "  ") {
-			t.Fatalf("%q's marker should be at transcript[%d] with the │ connector, got %q\nfull transcript:\n%s",
+			t.Fatalf("%q's marker should be at transcript[%d] with the connector, got %q\nfull transcript:\n%s",
 				pair.card, pair.idx+1, next, strings.Join(transcript, "\n"))
 		}
 	}
@@ -363,7 +363,7 @@ func TestCollapsedShellHintUsesKeyboardShortcutOnly(t *testing.T) {
 // prefixed tools (e.g. read_file) the streaming state belongs to whichever
 // id is current and the accumulator (shellOutputs) is never populated, so
 // the late path's "n" stayed at -1 and the final else branch rendered
-// "│ -1 lines". The fix in collapseShellSlot guards n < 0 by clearing the
+// "  -1 lines". The fix in collapseShellSlot guards n < 0 by clearing the
 // slot — a deliberate blank-line fallback rather than a misleading
 // negative count.
 func TestConsecutiveNonShellToolsDoNotRenderNegativeLineCount(t *testing.T) {
