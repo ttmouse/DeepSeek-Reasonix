@@ -82,12 +82,14 @@ type chatTUI struct {
 	// events) for the live "↓N" readout in the running status line.
 	turnTokens int
 	// turnToolCalls / turnShellCalls count the tools dispatched this turn so the
-	// collapsed summary can show "thought for Ns, ran N tools". turnReadTools
-	// and turnWriteTools are sub-categories for the live status bar aggregation.
+	// collapsed summary can show "thought for Ns, ran N tools". turnReadTools,
+	// turnWriteTools, and turnMCPTools are sub-categories for the live status
+	// bar aggregation.
 	turnToolCalls  int
 	turnShellCalls int
 	turnReadTools  int
 	turnWriteTools int
+	turnMCPTools   int
 	// toolRecordsStart is the transcript index where the first tool record of this
 	// turn was committed; -1 when none. collapseToolRecords truncates from here
 	// to collapse tool entries into the combined summary line.
@@ -1270,6 +1272,7 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.turnShellCalls = 0
 				m.turnReadTools = 0
 				m.turnWriteTools = 0
+				m.turnMCPTools = 0
 				m.toolRecordsStart = -1
 				m.toolRecordsEnd = -1
 				m.thoughtSummaryIdx = -1
@@ -2255,6 +2258,7 @@ func (m *chatTUI) moveToolRecordsAfterAnswer() {
 	m.turnShellCalls = 0
 	m.turnReadTools = 0
 	m.turnWriteTools = 0
+	m.turnMCPTools = 0
 	m.toolRecordsStart = -1
 	m.toolRecordsEnd = -1
 	m.thoughtSummaryIdx = -1
@@ -2447,6 +2451,9 @@ func (m chatTUI) runningWorkingLine(cancelRequested, styled bool) string {
 		}
 		if m.turnShellCalls > 0 {
 			parts = append(parts, fmt.Sprintf(i18n.M.ChatStatusRunningFmt, m.turnShellCalls))
+		}
+		if m.turnMCPTools > 0 {
+			parts = append(parts, fmt.Sprintf("tools %d", m.turnMCPTools))
 		}
 		if len(parts) > 0 {
 			working += " · " + strings.Join(parts, " · ")
@@ -3320,6 +3327,7 @@ func (m *chatTUI) startTurnWithRaw(sent, displayed, restore, raw string) tea.Cmd
 	m.turnShellCalls = 0
 	m.turnReadTools = 0
 	m.turnWriteTools = 0
+	m.turnMCPTools = 0
 	m.toolRecordsStart = -1
 	m.toolRecordsEnd = -1
 	// The controller owns the run goroutine, its context, and cancellation; it
@@ -3460,6 +3468,8 @@ func (m *chatTUI) ingestEvent(e event.Event) {
 				m.turnReadTools++
 			case "write":
 				m.turnWriteTools++
+			case "mcp":
+				m.turnMCPTools++
 			}
 			m.commitSpacer()
 			if m.toolRecordsStart < 0 {
@@ -3580,6 +3590,13 @@ func (m *chatTUI) ingestEvent(e event.Event) {
 		// semantics.
 		m.commitReasoning()
 		m.commitPending()
+		// Move any leftover tool records after the frozen answer text. This
+		// covers tool-only turns (plan-mode execution, auto-mode) where no
+		// Text/Message events were emitted between tool results and TurnDone.
+		if m.toolRecordsStart >= 0 && m.toolRecordsEnd < 0 {
+			m.toolRecordsEnd = len(m.transcript)
+		}
+		m.moveToolRecordsAfterAnswer()
 		// The bubble was echoed on Enter and an un-sent turn is swallowed above
 		// (turnDiscarded), so any turn reaching here keeps its bubble in scrollback;
 		// just clear the un-sendable flag.

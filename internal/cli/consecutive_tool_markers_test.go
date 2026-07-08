@@ -57,7 +57,7 @@ func TestParallelBashMarkersKeepOwnLineCount(t *testing.T) {
 	}
 	for name, idx := range cardIdx {
 		marker := transcript[idx+1]
-		if !strings.Contains(marker, "  ") {
+		if !strings.Contains(marker, connector) {
 			t.Fatalf("%s: marker slot at transcript[%d] should contain connector, got %q\nfull transcript:\n%s",
 				name, idx+1, marker, strings.Join(transcript, "\n"))
 		}

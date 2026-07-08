@@ -196,7 +196,7 @@ func TestToolProgressStreamsThenCollapses(t *testing.T) {
 	if !strings.Contains(joined, "ok pkg/a") || !strings.Contains(joined, "ok pkg/b") {
 		t.Fatalf("live output should be visible while running:\n%s", joined)
 	}
-	if !strings.Contains(joined, "  ") {
+	if !strings.Contains(joined, connector) {
 		t.Fatalf("live output should use the connector:\n%s", joined)
 	}
 
@@ -297,7 +297,7 @@ func TestConsecutiveToolCallsKeepMarkersUnderOwnCard(t *testing.T) {
 		{card: "git branch -a", idx: idx2},
 	} {
 		next := transcript[pair.idx+1]
-		if !strings.Contains(next, "  ") {
+		if !strings.Contains(next, connector) {
 			t.Fatalf("%q's marker should be at transcript[%d] with the connector, got %q\nfull transcript:\n%s",
 				pair.card, pair.idx+1, next, strings.Join(transcript, "\n"))
 		}

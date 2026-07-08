@@ -54,7 +54,7 @@ func maxViewport(totalItems, termRows int, searching bool) int {
 
 // renderSearchBar draws the search input line when searching is active.
 func renderSearchBar(w *os.File, query string) {
-	fmt.Fprintf(w, "\r\033[K%s %s\n", accent(">"), query+"_")
+	fmt.Fprintf(w, "\r\033[K%s %s\n", accent("/"), query+"_")
 }
 
 // filterMenuItems returns items whose name or desc contain the query (case-insensitive).

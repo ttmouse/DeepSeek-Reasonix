@@ -105,8 +105,10 @@ func (s *TextSink) Emit(e event.Event) {
 		s.lastWasToolResult = true
 
 	case event.Usage:
-		// Usage telemetry is tracked for stats but not printed to the user.
-		// The TUI shows a compact token counter in the running status line instead.
+		if line := FormatUsageLine(e.Usage, e.Pricing, e.CacheDiagnostics); line != "" {
+			fmt.Fprintln(s.out, line)
+			s.wroteAnything = true
+		}
 
 	case event.Notice:
 		if e.Level == event.LevelWarn {
