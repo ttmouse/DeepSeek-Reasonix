@@ -11,6 +11,7 @@
 import { lazy, Suspense } from "react";
 import type { Components } from "react-markdown";
 import { CodeViewer } from "./CodeViewer";
+import { StreamWidget } from "./StreamWidget";
 import { RichMarkdownLink } from "./githubLink";
 import { MarkdownTable } from "./MarkdownTable";
 import { MarkdownImage } from "./MarkdownImage";
@@ -97,6 +98,9 @@ export function createComponents(plainStatusBlocks: boolean): Components {
       const isBlock = match !== null || text.includes("\n");
       if (isBlock) {
         const value = text.replace(/\n$/, "");
+        if (lang === "widget") {
+          return <StreamWidget value={value} />;
+        }
         if (lang === "mermaid") {
           return (
             <Suspense fallback={<CodeViewer value={value} language="mermaid" scrollMode="bounded" maxHeight="min(60vh, 28rem)" />}>

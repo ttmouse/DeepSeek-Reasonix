@@ -71,6 +71,7 @@ var acceptsDefaultSnip = map[string]bool{
 	"todo_write":    true,
 	"update_goal":   true,
 	"wait":          true,
+	"widget_readme": true,
 	"write_file":    true,
 
 	// Browser-relay tools are desktop-only (relay runtime). Their results are

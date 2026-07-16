@@ -2288,6 +2288,21 @@ func unifiedBootToolNames() []string {
 		"update_goal",
 		"use_capability",
 		"wait",
+		"widget_readme",
+		"write_file",
+	}
+}
+
+func economyBootToolNames() []string {
+	return []string{
+		"ask",
+		"bash",
+		"bash_output",
+		"connect_tool_source",
+		"edit_file",
+		"kill_shell",
+		"read_file",
+		"wait",
 		"write_file",
 	}
 }
@@ -2342,7 +2357,7 @@ command = "reasonix-missing-mockmcp"
 		}
 	}
 	for _, forbidden := range []string{
-		"connect_tool_source", "web_fetch", "task", "read_only_task", "read_only_skill", "run_skill", "read_skill", "install_skill", "install_source",
+		"connect_tool_source", "web_fetch", "widget_readme", "task", "read_only_task", "read_only_skill", "run_skill", "read_skill", "install_skill", "install_source",
 		"explore", "research", "review", "security_review",
 		"lsp_definition", "lsp_references", "lsp_hover", "lsp_diagnostics",
 		"code_index", "glob", "grep", "ls", "move_file", "multi_edit",

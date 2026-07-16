@@ -5,8 +5,6 @@
 /npm/.stage/
 /reasonix
 /reasonix.exe
-/e2ebench
-/e2ebench.exe
 
 # Website (Astro) build output
 /site/dist/
@@ -50,11 +48,6 @@ node_modules/
 # Project-local Reasonix state; keep the checked-in review command.
 /.reasonix/*
 !/.reasonix/commands/review.md
-
-# Stray Reasonix state written under a package dir by a test whose RealPath
-# resolves to CWD (e.g. remote bootstrap EnsureServe). Never commit these.
-internal/**/.reasonix/
-desktop/**/.reasonix/
 
 # CodeGraph per-project index (rebuilt locally; never committed)
 .codegraph/
