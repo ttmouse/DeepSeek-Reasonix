@@ -692,6 +692,174 @@ func (a *App) showMainWindow() {
 	a.showMainWindowFrom("menu")
 }
 
+// handleDeepLink processes a reasonix:// URL opened by the OS. Supported forms:
+//
+//	reasonix://threads/<topicID>?workspace=<absPath>
+//	    → activate an existing tab whose TopicID matches, else open it
+//	reasonix://new?workspace=<absPath>&prompt=<urlencoded>
+//	    → open a project tab (or global if workspace empty) and submit the goal
+//
+// OnUrlOpen may fire before tabs are restored on cold start; the caller gates
+// on tabsRestored before invoking this.
+func (a *App) handleDeepLink(rawURL string) {
+	a.logDeepLink("handleDeepLink entry", "url", rawURL)
+	a.showMainWindowFrom("deeplink")
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		a.logDeepLink("unparsable url", "url", rawURL, "err", err.Error())
+		slog.Warn("deeplink: unparsable url", "url", rawURL, "err", err)
+		return
+	}
+	if !strings.EqualFold(parsed.Scheme, "reasonix") {
+		a.logDeepLink("unexpected scheme", "scheme", parsed.Scheme)
+		slog.Warn("deeplink: unexpected scheme", "scheme", parsed.Scheme)
+		return
+	}
+	query := parsed.Query()
+	workspace := strings.TrimSpace(query.Get("workspace"))
+	a.logDeepLink("parsed", "host", parsed.Host, "path", parsed.Path, "workspace", workspace)
+	switch {
+	case parsed.Host == "threads" && strings.TrimSpace(parsed.Path) != "":
+		topicID := strings.Trim(strings.TrimPrefix(parsed.Path, "/"), "/")
+		// The taskboard may pass a session file name (e.g.
+		// 20260805-064639.072848000-17an-deepseek-v4-flash) rather than a
+		// topic_id, and it may omit the workspace parameter. Resolve the file
+		// name first: it carries the topic id, scope and workspace root of the
+		// matching conversation, so the deep link still lands on the right tab
+		// even when the caller only supplied a session name.
+		scope := "project"
+		resolved := false
+		if target, ok := a.resolveSessionFile(topicID); ok {
+			a.logDeepLink("resolveSessionFile hit", "file", topicID, "topicID", target.topicID, "scope", target.scope, "workspace", target.workspaceRoot)
+			topicID = target.topicID
+			scope = target.scope
+			if workspace == "" {
+				workspace = target.workspaceRoot
+			}
+			resolved = true
+		} else {
+			a.logDeepLink("resolveSessionFile miss", "file", topicID, "willTryAsTopicID", topicID)
+		}
+		// Guard against synthetic identifiers that are not real conversations:
+		// the taskboard tags issues with a bare "reasonix-heartbeat" attribution
+		// marker when no session backs them. Only hand real topic ids to the
+		// frontend; anything else would activate a phantom tab and error out.
+		if !resolved && !strings.HasPrefix(topicID, "topic_") {
+			a.logDeepLink("skip phantom topic", "topic", topicID)
+			slog.Info("deeplink: skip phantom topic", "topic", topicID)
+			return
+		}
+		// Hand the resolved target to the frontend so it runs its own
+		// activateTopic path — exactly as if the user clicked the conversation
+		// in the sidebar. That refreshes the tab header AND the conversation
+		// content, and keeps single-surface pruning consistent with a real
+		// click. (Backend-side ActivateTopic alone would leave the content
+		// pane stale.)
+		a.emitRuntimeEvent("app:open-topic", map[string]string{
+			"scope":         scope,
+			"workspaceRoot": workspace,
+			"topicID":       topicID,
+		})
+		a.logDeepLink("emitted app:open-topic", "scope", scope, "workspace", workspace, "topicID", topicID)
+		slog.Info("deeplink: emitted open-topic", "scope", scope, "workspace", workspace, "topicID", topicID)
+	case parsed.Host == "new":
+		goal := query.Get("prompt")
+		scope := "project"
+		workspaceRoot := workspace
+		if workspaceRoot == "" {
+			scope = "global"
+		}
+		meta, err := a.ActivateTopic(scope, workspaceRoot, "", "")
+		if err != nil {
+			slog.Warn("deeplink: open new tab failed", "err", err)
+			return
+		}
+		if strings.TrimSpace(goal) != "" {
+			if _, err := a.SubmitInitialGoalToTab(meta.ID, goal, goal, goal, nil, "", ""); err != nil {
+				slog.Warn("deeplink: submit goal failed", "tab", meta.ID, "err", err)
+			}
+		}
+		slog.Info("deeplink: opened new tab", "tab", meta.ID, "workspace", workspaceRoot)
+	default:
+		slog.Warn("deeplink: unsupported target", "host", parsed.Host, "url", rawURL)
+	}
+}
+
+// resolvedSessionTarget carries the topic/scope/workspace resolved from a
+// session file name, so deep links without a workspace parameter can still
+// locate the matching conversation.
+type resolvedSessionTarget struct {
+	topicID       string
+	scope         string
+	workspaceRoot string
+}
+
+// resolveSessionFile looks up a session file name (with or without the .jsonl
+// suffix) across the known session directories and returns its topic id plus
+// the session's scope and workspace root. Returns ok=false when no session
+// file matches the given name.
+func (a *App) resolveSessionFile(name string) (resolvedSessionTarget, bool) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return resolvedSessionTarget{}, false
+	}
+	// Accept both a session file name (20260807-012459.824834000-session,
+	// with or without the .jsonl suffix) and a topic id
+	// (topic_20260807-012459_77f16abbac25bd24). Both resolve through the
+	// session index to the topic's scope and workspace root.
+	lookupName := strings.TrimSuffix(name, ".jsonl")
+	for _, dir := range a.knownSessionDirs() {
+		index, err := topicSessionIndexForDir(dir)
+		if err != nil {
+			continue
+		}
+		// Direct topic-id hit first (covers topic_* identifiers).
+		if matches := index.byTopic[name]; len(matches) > 0 {
+			m := matches[0]
+			return resolvedSessionTarget{
+				topicID:       name,
+				scope:         m.scope,
+				workspaceRoot: m.workspaceRoot,
+			}, true
+		}
+		for topicID, matches := range index.byTopic {
+			for _, match := range matches {
+				if filepath.Base(match.path) == lookupName ||
+					strings.TrimSuffix(filepath.Base(match.path), ".jsonl") == lookupName {
+					return resolvedSessionTarget{
+						topicID:       topicID,
+						scope:         match.scope,
+						workspaceRoot: match.workspaceRoot,
+					}, true
+				}
+			}
+		}
+	}
+	return resolvedSessionTarget{}, false
+}
+
+// logDeepLink appends a line to ~/.reasonix/deeplink.log so deep-link
+// handling can be diagnosed without relying on the system log (which may not
+// capture the desktop process's slog output).
+func (a *App) logDeepLink(message string, kv ...string) {
+	line := fmt.Sprintf("%s %s", time.Now().Format("15:04:05.000"), message)
+	for i := 0; i+1 < len(kv); i += 2 {
+		line += fmt.Sprintf(" %s=%s", kv[i], kv[i+1])
+	}
+	line += "\n"
+	dir := config.ReasonixHomeDir()
+	if dir == "" {
+		return
+	}
+	path := filepath.Join(dir, "deeplink.log")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.WriteString(line)
+}
+
 func (a *App) secondInstanceLaunch() {
 	a.showMainWindowFrom("second_instance")
 }

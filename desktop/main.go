@@ -207,6 +207,15 @@ func main() {
 			// Follow the OS appearance so the title bar matches light/dark system
 			// preference instead of being locked to dark.
 			Appearance: mac.DefaultAppearance,
+			// Deep links (reasonix://): the OS delivers the URL via Apple Events.
+			// Tabs may not be restored yet on cold start, so gate on the
+			// tabsRestored signal before dispatching (see handleDeepLink).
+			OnUrlOpen: func(rawURL string) {
+				go func() {
+					<-app.tabsRestoredSignal()
+					app.handleDeepLink(rawURL)
+				}()
+			},
 		},
 		Windows: &windows.Options{
 			// Follow the OS theme so the title bar matches light/dark system

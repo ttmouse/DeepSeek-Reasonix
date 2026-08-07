@@ -1579,6 +1579,7 @@ export default function App() {
       setSettingsTarget("general");
     });
   }, [closeTransientOverlays]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onResize = () => {
@@ -3917,6 +3918,25 @@ export default function App() {
     setSidebarImDetailConnectionId("");
     return enqueueNavigation({ kind: "topic", scope, workspaceRoot, topicId, sessionPath });
   }, [closeTransientOverlays, enqueueNavigation]);
+
+  // Deep links (reasonix://) hand the resolved conversation to the frontend.
+  // Route through handleOpenTopic — the same navigation path as a sidebar
+  // click — so the sidebar highlight and conversation content refresh
+  // together (a bare activateTopic call misses the navigation-intent seq and
+  // hits the stale-navigation guard, leaving the sidebar unhighlighted).
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.runtime) return;
+    return window.runtime.EventsOn("app:open-topic", (payload?: unknown) => {
+      const target = (payload ?? {}) as { scope?: string; workspaceRoot?: string; topicID?: string };
+      if (!target.topicID) return;
+      void handleOpenTopic(
+        target.scope || "project",
+        target.workspaceRoot || "",
+        target.topicID,
+        "",
+      );
+    });
+  }, [handleOpenTopic]);
 
   const openSidebarImConnectionSession = useCallback((connection: SidebarImConnection): Promise<void> => {
     setSidebarImDetailConnectionId("");

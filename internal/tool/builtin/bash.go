@@ -690,6 +690,13 @@ func bashCommandEnv(ctx context.Context) []string {
 			env = setEnvValue(env, "PATH", merged)
 		}
 	}
+	// Expose the current session id so attribution-aware CLIs (taskctl,
+	// reasonix run --resume) can tag their writes with the real conversation
+	// instead of falling back to a synthetic marker. Empty in shell contexts
+	// with no session scope (user !commands outside a turn).
+	if sessionID := jobs.SessionFromContext(ctx); strings.TrimSpace(sessionID) != "" {
+		env = setEnvValue(env, "REASONIX_THREAD_ID", strings.TrimSpace(sessionID))
+	}
 	return env
 }
 
