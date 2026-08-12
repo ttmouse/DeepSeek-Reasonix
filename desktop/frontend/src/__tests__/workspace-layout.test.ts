@@ -19,6 +19,7 @@ let failed = 0;
 const testDir = dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(resolve(testDir, "../App.tsx"), "utf8");
 const stylesSource = readFileSync(resolve(testDir, "../styles.css"), "utf8");
+const moreMenuSource = readFileSync(resolve(testDir, "../components/TopicbarMoreMenu.tsx"), "utf8");
 const terminalPanelSource = readFileSync(resolve(testDir, "../components/TerminalPanel.tsx"), "utf8");
 const terminalViewSource = readFileSync(resolve(testDir, "../components/TerminalView.tsx"), "utf8");
 const terminalRailSource = readFileSync(resolve(testDir, "../components/TerminalSessionRail.tsx"), "utf8");
@@ -241,7 +242,8 @@ const workspaceDockTabsSource = appSource.match(/<div className="workbench-dock_
 eq(
   workspaceDockTabsSource.length > 0
     && !/rightDock\.terminal|terminalPanelOpen|toggleTerminalPanel/.test(workspaceDockTabsSource)
-    && /className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"[\s\S]*?aria-label=\{t\("rightDock\.terminal"\)\}[\s\S]*?onClick=\{toggleTerminalPanel\}/.test(appSource),
+    && /<TopicbarMoreMenu[\s\S]*?toggleTerminal=\{toggleTerminalPanel\}/.test(appSource)
+    && /className="topicbar__menu-item"[\s\S]*?closeMenu\(\); toggleTerminal\(\)[\s\S]*?t\("rightDock\.terminal"\)/.test(moreMenuSource),
   true,
   "workspace dock omits the terminal view while the topic bar keeps the terminal drawer action",
 );

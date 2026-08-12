@@ -3456,6 +3456,18 @@ a[href] {
   max-width: none;
   margin-left: 0;
   margin-right: 0;
+  /* Virtuoso's inline style pins only top (position:absolute; top:0;
+     width:100%). With the scroller's horizontal padding, width:100%
+     resolves against the padding box and starts at padding-left, so the
+     right edge overflows past the content box and gets clipped by
+     overflow-x:hidden. Pin left/right to the content box edges instead
+     (following --transcript-pad-x) so rows keep the scroller's padding
+     on both sides and never overflow. */
+  left: var(--transcript-pad-x, 32px);
+  right: var(--transcript-pad-x, 32px);
+  /* Virtuoso sets width:100% inline; without !important the inline width
+     wins over left/right and right-edge clipping returns. */
+  width: auto !important;
 }
 .transcript__row {
   position: relative;
@@ -6489,7 +6501,7 @@ body > .mermaid-diagram--fullscreen {
 /* ── footer: composer + status line ──────────────────────────────────────── */
 .footer {
   flex: 0 0 auto;
-  border-top: 1px solid var(--border-soft);
+  border-top: 0px solid var(--border-soft);
   background: var(--chat-bg);
   padding: 12px 32px 10px;
 }
@@ -8615,12 +8627,40 @@ body > .mermaid-diagram--fullscreen {
 .prompt-shelf__card {
   display: grid;
   gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: 10px;
-  background: var(--bg-elev);
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
-  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: rgba(64, 64, 64, 0.06);
+  padding: 7px 12px;
   outline: none;
+}
+
+.prompt-shelf__card--collapsible {
+  cursor: pointer;
+}
+
+.prompt-shelf__card--collapsed .prompt-shelf__content > :not(.prompt-shelf__header) {
+  display: none;
+}
+
+/* Todo shelf: header actions (collapse/close) appear on card hover/focus. */
+.prompt-shelf--todo .prompt-shelf__header-actions {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.prompt-shelf--todo:hover .prompt-shelf__header-actions,
+.prompt-shelf--todo .prompt-shelf__header-button:focus-visible {
+  opacity: 1;
+}
+
+:root[data-theme="light"] .prompt-shelf__card,
+:root[data-theme="light"][data-theme-style] .prompt-shelf__card {
+  background: rgba(64, 64, 64, 0.05);
+}
+
+:root[data-theme="dark"] .prompt-shelf__card,
+:root[data-theme="dark"][data-theme-style] .prompt-shelf__card {
+  background: rgba(255, 255, 255, 0.08);
 }
 .prompt-shelf__content {
   display: grid;
@@ -8628,10 +8668,8 @@ body > .mermaid-diagram--fullscreen {
   gap: 8px;
 }
 .prompt-shelf__card:focus-visible {
-  border-color: var(--accent);
-  box-shadow:
-    0 7px 18px rgba(0, 0, 0, 0.1),
-    0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--fg-faint) 40%, transparent);
+  box-shadow: none;
 }
 .prompt-shelf__header {
   display: flex;
@@ -8647,21 +8685,26 @@ body > .mermaid-diagram--fullscreen {
 }
 .prompt-shelf__title {
   display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   color: var(--fg);
   font-size: 12.5px;
   font-weight: 650;
   line-height: 1.25;
 }
 .prompt-shelf__heading {
+  flex: 0 0 auto;
   min-width: 0;
 }
 .prompt-shelf__badges {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 .prompt-shelf__badge {
   display: inline-flex;
@@ -8686,13 +8729,19 @@ body > .mermaid-diagram--fullscreen {
   color: color-mix(in srgb, var(--err) 70%, var(--fg));
 }
 .prompt-shelf__meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg-dim);
   font-size: 11.5px;
-  line-height: 1.4;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  font-weight: 500;
+  line-height: 1.25;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-soft);
+  overflow-wrap: normal;
 }
 .prompt-shelf__header-actions,
 .prompt-shelf__quick-actions {
@@ -22879,7 +22928,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .topicbar__title-edit {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -22889,26 +22938,27 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .topicbar__title-input {
-  flex: 1 1 auto;
-  min-width: 140px;
-  width: min(420px, 100%);
+  flex: 0 0 auto;
+  width: 280px;
   height: 28px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   outline: none;
-  background: var(--bg-elev);
+  background: transparent;
   color: var(--fg);
   font: inherit;
   font-size: 15px;
   line-height: 1.25;
   font-weight: 680;
   --wails-draggable: no-drag;
+  transition: border-color 0.12s, background 0.12s;
 }
 
 .topicbar__title-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--fg-faint) 28%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .topicbar__spacer {
@@ -23061,6 +23111,137 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__export-menu button:focus-visible {
   color: var(--fg);
   background: var(--button-bg);
+}
+
+/* ── Topic bar "More" overflow menu ──────────────────────────────── */
+.topicbar__more {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Borderless icon-only entries: file opener, More menu, workspace toggle.
+   Default state has no background/border — hover/focus still highlight so
+   the controls stay discoverable. */
+.topicbar__actions .external-opener,
+.topicbar__actions .external-opener__primary,
+.topicbar__actions .external-opener__menu-trigger,
+.topicbar__actions .topicbar__more .topicbar__action-btn,
+.topicbar__actions .topicbar__chrome-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.topicbar__actions .external-opener__menu-trigger {
+  border-left: none !important;
+}
+
+.topicbar__actions .topicbar__more .topicbar__action-btn:hover:not(:disabled),
+.topicbar__actions .topicbar__more .topicbar__action-btn:focus-visible:not(:disabled),
+.topicbar__actions .external-opener__primary:hover:not(:disabled),
+.topicbar__actions .external-opener__primary:focus-visible:not(:disabled),
+.topicbar__actions .external-opener__menu-trigger:hover:not(:disabled),
+.topicbar__actions .external-opener__menu-trigger:focus-visible:not(:disabled) {
+  background: var(--button-bg) !important;
+  color: var(--fg) !important;
+}
+
+/* Compact icon + caret: shrink the primary so the app icon sits close to
+   the caret instead of being spread across two centered halves. */
+.topicbar__actions .external-opener__primary {
+  width: 24px;
+}
+
+.topicbar__actions .external-opener__menu-trigger {
+  width: 18px;
+}
+
+.topicbar__more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: var(--z-topicbar-menu);
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  --wails-draggable: no-drag;
+}
+
+.topicbar__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.topicbar__menu-item:hover,
+.topicbar__menu-item:focus-visible {
+  color: var(--fg);
+  background: var(--button-bg);
+}
+
+.topicbar__menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.topicbar__menu-item--active {
+  color: var(--accent);
+}
+
+.topicbar__more-export {
+  position: relative;
+}
+
+.topicbar__more-export-menu {
+  position: absolute;
+  left: calc(100% - 8px);
+  top: -5px;
+  z-index: var(--z-topicbar-menu);
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  --wails-draggable: no-drag;
+}
+
+.topicbar__more-export-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.topicbar__more-export-menu button:hover,
+.topicbar__more-export-menu button:focus-visible {
+  color: var(--fg);
+  background: var(--button-bg);
+}
+
+.topicbar__more-export-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .topicbar__icon-btn {
@@ -27926,7 +28107,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .topicbar {
-  min-height: 48px;
+  min-height: 45px;
   padding: 6px 18px;
   gap: 10px;
   background: var(--bg-elev);
@@ -28338,7 +28519,7 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .footer {
   padding: 12px 16px 10px;
   background: color-mix(in srgb, var(--chat-bg) 96%, var(--bg-elev));
-  border-top: 1px solid var(--border-soft);
+  border-top: 0px solid var(--border-soft);
 }
 
 :root[data-theme-style] .composer-wrap {
@@ -28805,7 +28986,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workbench-dock__tools {
-  height: 40px;
+  height: 45px;
   padding: 0 12px;
   border-bottom: 1px solid var(--border-soft);
 }
@@ -31122,15 +31303,13 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .topicbar__title-input,
 :root[data-theme-style] .app--creation .topicbar__title-input {
-  flex: 0 1 auto;
-  min-width: 4ch;
-  width: auto;
-  max-width: min(56ch, 100%);
+  flex: 0 0 auto;
+  width: 280px;
   height: 20px;
-  padding: 0 4px;
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--bg-elev) 22%, transparent);
+  padding: 0 6px;
+  border-color: transparent;
+  border-radius: 999px;
+  background: transparent;
 }
 
 .app--creation .topicbar__actions .topicbar__action-btn,
@@ -38123,5 +38302,66 @@ body > .mermaid-diagram--fullscreen {
     padding-left: 10px;
     padding-right: 10px;
     gap: 4px;
+  }
+}
+
+/* ── Topic bar title button (click-to-rename in every layout) ────── */
+.topicbar__workspace-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-faint);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-soft);
+  user-select: none;
+}
+
+.topicbar__title-button,
+:root[data-theme-style] .topicbar__title-button {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.topicbar__title-button:hover,
+.topicbar__title-button:focus-visible,
+:root[data-theme-style] .topicbar__title-button:hover,
+:root[data-theme-style] .topicbar__title-button:focus-visible {
+  color: var(--fg);
+}
+
+/* ── Topic bar background ───────────────────────────────────────────
+   Unify the chat-pane header with the surrounding chat surface. The
+   topic bar defaults to --bg-elev; in light themes that reads as a hard
+   white band, so use #F5F6F9 to blend it into the chat area. Dark themes
+   keep the themed elevation so the header never turns light-on-dark.
+   !important beats the theme-style / chrome-hidden topicbar rules. */
+.topicbar,
+:root[data-theme="dark"] .topicbar,
+:root[data-theme-style] .topicbar {
+  background: var(--bg-elev) !important;
+}
+
+:root[data-theme="light"][data-theme-style] .topicbar,
+:root[data-theme="light"] .topicbar {
+  background: #f5f6f9 !important;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .topicbar {
+    background: #f5f6f9 !important;
   }
 }

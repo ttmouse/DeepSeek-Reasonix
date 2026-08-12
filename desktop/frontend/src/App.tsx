@@ -4,7 +4,6 @@ import {
   Activity,
   Command,
   Copy as RestoreIcon,
-  Download,
   Minus,
   Search,
   Server,
@@ -12,14 +11,10 @@ import {
   SquarePen,
   PanelLeft,
   PanelRight,
-  FileDown,
-  FileImage,
   FileText,
-  FileJson,
   GitBranch,
   MessageSquare,
   Settings as SettingsIcon,
-  Pencil,
   RotateCw,
   Trash2,
   AlarmClock,
@@ -74,6 +69,7 @@ import { HeartbeatPanel } from "./custom/features/heartbeat/HeartbeatPanel";
 import "./custom/features/heartbeat/heartbeat.css";
 import { CopyButton } from "./components/CopyButton";
 import { ExternalOpener, shouldMountExternalOpener } from "./components/ExternalOpener";
+import { TopicbarMoreMenu } from "./components/TopicbarMoreMenu";
 import { startTerminalEventBridge } from "./lib/terminalEvents";
 import { applyTerminalThemePreference } from "./lib/terminalTheme";
 import { formatTerminalOutputForComposer } from "./lib/terminalOutput";
@@ -4107,7 +4103,7 @@ export default function App() {
     ? sidebarImDetailConnection.platformLabel
     : topicbarImSource ? t("msg.fromIm", { source: topicbarImSource.label }) : "";
   const topicbarImSourcePlatform = sidebarImDetailConnection?.platform ?? topicbarImSource?.platform;
-  const topicbarSubtitleVisible = !sidebarCreation && Boolean(topicbarWorkspaceLabel || topicbarImSourceLabel);
+  const topicbarSubtitleVisible = !sidebarCreation && Boolean(activeTab?.isolatedWorktree || topicbarImSourceLabel);
   const topicbarSubtitleTitle = sidebarImDetailConnection
     ? [topicbarWorkspaceLabel, topicbarImSourceLabel, sidebarImScopeLabel(sidebarImDetailConnection, t)].filter(Boolean).join(" · ")
     : [topicbarWorkspacePath || topicbarWorkspaceLabel, topicbarImSourceLabel].filter(Boolean).join(" · ");
@@ -4479,6 +4475,7 @@ export default function App() {
                       size={sidebarCreation ? topicbarTitleEditSize : undefined}
                       value={topicTitleDraft}
                       onChange={(event) => setTopicTitleDraft(event.target.value)}
+                      onFocus={(event) => event.currentTarget.select()}
                       onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
@@ -4492,7 +4489,7 @@ export default function App() {
                       onBlur={() => void commitActiveTopicRename()}
                     />
                   </div>
-                ) : sidebarCreation && topicbarCanRename ? (
+                ) : topicbarCanRename ? (
                   <h1 title={topicTitle(activeTab)}>
                     <button
                       className="topicbar__title-button"
@@ -4506,23 +4503,14 @@ export default function App() {
                 ) : (
                   <h1 title={sidebarImDetailConnection ? topicbarTitle : topicTitle(activeTab)}>{topicbarTitle}</h1>
                 )}
-                {!sidebarCreation && (
-                  <Tooltip label={t("topicBar.renameSession")}>
-                    <button
-                      className="topicbar__icon-btn"
-                      type="button"
-                      disabled={!topicbarCanRename || topicbarEditing}
-                      onClick={startActiveTopicRename}
-                      aria-label={t("topicBar.renameSession")}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  </Tooltip>
+                {topicbarWorkspaceLabel && (
+                  <span className="topicbar__workspace-label" title={topicbarWorkspaceLabel}>
+                    {topicbarWorkspaceLabel}
+                  </span>
                 )}
               </div>
               {topicbarSubtitleVisible && (
                 <div className="topicbar__subtitle" title={topicbarSubtitleTitle}>
-                  {topicbarWorkspaceLabel && <span>{topicbarWorkspaceLabel}</span>}
                   {activeTab?.isolatedWorktree && <WorktreeBadge size={11} />}
                   {topicbarImSourcePlatform && (
                     <span className={`topicbar__source-chip topicbar__source-chip--${topicbarImSourcePlatform}`}>
@@ -4534,116 +4522,36 @@ export default function App() {
             </div>
             <div className="topicbar__spacer" />
             <div className="topicbar__actions">
-              {sidebarCreation && shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
+              {shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
               )}
               {!sidebarImDetailConnection && (
-              <>
-              <Tooltip label={t("topicBar.copyAll")}>
-                <CopyButton
-                  getText={getSessionMarkdown}
-                  label={t("topicBar.copyAll")}
-                  className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                  showInlineLabel={false}
+                <TopicbarMoreMenu
+                  sessionHasContent={sessionHasContent}
+                  getSessionMarkdown={getSessionMarkdown}
+                  exportSession={(format) => void exportSession(format)}
+                  openChangedDock={() => openRightDockMode("changed")}
+                  toggleTerminal={toggleTerminalPanel}
+                  openSessionSummary={() => setTasksOpen((open) => open ? false : "session")}
+                  tasksOpen={Boolean(tasksOpen)}
                 />
-              </Tooltip>
-              <div className={`topicbar__export${topicExportOpen ? " topicbar__export--open" : ""}`}>
-                <Tooltip label={t("topicBar.export")}>
-                  <button
-                    className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                    type="button"
-                    disabled={!sessionHasContent}
-                    aria-label={t("topicBar.export")}
-                    aria-haspopup="menu"
-                    aria-expanded={topicExportOpen}
-                    onClick={() => setTopicExportOpen((open) => !open)}
-                  >
-                    <Download size={14} />
-                  </button>
-                </Tooltip>
-                {topicExportOpen && (
-                  <div className="topicbar__export-menu" role="menu">
-                    <button type="button" role="menuitem" onClick={() => void exportSession("markdown")}>
-                      <FileText size={13} />
-                      <span>{t("topicBar.exportMarkdown")}</span>
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("json")}>
-                      <FileJson size={13} />
-                      <span>{t("topicBar.exportJson")}</span>
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("pdf")}>
-                      <FileDown size={13} />
-                      <span>{t("topicBar.exportPdf")}</span>
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => void exportSession("image")}>
-                      <FileImage size={13} />
-                      <span>{t("topicBar.exportImage")}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-              </>
               )}
-              {!sidebarCreation && (
-                <Tooltip label={t("workspace.changedTab")}>
-                  <button
-                    className="topicbar__action-btn topicbar__action-btn--label"
-                    type="button"
-                    aria-label={t("workspace.changedTab")}
-                    aria-pressed={workspacePanelRenderable && rightDockMode === "changed"}
-                    onClick={() => openRightDockMode("changed")}
-                  >
-                    <GitBranch size={14} />
-                    <span>{t("workspace.changedTab")}</span>
-                  </button>
-                </Tooltip>
-              )}
-              {!sidebarImDetailConnection && (
-                <Tooltip label={t("rightDock.terminal")}>
-                  <button
-                    className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
-                    type="button"
-                    aria-label={t("rightDock.terminal")}
-                    aria-pressed={terminalPanelOpen}
-                    onPointerEnter={prefetchTerminalPanel} onFocus={prefetchTerminalPanel}
-                    onClick={toggleTerminalPanel}
-                  >
-                    <TerminalSquare size={14} />
-                  </button>
-                </Tooltip>
-              )}
-              {!sidebarCreation && shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
-                <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
-              )}
-              <Tooltip label={t("summary.session")}>
+              <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
                 <button
-                  className={`topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility${tasksOpen ? " topicbar__action-btn--active" : ""}`}
+                  className={[
+                    "topicbar__chrome-btn",
+                    "topicbar__chrome-btn--workspace",
+                    workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
+                    workspaceTogglePressed ? "topicbar__chrome-btn--pressed" : "",
+                  ].filter(Boolean).join(" ")}
                   type="button"
-                  aria-label={t("summary.session")}
-                  aria-expanded={Boolean(tasksOpen)}
-                  onClick={() => setTasksOpen((open) => open ? false : "session")}
+                  onClick={toggleWorkspacePanel}
+                  aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
+                  aria-pressed={workspacePanelRenderable}
                 >
-                  <Activity size={14} />
+                  <PanelRight size={15} />
                 </button>
               </Tooltip>
-              {(sidebarCreation || workbenchChromeHidden) && (
-                <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
-                  <button
-                    className={[
-                      "topicbar__chrome-btn",
-                      "topicbar__chrome-btn--workspace",
-                      workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
-                      workspaceTogglePressed ? "topicbar__chrome-btn--pressed" : "",
-                    ].filter(Boolean).join(" ")}
-                    type="button"
-                    onClick={toggleWorkspacePanel}
-                    aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
-                    aria-pressed={workspacePanelRenderable}
-                  >
-                    <PanelRight size={15} />
-                  </button>
-                </Tooltip>
-              )}
               {tasksOpen && (
                 <div className="taskmonitor-popover" role="dialog" aria-label={t("summary.session")}>
                   <Suspense fallback={null}>
