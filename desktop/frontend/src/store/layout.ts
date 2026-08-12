@@ -56,20 +56,23 @@ function clampStoredSidebarWidth(width: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(CREATION_SIDEBAR_MIN_WIDTH, Math.round(width)));
 }
 
-export function clampRightDockPreviewWidth(width: number): number {
-  return Math.min(RIGHT_DOCK_MAX_WIDTH, Math.max(RIGHT_DOCK_PREVIEW_MIN_WIDTH, Math.round(width)));
+export function clampRightDockPreviewWidth(width: number, maxWidth = RIGHT_DOCK_MAX_WIDTH): number {
+  return Math.min(Math.max(maxWidth, RIGHT_DOCK_MAX_WIDTH), Math.max(RIGHT_DOCK_PREVIEW_MIN_WIDTH, Math.round(width)));
 }
 
-export function clampRightDockTreeWidth(width: number): number {
-  return Math.min(RIGHT_DOCK_TREE_MAX_WIDTH, Math.max(RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
+export function clampRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TREE_MAX_WIDTH): number {
+  return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MAX_WIDTH), Math.max(RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
 }
 
-export function clampCreationRightDockTreeWidth(width: number): number {
-  return Math.min(RIGHT_DOCK_TREE_MAX_WIDTH, Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
+export function clampCreationRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TREE_MAX_WIDTH): number {
+  return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MAX_WIDTH), Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
 }
 
 function clampStoredRightDockTreeWidth(width: number): number {
-  return Math.min(RIGHT_DOCK_TREE_MAX_WIDTH, Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
+  // Stored widths are validated again against the live viewport at load time
+  // (resolveWorkspacePanelWidth clamps to the chat pane's 400px floor), so
+  // persistence only guards the sane lower bound and integer form.
+  return Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width));
 }
 
 export function defaultSidebarWidth(): number {

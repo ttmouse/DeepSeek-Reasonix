@@ -288,7 +288,6 @@ const WorkspacePanel = lazy(async () => {
 });
 
 const CHAT_MIN_WIDTH = 400;
-const CHAT_COMFORT_MIN_WIDTH = 560;
 const WORKSPACE_RESIZER_WIDTH = 8;
 
 function stripLegacyGoalBudgetFlags(arg: string): string {
@@ -1576,18 +1575,13 @@ export default function App() {
     ? CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH
     : RIGHT_DOCK_MIN_RENDER_WIDTH;
   const workspacePanelMinWidth = rightDockDetailActive ? RIGHT_DOCK_PREVIEW_MIN_WIDTH : rightDockTreeMinWidth;
-  const chatReservedWidth = workspacePanelOpen && !workspacePanelMaximized ? CHAT_COMFORT_MIN_WIDTH : CHAT_MIN_WIDTH;
-  const {
-    renderWidth: workspacePanelRenderWidth,
-    overlay: workspacePanelOverlay,
-    renderable: workspacePanelRenderable,
-    gridOpen: workspacePanelGridOpen,
-  } = resolveWorkspacePanelPlacement({
-    viewportWidth, sidebarCollapsed, sidebarWidth, chatMinWidth: chatReservedWidth,
-    resizerWidth: WORKSPACE_RESIZER_WIDTH, open: workspacePanelOpen,
-    maximized: workspacePanelMaximized, preferredWidth: preferredWorkspacePanelWidth,
-    minWidth: workspacePanelMinWidth, minRenderWidth: rightDockMinRenderWidth,
-    liveWidth: liveWorkspacePanelRenderWidth,
+  const chatReservedWidth = CHAT_MIN_WIDTH;
+  const workspacePanelAvailableWidth = availableWorkspacePanelWidth({
+    viewportWidth,
+    sidebarCollapsed,
+    sidebarWidth,
+    chatMinWidth: chatReservedWidth,
+    resizerWidth: WORKSPACE_RESIZER_WIDTH,
   });
   const resolveLiveWorkspacePanelRenderWidth = useCallback(
     (preferredWidth: number, nextSidebarWidth = sidebarWidth) =>
@@ -2685,27 +2679,27 @@ export default function App() {
     (width: number) => {
       closeTransientOverlays();
       if (rightDockDetailActive) {
-        const next = clampRightDockPreviewWidth(width);
+        const next = clampRightDockPreviewWidth(width, workspacePanelAvailableWidth);
         setRightDockPreviewWidth(next);
         saveRightDockPreviewWidth(next);
         return;
       }
-      const next = rightDockTreeWidthClamp(width);
+      const next = rightDockTreeWidthClamp(width, workspacePanelAvailableWidth);
       setRightDockTreeWidth(next);
       saveRightDockTreeWidth(next);
     },
-    [closeTransientOverlays, rightDockDetailActive, rightDockTreeWidthClamp],
+    [closeTransientOverlays, rightDockDetailActive, rightDockTreeWidthClamp, workspacePanelAvailableWidth],
   );
 
   const ensureWorkspacePanelWidth = useCallback(
     (width: number) => {
       closeTransientOverlays();
       if (rightDockMode === "context") return;
-      const next = clampRightDockPreviewWidth(width);
+      const next = clampRightDockPreviewWidth(width, workspacePanelAvailableWidth);
       setRightDockPreviewWidth(next);
       saveRightDockPreviewWidth(next);
     },
-    [closeTransientOverlays, rightDockMode],
+    [closeTransientOverlays, rightDockMode, workspacePanelAvailableWidth],
   );
 
   const startWorkspacePanelResize = useCallback(
@@ -2729,9 +2723,9 @@ export default function App() {
         const delta = moveEvent.clientX - startX;
         nextDockWidth = startDockWidth - delta;
         if (rightDockDetailActive) {
-          nextDockWidth = clampRightDockPreviewWidth(nextDockWidth);
+          nextDockWidth = clampRightDockPreviewWidth(nextDockWidth, workspacePanelAvailableWidth);
         } else {
-          nextDockWidth = rightDockTreeWidthClamp(nextDockWidth);
+          nextDockWidth = rightDockTreeWidthClamp(nextDockWidth, workspacePanelAvailableWidth);
         }
         liveResize.schedule(resolveLiveWorkspacePanelRenderWidth(nextDockWidth));
       };
@@ -2752,7 +2746,7 @@ export default function App() {
       window.addEventListener("pointerup", onDone);
       window.addEventListener("pointercancel", onDone);
     },
-    [closeTransientOverlays, resolveLiveWorkspacePanelRenderWidth, rightDockDetailActive, rightDockTreeWidthClamp, setSavedWorkspacePanelWidth, workspacePanelOpen, workspacePanelRenderWidth],
+    [closeTransientOverlays, resolveLiveWorkspacePanelRenderWidth, rightDockDetailActive, rightDockTreeWidthClamp, setSavedWorkspacePanelWidth, workspacePanelAvailableWidth, workspacePanelOpen, workspacePanelRenderWidth],
   );
 
   const resizeWorkspacePanelWithKeyboard = useCallback(
@@ -2765,10 +2759,10 @@ export default function App() {
         setSavedWorkspacePanelWidth(rightDockDetailActive ? RIGHT_DOCK_PREVIEW_MIN_WIDTH : rightDockTreeMinWidth);
       } else if (event.key === "End") {
         event.preventDefault();
-        setSavedWorkspacePanelWidth(rightDockDetailActive ? RIGHT_DOCK_MAX_WIDTH : RIGHT_DOCK_TREE_MAX_WIDTH);
+        setSavedWorkspacePanelWidth(workspacePanelAvailableWidth);
       }
     },
-    [rightDockDetailActive, rightDockTreeMinWidth, setSavedWorkspacePanelWidth, workspacePanelRenderWidth],
+    [rightDockDetailActive, rightDockTreeMinWidth, setSavedWorkspacePanelWidth, workspacePanelAvailableWidth, workspacePanelRenderWidth],
   );
 
   const terminalRenderHeight = clampTerminalHeight(terminalHeight, viewportHeight);
@@ -4103,6 +4097,7 @@ export default function App() {
       : defaultRightDockTreeWidth();
   const workspacePanelResizeMinWidth = workspacePanelAriaMinWidth(workspacePanelMinWidth, workspacePanelRenderWidth);
   const workspacePanelMaxWidth = rightDockDetailActive ? RIGHT_DOCK_MAX_WIDTH : RIGHT_DOCK_TREE_MAX_WIDTH;
+  const workspacePanelResizeMaxWidth = Math.max(workspacePanelMaxWidth, workspacePanelAvailableWidth);
   const sidebarCreation = desktopLayoutStyle === "creation";
   const topicbarTitle = sidebarImDetailConnection ? t("botDetail.title", { name: sidebarImDetailConnection.title }) : topicDisplayTitle(activeTab);
   const topicbarWorkspaceLabel = sidebarImDetailConnection ? t("botDetail.subtitle") : activeTab ? tabWorkspaceTitle(activeTab) : "";
@@ -5029,7 +5024,7 @@ export default function App() {
             aria-orientation="vertical"
             aria-label={t("rightDock.resize")}
             aria-valuemin={workspacePanelResizeMinWidth}
-            aria-valuemax={Math.max(workspacePanelMaxWidth, workspacePanelRenderWidth)}
+            aria-valuemax={Math.max(workspacePanelResizeMaxWidth, workspacePanelRenderWidth)}
             aria-valuenow={workspacePanelRenderWidth}
             onPointerDown={startWorkspacePanelResize}
             onKeyDown={resizeWorkspacePanelWithKeyboard}
