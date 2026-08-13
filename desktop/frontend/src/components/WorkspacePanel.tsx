@@ -1067,6 +1067,28 @@ export function WorkspacePanel({
     overscan: 10,
     directDomUpdates: true,
   });
+  // Restore the persisted scroll position once the tree has grown tall enough
+  // to actually reach it. The tree loads asynchronously layer by layer: the
+  // first render usually has only the top-level rows, so scrolling then would
+  // clamp the saved offset to the (tiny) current scrollable range and lose the
+  // position forever. Keep a pending target and retry on every tree change
+  // until the tree's total height exceeds it, then scroll once.
+  const pendingScrollRestoreRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!open || treeRows.length === 0) return;
+    if (pendingScrollRestoreRef.current == null) {
+      const saved = readWorkspaceTreeMemory(workspaceMemoryKey)?.scrollTop;
+      if (saved == null || !Number.isFinite(saved) || saved <= 0) return;
+      pendingScrollRestoreRef.current = saved;
+    }
+    const target = pendingScrollRestoreRef.current;
+    // Strictly less-than: when the tree's total height equals the saved offset
+    // exactly, it is still reachable — using <= would leave the restore
+    // pending forever and the tree stuck at the top.
+    if (virtualizer.getTotalSize() < target) return; // tree not tall enough yet
+    virtualizer.scrollToOffset(target, { align: "start" });
+    pendingScrollRestoreRef.current = null;
+  }, [open, treeRows.length, workspaceMemoryKey, virtualizer]);
   const virtualTreeItems = virtualizer.getVirtualItems();
   const compactProbePaths = virtualTreeItems
     .map((item) => treeRows[item.index])
