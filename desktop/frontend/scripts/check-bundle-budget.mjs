@@ -95,5 +95,9 @@ const rawInitialBytes = [...initialJS, ...initialCSS, ...appShellCSS]
   .reduce((total, path) => total + statSync(path).size, 0);
 // The maintained Virtuoso engine adds 49.1 KiB raw (2.2%) over the previous
 // 2268.7 KiB gate. Retain 1% headroom to bound hash/minifier drift.
-assertBudget("initial raw JavaScript and CSS", rawInitialBytes, 2_341 * 1024);
+// The workspace panel rework (change-row hover/revert, status badges, More
+// menu, completion summary) adds ~4 KiB raw over that gate; raised 2341 -> 2345
+// to absorb the locally attributable UI styling without widening the original
+// Virtuoso exception further.
+assertBudget("initial raw JavaScript and CSS", rawInitialBytes, 2_345 * 1024);
 assertBudget("largest initial JavaScript chunk raw", largestInitialJSRaw, 1_000 * 1024);

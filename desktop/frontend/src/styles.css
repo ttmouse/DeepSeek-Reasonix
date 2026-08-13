@@ -332,7 +332,7 @@
     --bg-soft: #eef2f7;
     --bg-elev: #ffffff;
     --bg-elev-2: #f2f5f9;
-    --sidebar-bg: #f3f6fa;
+    --sidebar-bg: #fbfaf8;
     --sidebar-hover: #e8edf4;
     --sidebar-active: #eaf1ff;
     --chat-bg: #ffffff;
@@ -407,7 +407,7 @@
   --bg-soft: #eef2f7;
   --bg-elev: #ffffff;
   --bg-elev-2: #f2f5f9;
-  --sidebar-bg: #f3f6fa;
+  --sidebar-bg: #fbfaf8;
   --sidebar-hover: #e8edf4;
   --sidebar-active: #eaf1ff;
   --chat-bg: #ffffff;
@@ -958,7 +958,7 @@
   --bg-soft: #eef0f4;
   --bg-elev: #ffffff;
   --bg-elev-2: #f7f8fb;
-  --sidebar-bg: #ffffff;
+  --sidebar-bg: #fbfaf8;
   --sidebar-hover: #eef0f4;
   --sidebar-active: rgba(47, 111, 224, 0.12);
   --chat-bg: #f5f6f9;
@@ -1027,7 +1027,7 @@
     --bg-soft: #eef0f4;
     --bg-elev: #ffffff;
     --bg-elev-2: #f7f8fb;
-    --sidebar-bg: #ffffff;
+    --sidebar-bg: #fbfaf8;
     --sidebar-hover: #eef0f4;
     --sidebar-active: rgba(47, 111, 224, 0.12);
     --chat-bg: #f5f6f9;
@@ -26711,7 +26711,7 @@ body > .mermaid-diagram--fullscreen {
   --bg-soft: #f0f3f8;
   --bg-elev: #ffffff;
   --bg-elev-2: #eef2f7;
-  --sidebar-bg: #f3f6fa;
+  --sidebar-bg: #fbfaf8;
   --sidebar-hover: #e7edf5;
   --sidebar-active: color-mix(in srgb, var(--accent) 9%, #ffffff);
   --chat-bg: #f8fafc;
@@ -26731,7 +26731,7 @@ body > .mermaid-diagram--fullscreen {
     --bg-soft: #f0f3f8;
     --bg-elev: #ffffff;
     --bg-elev-2: #eef2f7;
-    --sidebar-bg: #f3f6fa;
+    --sidebar-bg: #fbfaf8;
     --sidebar-hover: #e7edf5;
     --sidebar-active: color-mix(in srgb, var(--accent) 9%, #ffffff);
     --chat-bg: #f8fafc;
