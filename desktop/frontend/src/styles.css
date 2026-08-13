@@ -10799,9 +10799,80 @@ body > .mermaid-diagram--fullscreen {
   font: inherit;
   text-align: left;
 }
-.workspace-change:hover {
+.workspace-change > svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+.workspace-change-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: var(--tree-row-radius);
+}
+/* Hover/selection highlight spans the whole row (file entry + revert button)
+   so the revert control sits inside the same background as the file. The
+   inner file button stays transparent and inherits the row's surface. */
+.workspace-change-row:hover {
   background: var(--tree-row-hover-bg);
+}
+.workspace-change-row:hover .workspace-change {
   color: var(--fg);
+}
+.workspace-change-row:has(.workspace-change--active) {
+  background: var(--tree-row-current-bg);
+}
+.workspace-change-row:has(.workspace-change--active) .workspace-change {
+  color: var(--tree-row-current-fg);
+}
+.workspace-change-row .workspace-change {
+  flex: 1 1 auto;
+  border-radius: 0;
+}
+.workspace-change__revert {
+  --wails-draggable: no-drag;
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 42px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  /* Opaque surface so the overlay fully covers the status text beneath it —
+     a transparent fill would let the badge glyphs show through the button. */
+  background: var(--bg-soft);
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+/* The revert control is a per-row action overlaid on the status badge: hidden
+   until the row is hovered, then revealed in the same right-hand slot so it
+   reads as replacing the badge. Keyboard focus reveals it too, so the action
+   is reachable without a pointer. */
+.workspace-change-row:hover .workspace-change__revert,
+.workspace-change-row:has(.workspace-change--active) .workspace-change__revert,
+.workspace-change__revert:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.workspace-change__revert:hover,
+.workspace-change__revert:focus-visible {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-soft));
+  color: color-mix(in srgb, var(--danger) 82%, var(--fg));
+}
+.workspace-change__revert:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--danger) 24%, transparent);
+  outline-offset: 2px;
 }
 .workspace-change--disabled {
   cursor: default;
@@ -10811,7 +10882,8 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg-dim);
 }
 .workspace-change--active {
-  background: var(--tree-row-current-bg);
+  /* Background now lives on the row (see .workspace-change-row:has(...)); the
+     entry itself only tints the text so the revert button shares the surface. */
   color: var(--tree-row-current-fg);
 }
 .workspace-change__body {
@@ -10850,19 +10922,16 @@ body > .mermaid-diagram--fullscreen {
   gap: 3px;
 }
 .workspace-change__badge {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 5px;
-  border: 1px solid var(--border-soft);
-  border-radius: 5px;
+  /* Pure status label — intentionally non-interactive: no border, no
+     background, no button affordance. The revert button carries the only
+     interactive affordance in the row. */
+  display: inline;
   color: var(--fg-faint);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1;
 }
 .workspace-change__badge--git {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-soft));
+  color: var(--fg-faint);
 }
 .workspace-change-scope {
   display: flex;
@@ -28544,9 +28613,6 @@ body > .mermaid-diagram--fullscreen {
   background: transparent;
 }
 
-
-
-
 @media (prefers-reduced-motion: no-preference) {
   :root[data-theme-style] .process-card:has(.process-card__spin)::after {
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
@@ -29012,7 +29078,6 @@ body > .mermaid-diagram--fullscreen {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-
 :root[data-theme-style] .sidebar-resizer::after {
   background: var(--border-soft);
 }
@@ -29191,15 +29256,28 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workspace-tree__row:hover,
-:root[data-theme-style] .workspace-change:hover,
 :root[data-theme-style] .workspace-recent-menu__item:hover {
   background: var(--workspace-files-hover);
   color: var(--fg);
   transform: none;
 }
 
-:root[data-theme-style] .workspace-tree__row--active,
-:root[data-theme-style] .workspace-change--active {
+/* Change rows: the highlight spans the whole row (file entry + revert button).
+   The entry button inherits the row surface instead of painting its own. */
+:root[data-theme-style] .workspace-change-row:hover {
+  background: var(--workspace-files-hover);
+}
+:root[data-theme-style] .workspace-change-row:hover .workspace-change {
+  color: var(--fg);
+}
+:root[data-theme-style] .workspace-change-row:has(.workspace-change--active) {
+  background: var(--workspace-selection-bg);
+}
+:root[data-theme-style] .workspace-change-row:has(.workspace-change--active) .workspace-change {
+  color: var(--workspace-selection-fg);
+}
+
+:root[data-theme-style] .workspace-tree__row--active {
   background: var(--workspace-selection-bg);
   color: var(--workspace-selection-fg);
 }
@@ -29225,8 +29303,8 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .workspace-change {
   min-height: 56px;
   padding: 8px 9px;
-  border: 1px solid transparent;
-  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  border: 0;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
 }
 
 :root[data-theme-style] .workspace-change-scope__head {
@@ -29236,18 +29314,21 @@ body > .mermaid-diagram--fullscreen {
 
 /* The changed-tab content sits directly in the preview body whose theme-style
    left/right padding is 0 (code/markdown views supply their own). Give the
-   changed view's containers the same horizontal inset as other dock tabs. */
-:root[data-theme-style] .workspace-git-history,
-:root[data-theme-style] .workspace-change-scope {
+   outer containers a horizontal inset. Only the outermost layer gets padding:
+   in the changed overview the change-scope nests inside workspace-git-history
+   (which already pads 14px), so applying 14px to both would double the inset
+   to 28px. A change-scope that hangs directly off the body (scoped file list
+   in the files tab) gets the inset via the direct-child rule instead. */
+:root[data-theme-style] .workspace-git-history {
+  padding: 0 14px;
+}
+:root[data-theme-style] .workspace-preview__body > .workspace-change-scope {
   padding: 0 14px;
 }
 
-:root[data-theme-style] .workspace-change:hover {
-  border-color: color-mix(in srgb, var(--fg-faint) 20%, transparent);
-}
-
-:root[data-theme-style] .workspace-change--active {
-  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+:root[data-theme-style] .workspace-change__revert {
+  border-color: var(--border);
+  background: var(--bg-soft);
 }
 
 :root[data-theme-style] .workspace-change__name {
@@ -29261,15 +29342,11 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workspace-change__badge {
-  height: 18px;
-  border-radius: 5px;
-  background: var(--bg-soft);
   color: var(--fg-faint);
 }
 
 :root[data-theme-style] .workspace-change__badge--git {
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--fg-faint);
 }
 
 :root[data-theme-style] .workspace-empty {
@@ -29370,7 +29447,6 @@ body > .mermaid-diagram--fullscreen {
   box-shadow: var(--app-graphite-shadow);
 }
 
-:root[data-theme-style] .workspace-note,
 :root[data-theme-style] .workspace-recent-menu,
 :root[data-theme-style] .floating-menu,
 :root[data-theme-style] .context-menu,
@@ -29379,6 +29455,14 @@ body > .mermaid-diagram--fullscreen {
   border-radius: 8px;
   background: var(--bg-elev);
   box-shadow: var(--app-graphite-shadow-float);
+}
+
+/* Inline note panels (completion summary, git warnings) sit inside the
+   workspace surface — no floating elevation, just a hairline + soft fill. */
+:root[data-theme-style] .workspace-note {
+  border-color: var(--app-graphite-hairline-strong);
+  border-radius: 8px;
+  background: var(--bg-elev);
 }
 
 :root[data-theme-style] .modelsw__item:hover,
@@ -29687,8 +29771,7 @@ body > .mermaid-diagram--fullscreen {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-:root[data-theme-style] .workspace-tree__row--active,
-:root[data-theme-style] .workspace-change--active {
+:root[data-theme-style] .workspace-tree__row--active {
   background: var(--workspace-selection-bg);
   color: var(--workspace-selection-fg);
 }
@@ -34263,17 +34346,41 @@ body > .mermaid-diagram--fullscreen {
   background: transparent;
 }
 
-.app--creation .workbench-dock .workspace-change:hover,
-:root[data-theme-style] .app--creation .workbench-dock .workspace-change:hover {
+.app--creation .workbench-dock .workspace-change-row:hover,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change-row:hover {
   background: color-mix(in srgb, var(--fg-faint) 5%, transparent);
+}
+.app--creation .workbench-dock .workspace-change-row:hover .workspace-change,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change-row:hover .workspace-change {
   color: var(--fg);
 }
 
-.app--creation .workbench-dock .workspace-change--active,
-.app--creation .workbench-dock .workspace-change--active:hover,
-:root[data-theme-style] .app--creation .workbench-dock .workspace-change--active,
-:root[data-theme-style] .app--creation .workbench-dock .workspace-change--active:hover {
+.app--creation .workbench-dock .workspace-change__revert,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change__revert {
+  height: 24px;
+  min-width: 38px;
+  padding: 0 7px;
+  border-color: color-mix(in srgb, var(--fg-faint) 14%, transparent);
+  background: var(--bg-soft);
+  color: color-mix(in srgb, var(--fg-faint) 82%, transparent);
+  font-size: calc(10.5px * var(--font-scale));
+}
+
+.app--creation .workbench-dock .workspace-change__revert:hover,
+.app--creation .workbench-dock .workspace-change__revert:focus-visible,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change__revert:hover,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change__revert:focus-visible {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-soft));
+  color: color-mix(in srgb, var(--danger) 78%, var(--fg));
+}
+
+.app--creation .workbench-dock .workspace-change-row:has(.workspace-change--active),
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change-row:has(.workspace-change--active) {
   background: color-mix(in srgb, var(--fg-faint) 6%, transparent);
+}
+.app--creation .workbench-dock .workspace-change-row:has(.workspace-change--active) .workspace-change,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-change-row:has(.workspace-change--active) .workspace-change {
   color: var(--fg);
 }
 
@@ -34293,19 +34400,13 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .workbench-dock .workspace-change__badge,
 :root[data-theme-style] .app--creation .workbench-dock .workspace-change__badge {
-  height: 17px;
-  padding: 0 5px;
-  border-color: color-mix(in srgb, var(--fg-faint) 12%, transparent);
-  border-radius: 5px;
-  color: color-mix(in srgb, var(--fg-faint) 88%, transparent);
-  font-size: calc(10px * var(--font-scale));
-  background: transparent;
+  color: color-mix(in srgb, var(--fg-faint) 78%, transparent);
+  font-size: calc(10.5px * var(--font-scale));
 }
 
 .app--creation .workbench-dock .workspace-change__badge--git,
 :root[data-theme-style] .app--creation .workbench-dock .workspace-change__badge--git {
-  color: color-mix(in srgb, var(--accent) 82%, var(--fg-dim));
-  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--fg-faint);
 }
 
 .app--creation .workbench-dock .workspace-change-scope__head,
@@ -36045,7 +36146,6 @@ body > .mermaid-diagram--fullscreen {
 .theme-library__grid--base .theme-lib-card__thumb {
   height: 40px;
 }
-
 
 /* Appearance overview (demo 1) */
 .appearance-overview {
