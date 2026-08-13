@@ -57,15 +57,17 @@ function clampStoredSidebarWidth(width: number): number {
 }
 
 export function clampRightDockPreviewWidth(width: number, maxWidth = RIGHT_DOCK_MAX_WIDTH): number {
-  return Math.min(Math.max(maxWidth, RIGHT_DOCK_MAX_WIDTH), Math.max(RIGHT_DOCK_PREVIEW_MIN_WIDTH, Math.round(width)));
+  // Cap at maxWidth (which may be below the default maximum when the viewport
+  // is narrow) while never dropping below the applicable minimum.
+  return Math.min(Math.max(maxWidth, RIGHT_DOCK_PREVIEW_MIN_WIDTH), Math.max(RIGHT_DOCK_PREVIEW_MIN_WIDTH, Math.round(width)));
 }
 
 export function clampRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TREE_MAX_WIDTH): number {
-  return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MAX_WIDTH), Math.max(RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
+  return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MIN_WIDTH), Math.max(RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
 }
 
 export function clampCreationRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TREE_MAX_WIDTH): number {
-  return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MAX_WIDTH), Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
+  return Math.min(Math.max(maxWidth, CREATION_RIGHT_DOCK_TREE_MIN_WIDTH), Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
 }
 
 function clampStoredRightDockTreeWidth(width: number): number {

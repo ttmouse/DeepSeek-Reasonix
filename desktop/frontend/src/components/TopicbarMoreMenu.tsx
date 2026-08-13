@@ -16,6 +16,7 @@ import {
 import { Tooltip } from "./Tooltip";
 
 import { t } from "../lib/i18n";
+import { writeClipboardText } from "../lib/clipboard";
 
 /**
  * "More" overflow menu for the topic bar. The primary toolbar keeps only
@@ -72,7 +73,10 @@ export function TopicbarMoreMenu({
   const copySession = async () => {
     try {
       const value = await getSessionMarkdown();
-      await navigator.clipboard.writeText(value).catch(() => {});
+      // writeClipboardText falls back from the async Clipboard API to the
+      // Wails runtime bridge and finally a hidden-textarea execCommand, so
+      // copy still works in desktop webviews that deny navigator.clipboard.
+      await writeClipboardText(value);
     } catch {
       /* clipboard unavailable */
     }

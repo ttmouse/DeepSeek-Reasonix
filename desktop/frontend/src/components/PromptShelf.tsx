@@ -78,7 +78,7 @@ export function PromptShelf({
         role={role}
         aria-modal={role === "dialog" ? "false" : undefined}
         aria-labelledby={titleId}
-        tabIndex={-1}
+        tabIndex={cardCollapsible ? 0 : -1}
         onClick={cardCollapsible ? onToggleCollapse : undefined}
         onKeyDown={cardCollapsible && onToggleCollapse ? (event) => {
           if (event.key === "Enter" || event.key === " ") {
