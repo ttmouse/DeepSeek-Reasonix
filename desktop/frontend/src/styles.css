@@ -2195,14 +2195,26 @@ a[href] {
 .layout.layout--terminal-drawer-open .workbench-dock {
   grid-row: 2 / 4;
 }
+/* The dock's vertical drag handle must span the same rows as the dock so the
+   resizer line extends from the top of the chat area down to the bottom of
+   the terminal drawer. */
+.layout--terminal-drawer-open .workspace-panel-resizer {
+  grid-row: 2 / 4;
+}
 /* Chrome-hidden variants: rows shift up by one (3 rows total: content, terminal, statusbar). */
 .layout.layout--workbench-chrome-hidden.layout--terminal-drawer-open .sidebar {
+  grid-row: 1 / 3 !important;
+}
+.layout.layout--workbench-chrome-hidden.layout--terminal-drawer-open .workspace-panel-resizer {
   grid-row: 1 / 3 !important;
 }
 .layout.layout--workbench-chrome-hidden.layout--terminal-drawer-open .workbench-dock {
   grid-row: 1 / 3 !important;
 }
 .app--creation .layout.layout--creation-chrome-hidden.layout--terminal-drawer-open .sidebar {
+  grid-row: 1 / 3 !important;
+}
+.app--creation .layout.layout--creation-chrome-hidden.layout--terminal-drawer-open .workspace-panel-resizer {
   grid-row: 1 / 3 !important;
 }
 .app--creation .layout.layout--creation-chrome-hidden.layout--terminal-drawer-open .workbench-dock {
@@ -9835,7 +9847,8 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--workspace-tree-width) minmax(var(--workspace-preview-min-width), 1fr);
+  /* Preview on the left, file tree on the right (user preference). */
+  grid-template-columns: minmax(var(--workspace-preview-min-width), 1fr) var(--workspace-tree-width);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
   background: var(--workspace-preview-bg);
@@ -9845,22 +9858,22 @@ body > .mermaid-diagram--fullscreen {
   border-left: none;
 }
 .workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) {
-  grid-template-columns: var(--workspace-tree-rail-width) var(--workspace-tree-width) minmax(var(--workspace-preview-min-width), 1fr);
+  grid-template-columns: var(--workspace-tree-rail-width) minmax(var(--workspace-preview-min-width), 1fr) var(--workspace-tree-width);
 }
 .workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-files {
-  grid-column: 2;
-}
-.workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-preview {
   grid-column: 3;
 }
+.workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-preview {
+  grid-column: 2;
+}
 .workspace-panel--tree-hidden {
-  grid-template-columns: var(--workspace-tree-rail-width) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 .workspace-panel--tree-hidden .workspace-files {
   display: none;
 }
 .workspace-panel--tree-hidden .workspace-preview {
-  grid-column: 2;
+  grid-column: 1;
 }
 .workspace-panel--detail-only {
   grid-template-columns: minmax(0, 1fr);
@@ -9887,7 +9900,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .workspace-preview {
   grid-row: 1;
-  grid-column: 2;
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   background: var(--workspace-preview-bg);
@@ -9899,7 +9912,9 @@ body > .mermaid-diagram--fullscreen {
   --wails-draggable: no-drag;
   position: absolute;
   top: 0;
-  left: calc(var(--workspace-tree-width) - 4px);
+  /* Tree sits on the right after the files/preview swap, so the resizer
+     rides the tree's left edge. */
+  left: calc(100% - var(--workspace-tree-width) - 4px);
   bottom: 0;
   z-index: var(--z-layout-resizer-active);
   width: 8px;
@@ -9910,7 +9925,7 @@ body > .mermaid-diagram--fullscreen {
   touch-action: none;
 }
 .workspace-panel--with-tree-rail .workspace-tree-resizer {
-  left: calc(var(--workspace-tree-rail-width) + var(--workspace-tree-width) - 4px);
+  left: calc(100% - var(--workspace-tree-width) - 4px);
 }
 .workspace-tree-resizer::after {
   content: "";
@@ -9960,6 +9975,13 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   color: var(--fg-faint);
 }
+.workspace-current-file__icon.workspace-file-icon,
+.workspace-current-file__icon .workspace-file-icon {
+  width: 18px;
+  height: 20px;
+  flex: 0 0 18px;
+  font-size: 20px;
+}
 .workspace-current-file__text {
   flex: 1 1 auto;
   min-width: 0;
@@ -9980,7 +10002,8 @@ body > .mermaid-diagram--fullscreen {
   white-space: nowrap;
 }
 .workspace-current-file__path {
-  display: block;
+  display: flex;
+  align-items: center;
   min-width: 0;
   overflow: hidden;
   color: var(--fg-faint);
@@ -9988,6 +10011,25 @@ body > .mermaid-diagram--fullscreen {
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.workspace-current-file__crumb {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+.workspace-current-file__crumb-sep {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin: 0 3px;
+  color: var(--fg-faint);
+  font-size: 16px;
+  line-height: 0;
 }
 .workspace-current-file__recent {
   --wails-draggable: no-drag;
@@ -10514,7 +10556,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .workspace-files {
   grid-row: 1;
-  grid-column: 1;
+  grid-column: 2;
   display: flex;
   flex-direction: column;
   background: var(--workspace-files-bg);
@@ -10697,6 +10739,14 @@ body > .mermaid-diagram--fullscreen {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+/* Guides appear only while hovering the files panel so the expanded-tree
+   connectors don't clutter the default view. */
+.workspace-files:hover .workspace-tree__guides,
+.workspace-files:focus-within .workspace-tree__guides {
+  opacity: 1;
 }
 .workspace-tree__guide {
   position: absolute;
@@ -22155,22 +22205,6 @@ body > .mermaid-diagram--fullscreen {
   margin-left: 0;
 }
 
-.app-chrome__tools--workspace-pressed .app-chrome__command {
-  animation: app-chrome-command-follow-toggle 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes app-chrome-command-follow-toggle {
-  0% {
-    transform: translateX(1px) scale(0.985);
-  }
-  58% {
-    transform: translateX(-1px) scale(1.01);
-  }
-  100% {
-    transform: translateX(0) scale(1);
-  }
-}
-
 .windows-window-controls {
   position: fixed;
   top: 0;
@@ -22424,14 +22458,6 @@ body > .mermaid-diagram--fullscreen {
   animation: mac-sidebar-icon-press 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.app--darwin .app-chrome--tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed:not(.app-chrome__panel-toggle--active) svg {
-  animation: mac-workspace-icon-open-press 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.app--darwin .app-chrome--tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed.app-chrome__panel-toggle--active svg {
-  animation: mac-workspace-icon-close-press 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 @keyframes mac-sidebar-button-press {
   0% {
     opacity: 1;
@@ -22457,30 +22483,6 @@ body > .mermaid-diagram--fullscreen {
   }
   100% {
     transform: scale(1);
-  }
-}
-
-@keyframes mac-workspace-icon-open-press {
-  0% {
-    transform: translateX(2px) scale(0.9);
-  }
-  58% {
-    transform: translateX(-1px) scale(1.04);
-  }
-  100% {
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes mac-workspace-icon-close-press {
-  0% {
-    transform: translateX(-2px) scale(0.9);
-  }
-  58% {
-    transform: translateX(1px) scale(1.04);
-  }
-  100% {
-    transform: translateX(0) scale(1);
   }
 }
 
@@ -22706,16 +22708,6 @@ body > .mermaid-diagram--fullscreen {
   animation: mac-sidebar-icon-press 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.app--windows .app-chrome--native-tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed:not(.app-chrome__panel-toggle--active) svg,
-.app--linux .app-chrome--native-tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed:not(.app-chrome__panel-toggle--active) svg {
-  animation: mac-workspace-icon-open-press 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.app--windows .app-chrome--native-tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed.app-chrome__panel-toggle--active svg,
-.app--linux .app-chrome--native-tabs .app-chrome__panel-toggle--right.app-chrome__panel-toggle--pressed.app-chrome__panel-toggle--active svg {
-  animation: mac-workspace-icon-close-press 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 .app--windows .app-chrome--native-tabs .tabbar,
 .app--linux .app-chrome--native-tabs .tabbar {
   height: 100%;
@@ -22850,7 +22842,7 @@ body > .mermaid-diagram--fullscreen {
   align-items: center;
   gap: 10px;
   min-height: 48px;
-  padding: 6px 18px;
+  padding: 6px 8px;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border-soft);
   --wails-draggable: drag;
@@ -22874,7 +22866,7 @@ body > .mermaid-diagram--fullscreen {
   background: transparent;
   color: var(--fg-faint);
   line-height: 1;
-  transition: color 0.12s, border-color 0.12s, background 0.12s, transform 0.12s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .topicbar__chrome-btn:hover:not(.topicbar__chrome-btn--blocked),
@@ -22888,10 +22880,6 @@ body > .mermaid-diagram--fullscreen {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
   background: color-mix(in srgb, var(--accent) 7%, var(--bg-elev));
-}
-
-.topicbar__chrome-btn--pressed {
-  transform: scale(0.94);
 }
 
 .topicbar__chrome-btn--blocked {
@@ -22972,6 +22960,14 @@ body > .mermaid-diagram--fullscreen {
   gap: 6px;
   position: relative;
   --wails-draggable: no-drag;
+}
+/* When the dock is closed in workbench mode, the fixed top-right dock-toggle
+   overlaps the topic bar's right edge; leave room so the actions don't
+   collide with it. When the dock is open it occupies the right column, so no
+   extra margin is needed. Classic/creation keep the toggle inside the actions
+   row, so the extra margin does not apply there. */
+.layout--workbench:not(.layout--workspace-open) .topicbar__actions {
+  margin-right: 36px;
 }
 
 .topicbar__actions > .tooltip-trigger {
@@ -23119,14 +23115,15 @@ body > .mermaid-diagram--fullscreen {
   display: inline-flex;
 }
 
-/* Borderless icon-only entries: file opener, More menu, workspace toggle.
-   Default state has no background/border — hover/focus still highlight so
-   the controls stay discoverable. */
+/* Borderless icon-only entries: file opener, More menu, workspace toggle,
+   and the utility (search) button. Default state has no background/border —
+   hover/focus still highlight so the controls stay discoverable. */
 .topicbar__actions .external-opener,
 .topicbar__actions .external-opener__primary,
 .topicbar__actions .external-opener__menu-trigger,
 .topicbar__actions .topicbar__more .topicbar__action-btn,
-.topicbar__actions .topicbar__chrome-btn {
+.topicbar__actions .topicbar__chrome-btn,
+.topicbar__actions .topicbar__action-btn--utility {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -23141,7 +23138,11 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__actions .external-opener__primary:hover:not(:disabled),
 .topicbar__actions .external-opener__primary:focus-visible:not(:disabled),
 .topicbar__actions .external-opener__menu-trigger:hover:not(:disabled),
-.topicbar__actions .external-opener__menu-trigger:focus-visible:not(:disabled) {
+.topicbar__actions .external-opener__menu-trigger:focus-visible:not(:disabled),
+.topicbar__actions .topicbar__action-btn--utility:hover:not(:disabled),
+.topicbar__actions .topicbar__action-btn--utility:focus-visible:not(:disabled),
+.topicbar__actions .topicbar__chrome-btn:hover:not(:disabled),
+.topicbar__actions .topicbar__chrome-btn:focus-visible:not(:disabled) {
   background: var(--button-bg) !important;
   color: var(--fg) !important;
 }
@@ -23206,7 +23207,11 @@ body > .mermaid-diagram--fullscreen {
 
 .topicbar__more-export-menu {
   position: absolute;
-  left: calc(100% - 8px);
+  /* Expand to the left so the submenu never overflows the right edge of the
+     screen — the primary menu sits at the far right of the topic bar (and of
+     the window when the sidebar is collapsed), so a rightward flyout would
+     clip. */
+  right: calc(100% - 8px);
   top: -5px;
   z-index: var(--z-topicbar-menu);
   min-width: 168px;
@@ -25128,8 +25133,11 @@ body > .mermaid-diagram--fullscreen {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--workspace-files-bg);
-  border-left: 1px solid var(--border-soft);
+  /* Unify the dock surface with the chat pane; inner panels inherit this. */
+  --workspace-files-bg: var(--chat-bg);
+  --workspace-preview-bg: var(--chat-bg);
+  background: var(--chat-bg);
+  border-left: 0px solid var(--border-soft);
   overflow: hidden;
 }
 
@@ -25161,6 +25169,36 @@ body > .mermaid-diagram--fullscreen {
   padding: 7px 10px 3px;
   border-bottom: 1px solid transparent;
   --wails-draggable: drag;
+}
+
+/* Dock collapse/expand toggle pinned to the top-right corner of the window.
+   Fixed position keeps it at the same spot whether the dock is open (it
+   overlaps the dock's tools row) or closed (it sits on the topic bar's
+   right edge) — the icon never shifts. */
+.app__dock-toggle {
+  position: fixed;
+  top: 0;
+  right: 12px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-app-chrome);
+  --wails-draggable: no-drag;
+  pointer-events: auto;
+}
+.app__dock-toggle .topicbar__chrome-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app__dock-toggle .topicbar__chrome-btn:hover:not(:disabled),
+.app__dock-toggle .topicbar__chrome-btn:focus-visible:not(:disabled) {
+  background: var(--button-bg) !important;
+  color: var(--fg) !important;
+}
+.app__dock-toggle .topicbar__chrome-btn--workspace:not(:hover):not(:focus-visible) {
+  color: var(--fg-faint);
 }
 
 .workbench-dock__tabs {
@@ -25433,7 +25471,7 @@ body > .mermaid-diagram--fullscreen {
   border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border-soft));
   border-radius: 8px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--bg)) 0%, var(--bg) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--chat-bg)) 0%, color-mix(in srgb, var(--chat-bg) 86%, var(--stage, #000)) 100%);
 }
 
 .context-panel__capacity-card--good {
@@ -26909,7 +26947,7 @@ body > .mermaid-diagram--fullscreen {
 
 .topicbar {
   min-height: 48px;
-  padding: 6px 18px;
+  padding: 6px 8px;
   gap: 10px;
   background: var(--bg-elev);
 }
@@ -27101,7 +27139,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .workbench-dock {
-  background: color-mix(in srgb, var(--bg-elev) 60%, var(--chat-bg));
+  background: var(--chat-bg);
   border-left: 1px solid var(--border-soft);
 }
 
@@ -28108,7 +28146,7 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .topicbar {
   min-height: 45px;
-  padding: 6px 18px;
+  padding: 6px 8px;
   gap: 10px;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border-soft);
@@ -28980,8 +29018,8 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workbench-dock {
-  background: var(--bg-elev);
-  border-left: 1px solid var(--border-soft);
+  background: var(--chat-bg);
+  border-left: 0px solid var(--border-soft);
   box-shadow: none;
 }
 
@@ -28997,9 +29035,9 @@ body > .mermaid-diagram--fullscreen {
   height: 100%;
   flex: 0 0 auto;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-start;
-  gap: 2px;
+  gap: 4px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -29011,17 +29049,18 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   min-width: auto;
   max-width: none;
-  height: 40px;
+  height: 27px;
   width: auto;
-  padding: 0 12px 1px;
+  padding: 0 11px;
   border: 0;
-  border-radius: 0;
+  border-radius: 7px;
   justify-content: flex-start;
   gap: 6px;
   color: var(--fg-faint);
   font-size: 12.5px;
   font-weight: 600;
   background: transparent;
+  transition: color var(--dur-fast), background var(--dur-fast);
 }
 
 :root[data-theme-style] .workbench-dock__tab svg {
@@ -29038,25 +29077,19 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .workbench-dock__tab--active {
   color: var(--fg);
-  background: transparent;
+  /* Simple flat selected fill — a touch darker than the dock background,
+     no shadow, like a focused browser tab. */
+  background: color-mix(in srgb, var(--fg) 8%, var(--chat-bg));
   box-shadow: none;
 }
 
 :root[data-theme-style] .workbench-dock__tab:hover {
   color: var(--fg-dim);
-  background: transparent;
+  background: color-mix(in srgb, var(--fg) 4%, var(--chat-bg));
 }
 
 :root[data-theme-style] .workbench-dock__tab--active::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-  animation: graphite-tab-underline var(--dur-base) var(--ease-out) both;
+  display: none;
 }
 
 /* Classic and Workbench use compact text tabs in the right dock. A restrained
@@ -29080,6 +29113,13 @@ body > .mermaid-diagram--fullscreen {
   transform: translateY(-50%);
 }
 
+/* Theme-style turns the strip into browser-like tabs (small rounded rects,
+   selected one raised); the hairline separator reads as clutter between them. */
+:root[data-theme-style] .app--classic .workbench-dock__tab + .workbench-dock__tab::before,
+:root[data-theme-style] .app--workbench .workbench-dock__tab + .workbench-dock__tab::before {
+  display: none;
+}
+
 :root[data-theme-style] .workspace-panel,
 :root[data-theme-style] .workspace-files,
 :root[data-theme-style] .workspace-preview,
@@ -29089,7 +29129,7 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .workspace-panel {
   border-left: 0;
-  background: var(--bg-elev);
+  background: var(--chat-bg);
 }
 
 :root[data-theme-style] .workspace-panel--embedded.workspace-panel--split-preview .workspace-preview {
@@ -29098,7 +29138,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workspace-files {
-  background: var(--bg-elev);
+  background: var(--chat-bg);
   border-right: 1px solid var(--border-soft);
 }
 
@@ -29155,7 +29195,7 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .workspace-recent-menu__item:hover {
   background: var(--workspace-files-hover);
   color: var(--fg);
-  transform: translateX(2px);
+  transform: none;
 }
 
 :root[data-theme-style] .workspace-tree__row--active,
@@ -29192,6 +29232,14 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .workspace-change-scope__head {
   border-color: var(--border);
   background: var(--bg-soft);
+}
+
+/* The changed-tab content sits directly in the preview body whose theme-style
+   left/right padding is 0 (code/markdown views supply their own). Give the
+   changed view's containers the same horizontal inset as other dock tabs. */
+:root[data-theme-style] .workspace-git-history,
+:root[data-theme-style] .workspace-change-scope {
+  padding: 0 14px;
 }
 
 :root[data-theme-style] .workspace-change:hover {
@@ -29242,7 +29290,7 @@ body > .mermaid-diagram--fullscreen {
   height: 42px;
   gap: 9px;
   padding: 0 12px;
-  background: var(--bg-elev);
+  background: var(--chat-bg);
 }
 
 :root[data-theme-style] .workspace-current-file__icon {
@@ -29270,7 +29318,7 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .workspace-preview__meta {
   min-height: 32px;
   padding: 6px 12px;
-  background: color-mix(in srgb, var(--bg-elev) 94%, var(--bg-soft));
+  background: var(--chat-bg);
 }
 
 :root[data-theme-style] .workspace-crumb {
@@ -29363,8 +29411,10 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .context-panel__section {
   border-color: var(--border);
   border-radius: 8px;
-  background: var(--bg-elev);
-  box-shadow: var(--app-graphite-shadow);
+  /* Cards sit slightly deeper than the dock surface so sections keep a
+     quiet hierarchy without a hard contrast band. */
+  background: color-mix(in srgb, var(--chat-bg) 86%, var(--stage, #000));
+  box-shadow: none;
 }
 
 :root[data-theme-style] .context-panel__donut-core {
@@ -29478,7 +29528,7 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg);
   background: var(--accent-soft);
   outline: none;
-  transform: translateX(2px);
+  transform: none;
 }
 
 @keyframes graphite-message-in {
@@ -29532,17 +29582,6 @@ body > .mermaid-diagram--fullscreen {
   }
   50% {
     transform: translateY(-7px);
-  }
-}
-
-@keyframes graphite-tab-underline {
-  from {
-    opacity: 0;
-    transform: scaleX(0.3);
-  }
-  to {
-    opacity: 1;
-    transform: scaleX(1);
   }
 }
 
@@ -30425,9 +30464,9 @@ body > .mermaid-diagram--fullscreen {
 .sidebar--workbench .sidebar__nav--footer {
   flex: 0 0 auto;
   gap: 5px;
-  margin-top: 12px;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--sidebar-workbench-border);
+  margin-top: 6px;
+  padding: 6px 0 0;
+  border-top: 0;
 }
 
 .sidebar--workbench .sidebar__nav--footer .sidebar__navitem,

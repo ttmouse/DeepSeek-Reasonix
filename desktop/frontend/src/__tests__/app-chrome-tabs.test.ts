@@ -279,10 +279,10 @@ ok(
 
 ok(
   /const WORKSPACE_PANEL_DEFAULT_OPEN = true;/.test(layoutStoreSource) &&
-    /workspacePanelOpen:\s*loadWorkspacePanelOpen\(\)/.test(layoutStoreSource) &&
-    /export function saveWorkspacePanelOpen\(open: boolean\)/.test(layoutStoreSource) &&
+    /workspacePanelOpen:\s*loadWorkspacePanelOpen\(""\)/.test(layoutStoreSource) &&
+    /export function saveWorkspacePanelOpen\(open: boolean, workspaceRoot = ""\)/.test(layoutStoreSource) &&
     /reasonix\.workspacePanel\.open/.test(layoutStoreSource),
-  "right dock open state is restored from localStorage with expanded first-launch default",
+  "right dock open state is restored from per-project localStorage with expanded first-launch default",
 );
 
 ok(
@@ -689,8 +689,8 @@ ok(
 );
 
 ok(
-  finalDeclaration(":root[data-theme-style] .workbench-dock__tab--active::after", "bottom") === "1px",
-  "active dock underline stays inside the visible dock edge",
+  finalDeclaration(":root[data-theme-style] .workbench-dock__tab--active::after", "display") === "none",
+  "active dock tab underline is removed in favor of the rounded-rect selected state",
 );
 
 for (const selector of [

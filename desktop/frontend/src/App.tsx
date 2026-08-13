@@ -137,10 +137,7 @@ import {
   CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH,
   CREATION_RIGHT_DOCK_TREE_MIN_WIDTH,
   CREATION_SIDEBAR_MIN_WIDTH,
-  RIGHT_DOCK_MAX_WIDTH,
   RIGHT_DOCK_MIN_RENDER_WIDTH,
-  RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH,
-  RIGHT_DOCK_PREVIEW_MIN_WIDTH,
   RIGHT_DOCK_TREE_MAX_WIDTH,
   RIGHT_DOCK_TREE_MIN_WIDTH,
   type RightDockMode,
@@ -151,7 +148,6 @@ import {
   applyLayoutStyleDefaults,
   clampCreationRightDockTreeWidth,
   clampCreationSidebarWidth,
-  clampRightDockPreviewWidth,
   clampRightDockTreeWidth,
   clampSidebarWidth,
   clampTerminalHeight,
@@ -159,7 +155,6 @@ import {
   defaultCreationSidebarWidth,
   defaultRightDockTreeWidth,
   defaultSidebarWidth,
-  saveRightDockPreviewWidth,
   saveRightDockTreeWidth,
   saveSidebarCollapsed,
   saveSidebarWidth,
@@ -167,6 +162,7 @@ import {
   saveTerminalPanelOpen,
   terminalMaxHeight,
   saveWorkspacePanelOpen,
+  loadWorkspacePanelOpen,
   useLayoutStore,
 } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
@@ -192,8 +188,9 @@ import { applyTextSize, DEFAULT_TEXT_SIZE, getTextSize, nextTextSize } from "./l
 import { useViewportHeightVar, useWindowStatePersistence } from "./lib/windowState";
 import { resolveLiveWorkspacePanelWidth, resolveWorkspacePanelPlacement, workspacePanelAriaMinWidth } from "./lib/workspaceLayout";
 import { createRafResizeUpdater } from "./lib/resizeDrag";
-import { useGlobalShortcut } from "./lib/keyboardShortcuts";
+import { formatShortcutCombo, resolvedShortcutCombo, useGlobalShortcut } from "./lib/keyboardShortcuts";
 import { useWarmTerminalPanel } from "./lib/useWarmTerminalPanel";
+import { useMountTransition } from "./lib/useMountTransition";
 import { topicShortcutIndexFromEvent, useTopicShortcuts, type TopicShortcutEntry } from "./lib/topicShortcuts";
 import { composerDraftKeyForTab } from "./lib/composerDraftKey";
 import { continueDelivery } from "./lib/deliveryContinue";
@@ -1177,8 +1174,6 @@ export default function App() {
   const setWorkspacePanelOpen = useLayoutStore((s) => s.setWorkspacePanelOpen);
   const rightDockTreeWidth = useLayoutStore((s) => s.rightDockTreeWidth);
   const setRightDockTreeWidth = useLayoutStore((s) => s.setRightDockTreeWidth);
-  const rightDockPreviewWidth = useLayoutStore((s) => s.rightDockPreviewWidth);
-  const setRightDockPreviewWidth = useLayoutStore((s) => s.setRightDockPreviewWidth);
   const workspacePreviewActive = useLayoutStore((s) => s.workspacePreviewActive);
   const setWorkspacePreviewActive = useLayoutStore((s) => s.setWorkspacePreviewActive);
   const attentionChimeEvents = useRef(new Set<string>());
@@ -1271,7 +1266,6 @@ export default function App() {
   const sidebarSearchFocusSignal = useOverlayStore((s) => s.sidebarSearchFocusSignal);
   const setSidebarSearchFocusSignal = useOverlayStore((s) => s.setSidebarSearchFocusSignal);
   const [sidebarTogglePressed, setSidebarTogglePressed] = useState(false);
-  const [workspaceTogglePressed, setWorkspaceTogglePressed] = useState(false);
   const [clearContextPending, setClearContextPending] = useState(false);
   const [backgroundRuntimes, setBackgroundRuntimes] = useState<BackgroundRuntimeView[]>([]);
   const [workspaceConflict, setWorkspaceConflict] = useState<WorkspaceConflictView | null>(null);
@@ -1283,7 +1277,6 @@ export default function App() {
   const appRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const sidebarTogglePressTimerRef = useRef<number | null>(null);
-  const workspaceTogglePressTimerRef = useRef<number | null>(null);
 
   // Persist window geometry across launches.
   useWindowStatePersistence();
@@ -1382,18 +1375,6 @@ export default function App() {
     }, 260);
   }, []);
 
-  const pulseWorkspaceToggle = useCallback(() => {
-    if (typeof window === "undefined") return;
-    if (workspaceTogglePressTimerRef.current !== null) {
-      window.clearTimeout(workspaceTogglePressTimerRef.current);
-    }
-    setWorkspaceTogglePressed(true);
-    workspaceTogglePressTimerRef.current = window.setTimeout(() => {
-      workspaceTogglePressTimerRef.current = null;
-      setWorkspaceTogglePressed(false);
-    }, 260);
-  }, []);
-
   const anchorAppScrollToChat = useCallback(() => {
     if (typeof window === "undefined") return;
     const el = appRef.current;
@@ -1410,9 +1391,6 @@ export default function App() {
     return () => {
       if (sidebarTogglePressTimerRef.current !== null) {
         window.clearTimeout(sidebarTogglePressTimerRef.current);
-      }
-      if (workspaceTogglePressTimerRef.current !== null) {
-        window.clearTimeout(workspaceTogglePressTimerRef.current);
       }
     };
   }, []);
@@ -1564,13 +1542,16 @@ export default function App() {
     });
   }, []);
   const rightDockDetailActive = rightDockMode !== "context" && workspacePreviewActive;
-  const preferredWorkspacePanelWidth = rightDockDetailActive ? rightDockPreviewWidth : rightDockTreeWidth;
+  // The dock keeps one width across tab switches (context/files/changed):
+  // the tree width is the single source so toggling tabs never resizes the
+  // sidebar. Preview detail stays inside the dock without widening it.
+  const preferredWorkspacePanelWidth = rightDockTreeWidth;
   const rightDockTreeMinWidth = desktopLayoutStyle === "creation" ? CREATION_RIGHT_DOCK_TREE_MIN_WIDTH : RIGHT_DOCK_TREE_MIN_WIDTH;
   const rightDockTreeWidthClamp = desktopLayoutStyle === "creation" ? clampCreationRightDockTreeWidth : clampRightDockTreeWidth;
   const rightDockMinRenderWidth = desktopLayoutStyle === "creation" && !rightDockDetailActive
     ? CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH
     : RIGHT_DOCK_MIN_RENDER_WIDTH;
-  const workspacePanelMinWidth = rightDockDetailActive ? RIGHT_DOCK_PREVIEW_MIN_WIDTH : rightDockTreeMinWidth;
+  const workspacePanelMinWidth = rightDockTreeMinWidth;
   const chatReservedWidth = CHAT_MIN_WIDTH;
   const workspacePanelAvailableWidth = availableWorkspacePanelWidth({
     viewportWidth,
@@ -2674,28 +2655,22 @@ export default function App() {
   const setSavedWorkspacePanelWidth = useCallback(
     (width: number) => {
       closeTransientOverlays();
-      if (rightDockDetailActive) {
-        const next = clampRightDockPreviewWidth(width, workspacePanelAvailableWidth);
-        setRightDockPreviewWidth(next);
-        saveRightDockPreviewWidth(next);
-        return;
-      }
       const next = rightDockTreeWidthClamp(width, workspacePanelAvailableWidth);
       setRightDockTreeWidth(next);
       saveRightDockTreeWidth(next);
     },
-    [closeTransientOverlays, rightDockDetailActive, rightDockTreeWidthClamp, workspacePanelAvailableWidth],
+    [closeTransientOverlays, rightDockTreeWidthClamp, workspacePanelAvailableWidth],
   );
 
   const ensureWorkspacePanelWidth = useCallback(
     (width: number) => {
       closeTransientOverlays();
       if (rightDockMode === "context") return;
-      const next = clampRightDockPreviewWidth(width, workspacePanelAvailableWidth);
-      setRightDockPreviewWidth(next);
-      saveRightDockPreviewWidth(next);
+      const next = rightDockTreeWidthClamp(width, workspacePanelAvailableWidth);
+      setRightDockTreeWidth(next);
+      saveRightDockTreeWidth(next);
     },
-    [closeTransientOverlays, rightDockMode, workspacePanelAvailableWidth],
+    [closeTransientOverlays, rightDockTreeWidthClamp, workspacePanelAvailableWidth],
   );
 
   const startWorkspacePanelResize = useCallback(
@@ -2718,11 +2693,7 @@ export default function App() {
       const onMove = (moveEvent: PointerEvent) => {
         const delta = moveEvent.clientX - startX;
         nextDockWidth = startDockWidth - delta;
-        if (rightDockDetailActive) {
-          nextDockWidth = clampRightDockPreviewWidth(nextDockWidth, workspacePanelAvailableWidth);
-        } else {
-          nextDockWidth = rightDockTreeWidthClamp(nextDockWidth, workspacePanelAvailableWidth);
-        }
+        nextDockWidth = rightDockTreeWidthClamp(nextDockWidth, workspacePanelAvailableWidth);
         liveResize.schedule(resolveLiveWorkspacePanelRenderWidth(nextDockWidth));
       };
       const onDone = () => {
@@ -2752,7 +2723,7 @@ export default function App() {
         setSavedWorkspacePanelWidth(workspacePanelRenderWidth + (event.key === "ArrowLeft" ? 16 : -16));
       } else if (event.key === "Home") {
         event.preventDefault();
-        setSavedWorkspacePanelWidth(rightDockDetailActive ? RIGHT_DOCK_PREVIEW_MIN_WIDTH : rightDockTreeMinWidth);
+        setSavedWorkspacePanelWidth(rightDockTreeMinWidth);
       } else if (event.key === "End") {
         event.preventDefault();
         setSavedWorkspacePanelWidth(workspacePanelAvailableWidth);
@@ -2829,6 +2800,8 @@ export default function App() {
     [setSavedTerminalHeight, terminalPanelOpen, terminalRenderHeight, terminalResizeMaxHeight],
   );
 
+  const activeWorkspaceRoot = activeTab?.workspaceRoot ?? state.meta?.cwd ?? "";
+
   const openWorkspacePanel = useCallback(
     (mode: RightDockMode = rightDockMode) => {
       closeTransientOverlays();
@@ -2850,9 +2823,9 @@ export default function App() {
         return;
       }
       setWorkspacePanelOpen(true);
-      saveWorkspacePanelOpen(true);
+      saveWorkspacePanelOpen(true, activeWorkspaceRoot);
     },
-    [closeTransientOverlays, rightDockMode, workspacePanelMaximized, workspacePanelOpen],
+    [activeWorkspaceRoot, closeTransientOverlays, rightDockMode, workspacePanelMaximized, workspacePanelOpen],
   );
 
   const closeWorkspacePanel = useCallback(() => {
@@ -2863,11 +2836,18 @@ export default function App() {
     setLiveWorkspacePanelRenderWidth(null);
     setWorkspacePanelMaximized(false);
     setWorkspacePanelOpen(false);
-    saveWorkspacePanelOpen(false);
-  }, [closeTransientOverlays, workspacePanelOpen]);
+    saveWorkspacePanelOpen(false, activeWorkspaceRoot);
+  }, [activeWorkspaceRoot, closeTransientOverlays, workspacePanelOpen]);
+
+  // Restore the right dock's open/closed state per project: switching to a
+  // different workspace root (or a global session) restores that scope's own
+  // preference instead of carrying the previous project's state over.
+  useEffect(() => {
+    setWorkspacePanelOpen(loadWorkspacePanelOpen(activeWorkspaceRoot));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspaceRoot]);
 
   const toggleWorkspacePanel = useCallback(() => {
-    pulseWorkspaceToggle();
     if (workspacePanelRenderable) {
       closeWorkspacePanel();
       return;
@@ -2878,8 +2858,10 @@ export default function App() {
       openWorkspacePanel(rightDockMode === "changed" ? "changed" : "files");
       return;
     }
-    openWorkspacePanel("context");
-  }, [closeWorkspacePanel, desktopLayoutStyle, openWorkspacePanel, pulseWorkspaceToggle, rightDockMode, workspacePanelRenderable]);
+    // Reopen with the previously active tab (rightDockMode is kept in the
+    // store across close/open) instead of forcing "context".
+    openWorkspacePanel();
+  }, [closeWorkspacePanel, desktopLayoutStyle, openWorkspacePanel, rightDockMode, workspacePanelRenderable]);
 
   const openRightDockMode = useCallback(
     (mode: RightDockMode) => {
@@ -4086,15 +4068,37 @@ export default function App() {
   const browserPreviewChrome = typeof window !== "undefined" && !window.runtime;
   const browserMockScenario = browserPreviewChrome ? browserMockScenarioParam() : "";
   const guidanceQueueMockItems = isGuidanceMockScenario(browserMockScenario) ? GUIDANCE_QUEUE_MOCK_ITEMS : undefined;
-  const workspacePanelResetWidth = rightDockDetailActive
-    ? RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH
-    : desktopLayoutStyle === "creation"
-      ? defaultCreationRightDockTreeWidth()
-      : defaultRightDockTreeWidth();
+  const workspacePanelResetWidth = desktopLayoutStyle === "creation"
+    ? defaultCreationRightDockTreeWidth()
+    : defaultRightDockTreeWidth();
   const workspacePanelResizeMinWidth = workspacePanelAriaMinWidth(workspacePanelMinWidth, workspacePanelRenderWidth);
-  const workspacePanelMaxWidth = rightDockDetailActive ? RIGHT_DOCK_MAX_WIDTH : RIGHT_DOCK_TREE_MAX_WIDTH;
+  const workspacePanelMaxWidth = RIGHT_DOCK_TREE_MAX_WIDTH;
   const workspacePanelResizeMaxWidth = Math.max(workspacePanelMaxWidth, workspacePanelAvailableWidth);
   const sidebarCreation = desktopLayoutStyle === "creation";
+  // Command palette shortcut label (⌘K / Ctrl+K), platform-aware.
+  const commandPaletteShortcut = formatShortcutCombo(
+    resolvedShortcutCombo("commandPalette.open", desktopPlatform),
+    desktopPlatform,
+  );
+  // Dock collapse/expand toggle. Rendered in the dock's own tools row when the
+  // dock is open (its top-right corner), and in the topic bar when closed.
+  const dockToggleButton = (
+    <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
+      <button
+        className={[
+          "topicbar__chrome-btn",
+          "topicbar__chrome-btn--workspace",
+          workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
+        ].filter(Boolean).join(" ")}
+        type="button"
+        onClick={toggleWorkspacePanel}
+        aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
+        aria-pressed={workspacePanelRenderable}
+      >
+        <PanelRight size={15} />
+      </button>
+    </Tooltip>
+  );
   const topicbarTitle = sidebarImDetailConnection ? t("botDetail.title", { name: sidebarImDetailConnection.title }) : topicDisplayTitle(activeTab);
   const topicbarWorkspaceLabel = sidebarImDetailConnection ? t("botDetail.subtitle") : activeTab ? tabWorkspaceTitle(activeTab) : "";
   const topicbarWorkspacePath = activeTab?.scope === "project" ? activeTab.workspaceRoot || state.meta?.cwd : "";
@@ -4155,6 +4159,7 @@ export default function App() {
       ].filter(Boolean).join(" ")}
     >
       <ThemeBackground />
+      {sidebarWorkbench && <div className="app__dock-toggle">{dockToggleButton}</div>}
       <div
         ref={layoutRef}
         className={[
@@ -4192,7 +4197,6 @@ export default function App() {
             sidebarToggleTitle={sidebarToggleTitle}
             workspacePanelMaximized={workspacePanelMaximized}
             workspacePanelRenderable={workspacePanelRenderable}
-            workspaceTogglePressed={workspaceTogglePressed}
             workspacePanelLabel={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
             onToggleSidebar={toggleSidebar}
             onToggleWorkspacePanel={toggleWorkspacePanel}
@@ -4522,6 +4526,16 @@ export default function App() {
             </div>
             <div className="topicbar__spacer" />
             <div className="topicbar__actions">
+              <Tooltip label={`${t("shortcuts.action.commandPalette")} ${commandPaletteShortcut}`}>
+                <button
+                  className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility"
+                  type="button"
+                  aria-label={t("shortcuts.action.commandPalette")}
+                  onClick={() => void openPalette()}
+                >
+                  <Search size={15} />
+                </button>
+              </Tooltip>
               {shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
               )}
@@ -4536,22 +4550,7 @@ export default function App() {
                   tasksOpen={Boolean(tasksOpen)}
                 />
               )}
-              <Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
-                <button
-                  className={[
-                    "topicbar__chrome-btn",
-                    "topicbar__chrome-btn--workspace",
-                    workspacePanelRenderable ? "topicbar__chrome-btn--active" : "",
-                    workspaceTogglePressed ? "topicbar__chrome-btn--pressed" : "",
-                  ].filter(Boolean).join(" ")}
-                  type="button"
-                  onClick={toggleWorkspacePanel}
-                  aria-label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}
-                  aria-pressed={workspacePanelRenderable}
-                >
-                  <PanelRight size={15} />
-                </button>
-              </Tooltip>
+              {sidebarCreation && dockToggleButton}
               {tasksOpen && (
                 <div className="taskmonitor-popover" role="dialog" aria-label={t("summary.session")}>
                   <Suspense fallback={null}>
@@ -5024,6 +5023,7 @@ export default function App() {
               ) : (
                 <Suspense fallback={null}>
                   <WorkspacePanel
+                    key={workspaceTreeMemoryKey}
                     open={workspacePanelRenderable}
                     tabId={activeTabId}
                     cwd={state.meta?.cwd}

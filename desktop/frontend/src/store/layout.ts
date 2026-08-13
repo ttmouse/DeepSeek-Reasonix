@@ -205,10 +205,14 @@ export function clampTerminalHeight(height: number, viewportHeight: number): num
   return Math.min(max, Math.max(TERMINAL_MIN_HEIGHT, Math.round(height)));
 }
 
-function loadWorkspacePanelOpen(): boolean {
+function workspacePanelOpenStorageKey(workspaceRoot: string): string {
+  return workspaceRoot ? `${WORKSPACE_PANEL_OPEN_KEY}.${workspaceRoot}` : WORKSPACE_PANEL_OPEN_KEY;
+}
+
+export function loadWorkspacePanelOpen(workspaceRoot: string): boolean {
   if (typeof window === "undefined") return WORKSPACE_PANEL_DEFAULT_OPEN;
   try {
-    const raw = window.localStorage.getItem(WORKSPACE_PANEL_OPEN_KEY);
+    const raw = window.localStorage.getItem(workspacePanelOpenStorageKey(workspaceRoot));
     if (raw === null) return WORKSPACE_PANEL_DEFAULT_OPEN;
     return raw !== "0";
   } catch {
@@ -216,10 +220,10 @@ function loadWorkspacePanelOpen(): boolean {
   }
 }
 
-export function saveWorkspacePanelOpen(open: boolean): void {
+export function saveWorkspacePanelOpen(open: boolean, workspaceRoot = ""): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(WORKSPACE_PANEL_OPEN_KEY, open ? "1" : "0");
+    window.localStorage.setItem(workspacePanelOpenStorageKey(workspaceRoot), open ? "1" : "0");
   } catch {
     /* ignore storage failures */
   }
@@ -253,7 +257,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   sidebarWidth: loadSidebarWidth(),
   rightDockTreeWidth: loadRightDockTreeWidth(),
   rightDockPreviewWidth: loadRightDockPreviewWidth(),
-  workspacePanelOpen: loadWorkspacePanelOpen(),
+  workspacePanelOpen: loadWorkspacePanelOpen(""),
   workspacePanelMaximized: false,
   workspacePreviewActive: false,
   rightDockMode: "context",
