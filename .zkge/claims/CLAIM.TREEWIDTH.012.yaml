@@ -1,0 +1,27 @@
+# CLAIM.TREEWIDTH.012 — 文件树宽度保持（列表↔详情布局关系）
+schema: zkge.claim/v1
+id: CLAIM.TREEWIDTH.012
+statement: "用户手动调整过文件树宽度后，关闭预览再打开文件/切换文件时树宽保持用户调好的值（treeWidthMode=manual → savedTreeWidth 传入）；只有首次打开预览（无已存宽度）才默认 50/50 均分；面板过窄放不下树+预览时文件树自动隐藏只留预览"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [file_tree_width, split_layout, list_detail_relationship]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.TREEWIDTH.001
+    text: "treeWidthMode(manual/even) 记录树宽是否用户手动调整过；savedTreeWidth 只在 manual 时传入"
+oracle:
+  type: invariant
+  expression: "selectFile 中 savedTreeWidth: treeWidthMode === \"manual\" ? treeWidth : null；workspaceSplit.ts 的 shouldInitializeWorkspaceSplitOnFileSelect 存在；workspaceSplitCanFit 控制树自动隐藏"
+counterexample:
+  expression: "selectFile 中 savedTreeWidth 恒为 null（每次均分，手动宽度丢失），或 shouldInitializeWorkspaceSplitOnFileSelect 缺失，或树自动隐藏逻辑被删"
+required_verifiers:
+  - workspace-split.test.ts
+  - grep: savedTreeWidth / treeWidthMode / shouldInitializeWorkspaceSplitOnFileSelect
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 331462c77 + ee6591b25
+# 还原检查：grep -c "treeWidthMode" desktop/frontend/src/components/WorkspacePanel.tsx 应 >= 5；
+# grep -c "shouldInitializeWorkspaceSplitOnFileSelect" desktop/frontend/src/lib/workspaceSplit.ts 应 >= 1；
+# selectFile 中 savedTreeWidth 必须含 treeWidthMode === "manual" 判断

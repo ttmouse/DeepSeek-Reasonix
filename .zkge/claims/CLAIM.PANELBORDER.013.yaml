@@ -1,0 +1,25 @@
+# CLAIM.PANELBORDER.013 — 面板内部边界线（split-preview / 树拖拽条）
+schema: zkge.claim/v1
+id: CLAIM.PANELBORDER.013
+statement: "右侧面板内部分栏时预览区左缘去掉重复边框（避免与面板边框双线）；文件树左缘拖拽条为 8px 透明热区 + 中间 1px 细线，悬停/聚焦/拖拽时细线变 accent 色"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A1
+scope:
+  included: [workspace_panel_internal, split_preview_border, tree_resizer]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PANELBORDER.001
+    text: "内部边界样式类为 .workspace-panel--split-preview / .workspace-tree-resizer"
+oracle:
+  type: structural
+  expression: "styles.css 含 .workspace-panel--split-preview .workspace-preview { border-left: 0 }（预览区去左边框）与 .workspace-tree-resizer（::after 1px 细线 + hover accent）"
+counterexample:
+  expression: "split-preview 预览区 border-left 恢复（出现双线），或 .workspace-tree-resizer 细线样式缺失"
+required_verifiers:
+  - grep: styles.css 类
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 8358e0ebb
+# 还原检查：grep -n "split-preview" desktop/frontend/src/styles.css 应含 border-left: 0 规则；
+# grep -c "workspace-tree-resizer" desktop/frontend/src/styles.css 应 >= 3

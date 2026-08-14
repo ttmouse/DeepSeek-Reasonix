@@ -18,7 +18,7 @@ bad()  { FAIL=$((FAIL+1)); FAILED_ITEMS+=("$1"); echo "  FAIL  $1"; }
 
 cd "$ROOT/desktop/frontend" || { echo "无法进入 desktop/frontend"; exit 1; }
 
-echo "=== 还原验证：11 项调整 ==="
+echo "=== 还原验证：13 项调整 ==="
 
 # ---------- C1: chat 面板 400px 下限 ----------
 note "C1 workspacePanelAvailableWidth 定义"
@@ -115,6 +115,25 @@ else
   bad "C11 改动面板样式（row=$row_n revert=$revert_n badge=$badge_n active=$active_n，回退阈值 row≥5 revert≥5 badge≥3 active≥3）"
 fi
 
+# ---------- C12: 文件树宽度保持（列表↔详情布局） ----------
+note "C12 savedTreeWidth / treeWidthMode / shouldInitializeWorkspaceSplitOnFileSelect"
+if grep -c "treeWidthMode" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[5-9]\|[0-9][0-9]" \
+   && grep -c "shouldInitializeWorkspaceSplitOnFileSelect" src/lib/workspaceSplit.ts 2>/dev/null | grep -q "^[1-9]" \
+   && grep -c "savedTreeWidth: treeWidthMode" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C12 文件树宽度保持（treeWidthMode ≥5 + shouldInitializeWorkspaceSplitOnFileSelect + savedTreeWidth=manual）"
+else
+  bad "C12 文件树宽度保持（treeWidthMode/shouldInitialize/savedTreeWidth 缺失，手动宽度会重置）"
+fi
+
+# ---------- C13: 面板内部边界线 ----------
+note "C13 split-preview border + workspace-tree-resizer"
+if grep -A3 "workspace-panel--split-preview" src/styles.css 2>/dev/null | grep -q "border-left" \
+   && grep -c "workspace-tree-resizer" src/styles.css 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]"; then
+  ok "C13 面板内部边界（split-preview 去左边框 + workspace-tree-resizer ≥3）"
+else
+  bad "C13 面板内部边界（split-preview border-left 或 workspace-tree-resizer 缺失）"
+fi
+
 # ---------- 自动化测试（C1/C4/C5 强相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
@@ -139,5 +158,5 @@ if [[ $FAIL -gt 0 ]]; then
   printf '  FAIL 项: %s\n' "${FAILED_ITEMS[@]}"
   exit 1
 fi
-echo "  全部 11 项调整已还原 ✅"
+echo "  全部 13 项调整已还原 ✅"
 exit 0

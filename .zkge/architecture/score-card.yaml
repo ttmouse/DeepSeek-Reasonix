@@ -68,10 +68,20 @@ cases:
     entry: "打开右侧面板变更视图，查看行 hover / revert 按钮 / 徽章 / 选中态"
     test: "grep workspace-change-row/revert/badge/active + L3 手测"
     level: L1
+  - id: CQ.TREEWIDTH.012
+    question: "手动调整过的文件树宽度在关闭预览再打开后是否保持？"
+    entry: "拖宽文件树 → 打开文件 → 关闭预览 → 再打开文件"
+    test: "workspace-split.test.ts + grep savedTreeWidth/treeWidthMode"
+    level: L2
+  - id: CQ.PANELBORDER.013
+    question: "面板内部分栏边界线是否去重、树拖拽条是否为细线？"
+    entry: "查看分栏预览左缘 + 文件树左缘拖拽条"
+    test: "grep split-preview border-left:0 + workspace-tree-resizer"
+    level: L3
 
 coverage:
-  hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005]
-  target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009, CQ.TREEICON.010, CQ.CHANGEPANEL.011]
+  hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005, CQ.TREEWIDTH.012]
+  target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009, CQ.TREEICON.010, CQ.CHANGEPANEL.011, CQ.PANELBORDER.013]
   honest_declaration: [CQ.SIDEBAR.007]
   note: "hard_gate 项必须全绿才允许 rebase/merge 通过；target 项 grep+手测；honest 纯色值 grep 即可"
 
@@ -87,3 +97,5 @@ cq_test_mapping:
   CQ.RAIL.009: []
   CQ.TREEICON.010: []
   CQ.CHANGEPANEL.011: []
+  CQ.TREEWIDTH.012: [workspace-split.test.ts]
+  CQ.PANELBORDER.013: []
