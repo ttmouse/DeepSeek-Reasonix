@@ -18,7 +18,7 @@ bad()  { FAIL=$((FAIL+1)); FAILED_ITEMS+=("$1"); echo "  FAIL  $1"; }
 
 cd "$ROOT/desktop/frontend" || { echo "无法进入 desktop/frontend"; exit 1; }
 
-echo "=== 还原验证：9 项调整 ==="
+echo "=== 还原验证：10 项调整 ==="
 
 # ---------- C1: chat 面板 400px 下限 ----------
 note "C1 workspacePanelAvailableWidth 定义"
@@ -93,6 +93,16 @@ else
   bad "C9 分隔条细线（resizer 规则不足）"
 fi
 
+# ---------- C10: 文件树图标位置/样式 ----------
+note "C10 FolderTree / workspace-tree__icon"
+if grep -c "workspace-tree__icon" src/styles.css 2>/dev/null | grep -q "^[4-9]\|[0-9][0-9]" \
+   && grep -n "toggleTreeRail" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q . \
+   && grep -c "FolderTree" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C10 文件树图标（workspace-tree__icon ≥4 + toggleTreeRail 按钮存在 + FolderTree 图标 ≥1）"
+else
+  bad "C10 文件树图标（workspace-tree__icon 不足或 FolderTree 按钮位置改变）"
+fi
+
 # ---------- 自动化测试（C1/C4/C5 强相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
@@ -117,5 +127,5 @@ if [[ $FAIL -gt 0 ]]; then
   printf '  FAIL 项: %s\n' "${FAILED_ITEMS[@]}"
   exit 1
 fi
-echo "  全部 9 项调整已还原 ✅"
+echo "  全部 10 项调整已还原 ✅"
 exit 0

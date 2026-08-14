@@ -1,21 +1,21 @@
 # CLAIM.DOCK.003 — 单宽度 dock + per-project 持久化
 schema: zkge.claim/v1
 id: CLAIM.DOCK.003
-statement: "右侧面板在切换标签（文件/变更/上下文）时保持单一宽度不跳动（preferredWorkspacePanelWidth = rightDockTreeWidth）；每个项目的 dock 宽度独立持久化"
+statement: "右侧面板（侧边栏）在切换标签（文件/变更/上下文）时保持单一宽度不跳动（preferredWorkspacePanelWidth = rightDockTreeWidth）；每个项目的 dock 宽度独立持久化；切换标签绝不改变侧边栏宽度"
 owner: dev.desktop
 risk_level: R2
 required_assurance_level: A2
 scope:
-  included: [right_dock, per_project_state]
+  included: [right_dock, per_project_state, tab_switch_width_stability]
   excluded: []
 assumptions:
   - id: ASSUMPTION.DOCK.001
-    text: "dock 宽度单源是 rightDockTreeWidth；不同 workspaceRoot 记忆不同宽度"
+    text: "dock 宽度单源是 rightDockTreeWidth；不同 workspaceRoot 记忆不同宽度；preview 宽度不参与渲染（双宽度系统已移除）"
 oracle:
   type: invariant
-  expression: "preferredWorkspacePanelWidth = rightDockTreeWidth（无 rightDockPreviewWidth 分支）；saveRightDockTreeWidth 被调用；workspaceMemoryKey 含 workspaceRoot"
+  expression: "preferredWorkspacePanelWidth = rightDockTreeWidth（无 rightDockPreviewWidth 分支）；saveRightDockTreeWidth 被调用；workspaceMemoryKey 含 workspaceRoot；切换 tab 只改 viewMode 不改宽度"
 counterexample:
-  expression: "preferredWorkspacePanelWidth 含 rightDockDetailActive ? rightDockPreviewWidth 分支（说明被上游双宽度改回），或 dock 宽度未按项目记忆"
+  expression: "preferredWorkspacePanelWidth 含 rightDockDetailActive ? rightDockPreviewWidth 分支（说明被上游双宽度改回，切 tab 会跳宽），或 dock 宽度未按项目记忆，或切 tab 时调用 setRightDockTreeWidth 改变宽度"
 required_verifiers:
   - workspace-layout.test.ts
   - app-chrome-tabs.test.ts

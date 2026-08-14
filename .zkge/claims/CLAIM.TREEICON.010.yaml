@@ -1,0 +1,26 @@
+# CLAIM.TREEICON.010 — 文件树图标/按钮位置与样式
+schema: zkge.claim/v1
+id: CLAIM.TREEICON.010
+statement: "「显示/隐藏文件树」按钮（FolderTree 图标）位于预览区操作组内，由 Tooltip 包裹、aria-pressed 指示状态；文件树行图标使用 workspace-tree__icon 类且 active 行有高亮"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A1
+scope:
+  included: [file_tree, icon_position, tree_toggle_button]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.TREEICON.001
+    text: "文件树开关按钮用 FolderTree size=15，行图标用 workspace-tree__icon"
+oracle:
+  type: structural
+  expression: "WorkspacePanel.tsx 中 FolderTree 在 Tooltip 包裹的 toggle 按钮内（onClick=toggleTreeRail）；styles.css 含 .workspace-tree__icon 与 .workspace-tree__row--active 高亮"
+counterexample:
+  expression: "FolderTree 按钮被移出操作组/丢失 Tooltip，或 workspace-tree__icon 样式缺失，或 active 行图标高亮消失"
+required_verifiers:
+  - grep: FolderTree / workspace-tree__icon / row--active
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25 + d8d42210f
+# 还原检查：grep -n "FolderTree" desktop/frontend/src/components/WorkspacePanel.tsx 应含 onClick=toggleTreeRail 的按钮；
+# grep -c "workspace-tree__icon" desktop/frontend/src/styles.css 应 >= 4；
+# grep -c "workspace-tree__row--active" desktop/frontend/src/styles.css 应 >= 2
