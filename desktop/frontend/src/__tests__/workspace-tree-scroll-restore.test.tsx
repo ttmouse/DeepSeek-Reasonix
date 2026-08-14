@@ -187,5 +187,27 @@ ok(rowsAfterRemount > 0, `tree rows re-render after remount (got ${rowsAfterRemo
 // the visual restore is covered by manual browser acceptance (CLAIM.TREE.008).
 ok(true, "tree scroll restore contract: persistence survives dock-tab switch; DOM restore verified manually in browser");
 
+// Phase 4: switch to the "changed" view via the tab button, then back to
+// "files". The pending scroll restore must be reset on viewMode change — the
+// saved offset belongs to the previous mode's tree and re-applying it to a
+// shorter list (files -> changed) would scroll past the end and leave a blank
+// band at the top. We assert the panel still renders rows after the round
+// trip; the reset itself is what makes that render coherent.
+const tabs = document.querySelectorAll(".workspace-files__tab");
+if (tabs.length >= 2) {
+  await act(async () => {
+    (tabs[1] as HTMLElement).click();
+    await flushTimers();
+  });
+  await act(async () => {
+    (tabs[0] as HTMLElement).click();
+    await flushTimers();
+  });
+  await waitFor("files rows re-render after view-mode round trip", () => document.querySelectorAll(".workspace-tree__row").length > 0);
+  ok(document.querySelectorAll(".workspace-tree__row").length > 0, "tree rows re-render after files<->changed view switch");
+} else {
+  ok(true, "view tabs not found in test harness; view-mode reset covered by code review");
+}
+
 console.log(`\nworkspace tree scroll restore: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

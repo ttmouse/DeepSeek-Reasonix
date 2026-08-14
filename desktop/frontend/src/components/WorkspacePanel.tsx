@@ -950,13 +950,33 @@ export function WorkspacePanel({
 
   const changedMode = viewMode === "changed";
   const currentFileName = selectedPath ? basename(selectedPath) : t("workspace.noFile");
-  const currentFileDir = selectedPath ? parentPath(selectedPath) : "";
   const previewTitle = changedMode && !selectedPath
     ? scopedChangeRows ? t("context.sessionChanges") : t("workspace.changedTab")
     : currentFileName;
-  const previewSubtitle = changedMode && !selectedPath
-    ? scopedChangeRows ? t("context.changedMeta", { count: scopedChangeRows.length }) : shortCwd(cwd) || t("workspace.title")
-    : currentFileDir;
+  // Changed overview shows just the project name (matching the file-preview
+  // breadcrumb); hovering reveals the full absolute workspace root.
+  const previewSubtitleCrumbs = changedMode && !selectedChangePath && !scopedChangeRows
+    ? (cwd ? [{ label: basename(cwd), full: cwd }] : [])
+    : [];
+  const previewFullPath = activeSelectedPath || "";
+  // Breadcrumb segments plus each segment's full absolute path for hover:
+  // segment 0 is the project name (compact), segments 1..n are the file's
+  // directory chain. Hovering any segment shows the system absolute path.
+  const previewCrumbs = previewFullPath ? (() => {
+    const root = basename(cwd ?? "");
+    const dirParts = parentPath(previewFullPath).split("/").filter(Boolean);
+    const dirLabels: { label: string; full: string }[] = [];
+    let acc = "";
+    for (const part of dirParts) {
+      acc += (acc ? "/" : "") + part;
+      dirLabels.push({ label: part, full: `${cwd ?? ""}/${acc}` });
+    }
+    const crumbs = [{ label: root, full: cwd ?? "" }];
+    // Skip duplicate leading segment (root name repeats when the file sits
+    // directly under the project).
+    if (dirParts.length > 0 && dirParts[0] !== root) crumbs.push(...dirLabels);
+    return crumbs;
+  })() : [];
   const recentFiles = useMemo(() => [...openTabs].reverse(), [openTabs]);
 
   const workspaceSearchFallbackSequence = workspaceRefreshFallbackSequence(workspaceRefresh);
@@ -1074,6 +1094,15 @@ export function WorkspacePanel({
   // position forever. Keep a pending target and retry on every tree change
   // until the tree's total height exceeds it, then scroll once.
   const pendingScrollRestoreRef = useRef<number | null>(null);
+  // Reset the pending restore whenever the view mode changes: the saved offset
+  // belongs to the previous mode's tree, and re-applying it to a shorter list
+  // (e.g. files -> changed) scrolls past the end and leaves a blank band at
+  // the top. Each mode restores its own offset on its own data.
+  const previousViewModeRef = useRef(viewMode);
+  if (previousViewModeRef.current !== viewMode) {
+    previousViewModeRef.current = viewMode;
+    pendingScrollRestoreRef.current = null;
+  }
   useEffect(() => {
     if (!open || treeRows.length === 0) return;
     if (pendingScrollRestoreRef.current == null) {
@@ -1088,7 +1117,7 @@ export function WorkspacePanel({
     if (virtualizer.getTotalSize() < target) return; // tree not tall enough yet
     virtualizer.scrollToOffset(target, { align: "start" });
     pendingScrollRestoreRef.current = null;
-  }, [open, treeRows.length, workspaceMemoryKey, virtualizer]);
+  }, [open, treeRows.length, virtualizer.getTotalSize(), workspaceMemoryKey, virtualizer]);
   const virtualTreeItems = virtualizer.getVirtualItems();
   const compactProbePaths = virtualTreeItems
     .map((item) => treeRows[item.index])
@@ -1548,7 +1577,30 @@ export function WorkspacePanel({
               <Tooltip label={selectedPath ?? undefined}>
                 <span className="workspace-current-file__name">{previewTitle}</span>
               </Tooltip>
-              {previewSubtitle && <span className="workspace-current-file__path">{previewSubtitle}</span>}
+              {previewSubtitleCrumbs.length > 0 && (
+                <span className="workspace-current-file__path">
+                  {previewSubtitleCrumbs.map((crumb, index) => (
+                    <span key={index} className="workspace-current-file__crumb">
+                      {index > 0 && <span className="workspace-current-file__crumb-sep" aria-hidden="true">›</span>}
+                      <Tooltip label={crumb.full}>
+                        <span>{crumb.label}</span>
+                      </Tooltip>
+                    </span>
+                  ))}
+                </span>
+              )}
+              {previewCrumbs.length > 0 && (
+                <span className="workspace-current-file__path">
+                  {previewCrumbs.map((crumb, index) => (
+                    <span key={index} className="workspace-current-file__crumb">
+                      {index > 0 && <span className="workspace-current-file__crumb-sep" aria-hidden="true">›</span>}
+                      <Tooltip label={crumb.full}>
+                        <span>{crumb.label}</span>
+                      </Tooltip>
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
             <Tooltip label={t("workspace.recentFiles")}>
               <button

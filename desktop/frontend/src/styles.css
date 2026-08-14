@@ -332,7 +332,7 @@
     --bg-soft: #eef2f7;
     --bg-elev: #ffffff;
     --bg-elev-2: #f2f5f9;
-    --sidebar-bg: #fbfaf8;
+    --sidebar-bg: #f9f9f9;
     --sidebar-hover: #e8edf4;
     --sidebar-active: #eaf1ff;
     --chat-bg: #ffffff;
@@ -407,7 +407,7 @@
   --bg-soft: #eef2f7;
   --bg-elev: #ffffff;
   --bg-elev-2: #f2f5f9;
-  --sidebar-bg: #fbfaf8;
+  --sidebar-bg: #f9f9f9;
   --sidebar-hover: #e8edf4;
   --sidebar-active: #eaf1ff;
   --chat-bg: #ffffff;
@@ -958,7 +958,7 @@
   --bg-soft: #eef0f4;
   --bg-elev: #ffffff;
   --bg-elev-2: #f7f8fb;
-  --sidebar-bg: #fbfaf8;
+  --sidebar-bg: #f9f9f9;
   --sidebar-hover: #eef0f4;
   --sidebar-active: rgba(47, 111, 224, 0.12);
   --chat-bg: #f5f6f9;
@@ -1027,7 +1027,7 @@
     --bg-soft: #eef0f4;
     --bg-elev: #ffffff;
     --bg-elev-2: #f7f8fb;
-    --sidebar-bg: #fbfaf8;
+    --sidebar-bg: #f9f9f9;
     --sidebar-hover: #eef0f4;
     --sidebar-active: rgba(47, 111, 224, 0.12);
     --chat-bg: #f5f6f9;
@@ -2755,28 +2755,34 @@ a[href] {
   position: absolute;
   top: var(--app-chrome-height);
   bottom: var(--statusbar-height);
-  left: calc(var(--sidebar-width) - 4px);
+  /* The sidebar is position:static, so anchor via left from the layout
+     container. 1px width means the hairline sits exactly on the sidebar's
+     right edge (no -4px centering offset from the old 8px rail). */
+  left: calc(var(--sidebar-width) - 1px);
   z-index: var(--z-layout-resizer);
-  width: 8px;
+  width: 1px;
   padding: 0;
   border: 0;
-  background: transparent;
+  /* Same visual model as .workspace-panel-resizer: the element itself is the
+     1px hairline, ::before widens the drag hit area, hover paints accent. */
+  background: var(--border-soft);
   cursor: col-resize;
+  touch-action: none;
 }
-.sidebar-resizer::after {
+.sidebar-resizer::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 50%;
-  width: 1px;
-  transform: translateX(-50%);
-  background: transparent;
-  transition: background 0.12s, box-shadow 0.12s;
+  left: -3px;
+  right: -3px;
 }
-.sidebar-resizer:hover::after,
-.sidebar-resizer:focus-visible::after,
-.layout--sidebar-resizing .sidebar-resizer::after {
+.sidebar-resizer::after {
+  display: none;
+}
+.sidebar-resizer:hover,
+.sidebar-resizer:focus-visible,
+.layout--sidebar-resizing .sidebar-resizer {
   background: var(--accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
 }
@@ -9906,7 +9912,7 @@ body > .mermaid-diagram--fullscreen {
   background: var(--workspace-preview-bg);
 }
 .workspace-panel--embedded.workspace-panel--split-preview .workspace-preview {
-  border-left: 1px solid var(--border-soft);
+  border-left: 0;
 }
 .workspace-tree-resizer {
   --wails-draggable: no-drag;
@@ -26711,7 +26717,7 @@ body > .mermaid-diagram--fullscreen {
   --bg-soft: #f0f3f8;
   --bg-elev: #ffffff;
   --bg-elev-2: #eef2f7;
-  --sidebar-bg: #fbfaf8;
+  --sidebar-bg: #f9f9f9;
   --sidebar-hover: #e7edf5;
   --sidebar-active: color-mix(in srgb, var(--accent) 9%, #ffffff);
   --chat-bg: #f8fafc;
@@ -26731,7 +26737,7 @@ body > .mermaid-diagram--fullscreen {
     --bg-soft: #f0f3f8;
     --bg-elev: #ffffff;
     --bg-elev-2: #eef2f7;
-    --sidebar-bg: #fbfaf8;
+    --sidebar-bg: #f9f9f9;
     --sidebar-hover: #e7edf5;
     --sidebar-active: color-mix(in srgb, var(--accent) 9%, #ffffff);
     --chat-bg: #f8fafc;
@@ -27847,7 +27853,8 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .sidebar {
   padding: 14px 12px 8px;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--border-soft);
+  /* The resize rail already draws the divider; a border here would double it. */
+  border-right: 0;
 }
 
 :root[data-theme-style] .sidebar__nav {
@@ -29198,7 +29205,8 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workspace-panel--embedded.workspace-panel--split-preview .workspace-preview {
-  border-left: 1px solid var(--border-soft);
+  /* The split resizer already draws the divider; a border here doubles it. */
+  border-left: 0;
   animation: graphite-viewer-in var(--dur-slow) var(--ease-out) both;
 }
 
@@ -33064,6 +33072,7 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .sidebar-resizer::after,
 :root[data-theme-style] .app--creation .sidebar-resizer::after {
+  display: block;
   background: color-mix(in srgb, var(--fg-faint) 14%, transparent);
   box-shadow: none;
 }
