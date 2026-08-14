@@ -1,0 +1,25 @@
+# CLAIM.SELECT.004 — 文件选择与变更选择隔离
+schema: zkge.claim/v1
+id: CLAIM.SELECT.004
+statement: "文件视图选中文件与变更视图选中变更互不干扰：变更视图刷新/选中不会清掉文件预览，切回文件视图恢复原文件选择"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [files_view, changed_view, selection_isolation]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.SELECT.001
+    text: "文件预览路径与变更选中路径是独立状态"
+oracle:
+  type: invariant
+  expression: "selectedFilePath 与 selectedChangePath 独立 state；viewMode=changed 时文件预览不被清空；workspace-changes-errors.test.tsx 通过"
+counterexample:
+  expression: "切到 changed 视图后 selectedFilePath 被清空，或切回 files 时预览丢失"
+required_verifiers:
+  - workspace-changes-errors.test.tsx
+  - grep: selectedFilePath / selectedChangePath 双 state
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 98388dae5
+# 还原检查：grep -n "selectedFilePath\|selectedChangePath" desktop/frontend/src/components/WorkspacePanel.tsx 均必须存在

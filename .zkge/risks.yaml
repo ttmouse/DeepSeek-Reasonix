@@ -1,0 +1,29 @@
+# ============================================================
+# zk-ge-verification 技能模板：risks.yaml
+# 对应 A4 文件布局中 .zkge/risks.yaml
+# A2 枚举实例：本项目实际风险项 + R0-R3 分级
+# ============================================================
+schema: zkge.risks/v1
+project_id: PROJECT.<ASCII_SLUG>
+
+# R0-R3 分级参考：
+#   R0 = 无风险（文档/纯展示）
+#   R1 = 低风险（单文件、可回滚、无外部影响）
+#   R2 = 中风险（API/持久化/并发/迁移——需要真实验证预言）
+#   R3 = 高风险（资金/安全/数据不可逆/法规）
+risks:
+  - id: RISK.<DOMAIN>.<NNN>
+    description: ""                  # 风险描述（业务语言）
+    category: availability | correctness | security | data_loss | compliance | performance
+    risk_level: R0 | R1 | R2 | R3
+    trigger: ""                      # 什么情况会触发
+    impact: ""                       # 触发后影响
+    mitigation: ""                   # 缓解手段（对应哪些 claim）
+    status: open | accepted | mitigated | closed
+
+# 风险汇总统计（由 zkge-validate 或人工维护）
+summary:
+  r0: 0
+  r1: 0
+  r2: 0
+  r3: 0

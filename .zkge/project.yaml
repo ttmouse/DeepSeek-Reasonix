@@ -1,0 +1,53 @@
+# ============================================================
+# zk-ge-verification 技能模板：project.yaml
+# 对应 A4 文件布局中 .zkge/project.yaml
+# 初始化时填写：PROJECT.<SLUG> + A1 规范词实例 + 目标/反目标/边界
+# ============================================================
+schema: zkge.project/v1
+project_id: PROJECT.CHAT-PANEL-RESIZE     # 如 PROJECT.REASONIX-TASKBOARD（小写 + 连字符）
+
+meta:
+  name: "chat-panel-resize-min-400 分支调整还原清单"
+  description: "把 9 个本地提交固化为可独立验证的能力项，防止 rebase/merge 时被改坏"
+  type: existing
+  committed_at: ""                   # 初始化承诺时间（UTC RFC3339）
+  owner: dev.desktop
+
+# A1 规范词实例：本项目对规范词的具体含义（不满足 MUST 不得进入下一状态）
+normative_terms:
+  must:
+    - ""                             # 如 "taskctl issue move --status in_progress 必须带 --if-version（真实 projectId 注入，禁止 <projectId> 占位符残留）"
+  must_not:
+    - ""                             # 如 "不得在用户页面确认前把 issue 移到 done"
+  should:
+    - ""                             # 如 "R2/R3 项目使用不同模型做 BUILDER 与 CHALLENGER"
+  may:
+    - ""                             # 可选项
+
+# 目标：为什么做（业务层语言）
+goals:
+  - "聊天面板最小宽度 400px 下限不因右侧面板挤压被破坏"
+  - "右侧面板宽度跨标签稳定、按项目记忆"
+  - "文件/变更选择隔离、树滚动恢复、面包屑等 9 项本地调整在每次 rebase/merge 后都能被逐项验证还原"
+  - ""
+
+# 反目标：明确不做（防范围漂移）
+non_goals:
+  - ""
+  - ""
+
+# 边界：数据/信任/外部依赖
+boundaries:
+  external_systems:                  # 外部系统清单
+    - name: ""
+      direction: in | out | both
+      data: ""
+  irreversible_operations:           # 不可逆操作（对应架构 human_gate）
+    - ""
+  reliability_requirements:          # 可靠性要求（SLO 等）
+    - ""
+
+# 开放问题：没有答案就写"未知"，不允许自动补成听起来合理的答案
+open_questions:
+  - "C8/C9 为样式类调整，grep 可判存在但视觉细节需 L3 手测确认"
+  - "C6 hover 效果在 creation 风格下是否同样生效待手测"

@@ -1,0 +1,25 @@
+# CLAIM.CRUMB.008 — 文件预览/变更概览面包屑
+schema: zkge.claim/v1
+id: CLAIM.CRUMB.008
+statement: "文件预览顶部显示面包屑（项目名 + 目录链），hover 每段显示完整绝对路径；变更概览显示项目名面包屑"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A1
+scope:
+  included: [preview_breadcrumb, changed_overview]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.CRUMB.001
+    text: "面包屑类名 workspace-current-file__crumb"
+oracle:
+  type: structural
+  expression: "WorkspacePanel.tsx 含 previewCrumbs 构造 + workspace-current-file__crumb 渲染；styles.css 含 crumb 样式"
+counterexample:
+  expression: "previewCrumbs 逻辑缺失，或 crumb 类在 JSX/CSS 中消失"
+required_verifiers:
+  - grep: previewCrumbs 与 workspace-current-file__crumb
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 8358e0ebb
+# 还原检查：grep -c "previewCrumbs\|previewSubtitleCrumbs" desktop/frontend/src/components/WorkspacePanel.tsx 应 ≥ 3；
+# grep -c "workspace-current-file__crumb" desktop/frontend/src/components/WorkspacePanel.tsx 应 = 4

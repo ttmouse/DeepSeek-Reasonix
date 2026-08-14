@@ -1,0 +1,25 @@
+# CLAIM.RAIL.009 — 统一分隔条细线样式
+schema: zkge.claim/v1
+id: CLAIM.RAIL.009
+statement: "侧边栏与右侧面板分隔条统一为 1px 细线样式，hover 高亮 accent 色，拖拽热区保持可用"
+owner: dev.desktop
+risk_level: R0
+required_assurance_level: A1
+scope:
+  included: [sidebar_resizer, workspace_panel_resizer]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.RAIL.001
+    text: "resizer 类为 .sidebar-resizer / .workspace-panel-resizer"
+oracle:
+  type: invariant
+  expression: "styles.css 中 resizer 宽度 1px、background var(--border-soft)、::before 扩宽热区、hover 高亮"
+counterexample:
+  expression: "resizer 回到 8px 透明条，或 hover accent 消失"
+required_verifiers:
+  - grep: styles.css resizer 规则
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 8358e0ebb
+# 还原检查：grep -c "sidebar-resizer\|workspace-panel-resizer" desktop/frontend/src/styles.css 应 ≥ 5；
+# 应有 width: 1px 与 ::before 热区规则

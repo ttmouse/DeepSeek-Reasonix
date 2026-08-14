@@ -1,0 +1,26 @@
+# CLAIM.TOPICBAR.002 — 次要操作收进 More 菜单
+schema: zkge.claim/v1
+id: CLAIM.TOPICBAR.002
+statement: "顶部操作栏次要操作收进「更多」菜单，主操作按钮直接可见；TopicbarMoreMenu 组件存在且被 App 引用"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [topicbar, more_menu]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.TOPICBAR.001
+    text: "More 菜单收纳的是次要操作，主操作不收纳"
+oracle:
+  type: structural
+  expression: "TopicbarMoreMenu.tsx 存在；App.tsx import 并渲染 TopicbarMoreMenu；topicbar-controls.test.ts 通过"
+counterexample:
+  expression: "TopicbarMoreMenu 组件缺失，或 App 未引用，或次要操作全部平铺导致拥挤"
+required_verifiers:
+  - topicbar-controls.test.ts
+  - grep: TopicbarMoreMenu 组件存在
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: f7639a69d
+# 还原检查：ls desktop/frontend/src/components/TopicbarMoreMenu.tsx 必须存在；
+# grep -n "TopicbarMoreMenu" desktop/frontend/src/App.tsx 必须 ≥ 2 处

@@ -1,0 +1,24 @@
+# CLAIM.SIDEBAR.007 — 侧边栏暖白背景
+schema: zkge.claim/v1
+id: CLAIM.SIDEBAR.007
+statement: "侧边栏背景为暖白色（#f9f9f9），浅色主题下视觉统一"
+owner: dev.desktop
+risk_level: R0
+required_assurance_level: A1
+scope:
+  included: [sidebar_bg]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.SIDEBAR.001
+    text: "--sidebar-bg 变量控制侧边栏背景"
+oracle:
+  type: invariant
+  expression: "styles.css 中 --sidebar-bg 在浅色主题下为 #f9f9f9"
+counterexample:
+  expression: "--sidebar-bg 被改回 #fbfaf8 或其它色值"
+required_verifiers:
+  - grep: styles.css --sidebar-bg
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 3a1e372fd
+# 还原检查：grep -n "\-\-sidebar-bg" desktop/frontend/src/styles.css 应含 #f9f9f9

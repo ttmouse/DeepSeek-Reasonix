@@ -1,0 +1,27 @@
+# CLAIM.DOCK.003 — 单宽度 dock + per-project 持久化
+schema: zkge.claim/v1
+id: CLAIM.DOCK.003
+statement: "右侧面板在切换标签（文件/变更/上下文）时保持单一宽度不跳动（preferredWorkspacePanelWidth = rightDockTreeWidth）；每个项目的 dock 宽度独立持久化"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [right_dock, per_project_state]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.DOCK.001
+    text: "dock 宽度单源是 rightDockTreeWidth；不同 workspaceRoot 记忆不同宽度"
+oracle:
+  type: invariant
+  expression: "preferredWorkspacePanelWidth = rightDockTreeWidth（无 rightDockPreviewWidth 分支）；saveRightDockTreeWidth 被调用；workspaceMemoryKey 含 workspaceRoot"
+counterexample:
+  expression: "preferredWorkspacePanelWidth 含 rightDockDetailActive ? rightDockPreviewWidth 分支（说明被上游双宽度改回），或 dock 宽度未按项目记忆"
+required_verifiers:
+  - workspace-layout.test.ts
+  - app-chrome-tabs.test.ts
+  - grep: preferredWorkspacePanelWidth 定义
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查：grep -n "const preferredWorkspacePanelWidth" desktop/frontend/src/App.tsx
+# 必须为 "= rightDockTreeWidth"（单宽度），不得含 rightDockDetailActive 三元

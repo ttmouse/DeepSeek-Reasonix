@@ -1,0 +1,26 @@
+# CLAIM.RESIZE.001 — chat 面板最小宽度 400px
+schema: zkge.claim/v1
+id: CLAIM.RESIZE.001
+statement: "聊天面板在窗口变窄时保持最小可用宽度（400px 下限），右侧面板宽度上限受可用宽度约束，不会挤压聊天面板到不可读"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [desktop, right_dock, chat_pane]
+  excluded: [creation_style]
+assumptions:
+  - id: ASSUMPTION.RESIZE.001
+    text: "CHAT_MIN_WIDTH=400 是聊天面板的下限"
+oracle:
+  type: invariant
+  expression: "chatPaneWidth >= CHAT_MIN_WIDTH(400) 恒成立；rightDockTreeWidth = clamp(width, workspacePanelAvailableWidth)"
+counterexample:
+  expression: "chatPaneWidth < 400 或 dock 拖宽时 chat 被压到 < 400"
+required_verifiers:
+  - workspace-layout.test.ts
+  - grep: workspacePanelAvailableWidth 定义存在
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 59b6140c3
+# 还原检查：grep -n "availableWorkspacePanelWidth" desktop/frontend/src/lib/workspaceLayout.ts 必须返回定义；
+# grep -n "workspacePanelAvailableWidth" desktop/frontend/src/App.tsx 必须 ≥ 4 处引用

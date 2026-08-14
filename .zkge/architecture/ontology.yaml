@@ -1,0 +1,83 @@
+# ontology.yaml —— 项目本体（阶段② GE 设计 · 世界知识图谱）
+# 模板来源：renheng B2B 订单履约验证项目 docs/01-core-graph.html §1.1-1.5（已实战验证 15/15 CQ）
+#
+# ── 方法论纪律（填写时逐条对照）─────────────────────────────────────────────
+#   1. 先写能力问题（业务层，见 claims/），再设计 schema —— 克制添加实体，
+#      直到某个能力问题要求为止。每个实体/关系/事件必须至少服务一个 CQ，否则删除。
+#   2. 事件是头等节点：绝不把事件压平成成对边（审计/回放/幂等都依赖事件链）。
+#   3. events 必须 append-only（无 UPDATE/DELETE）。
+#   4. 数量守恒基准只存在于一个字段（事实单一来源），其余全部派生。
+#   5. 授权是图不是表：权限判定只走授权系统（应用代码不做 if-else 硬编码授权）。
+#   6. 每个 state 迁移必须与事件链同事务。
+#
+# 说明：entities/relations 是「静态世界」；events 是「动态世界」；constraints 是
+# 二者必须守恒的不变量。constraints 每一条都应能在 claims/ 中找到对应技术层 oracle。
+
+schema: zkge.ontology/v1
+project_id: PROJECT.<ASCII_SLUG>
+
+# ── entities（实体）─────────────────────────────────────────────────────────
+# 格式: 实体名: { desc: 一句话定义, ex: [实例id…] }
+# 每个实体必须能回答「哪个能力问题需要它」；答不出 → 删除。
+entities:
+  # 示例（B2B 订单履约）：
+  # Tenant:      { desc: 企业租户（多租户隔离根节点）, ex: [chang-an] }
+  # User:        { desc: 系统用户（按角色区分）, ex: [alice-sales] }
+  # Customer:    { desc: 客户（带等级 A/B/C/D，C/D 触发董事长审批）, ex: [cust-0001] }
+  # Order:       { desc: 订单主档（统一订单总表），状态机载体, ex: [ORD-2026-0001] }
+  # OrderItem:   { desc: 订单明细（数量守恒基准）, ex: [item-01] }
+  # StockPrepare:{ desc: 备货审批聚合, ex: [STK-0001] }
+  # Shipment:    { desc: 发货单（一次发货，关闭后不再自动新建）, ex: [SHP-0001] }
+  # Invoice:     { desc: 开票申请/发票, ex: [INV-0001] }
+  # PreOrder:    { desc: 预订单（外部消息 → AI 候选 → 人工确认 → 正式订单）, ex: [PRE-0001] }
+  # Event:       { desc: 事件（append-only 事件链，审计回放根基）, ex: [EV-0001] }
+  # Evidence:    { desc: 凭证（只追加版本，不可覆盖）, ex: [EVD-0001] }
+  # <ENTITY>:    { desc: <一句话定义>, ex: [<实例id>] }
+
+# ── relations（关系）────────────────────────────────────────────────────────
+# 格式: 关系名: { domain: 主语实体, range: 宾语实体, desc: 语义 }
+# domain/range 必须引用 entities 中已声明的实体（schema 校验会检查幽灵边）。
+relations:
+  # 示例（B2B 订单履约）：
+  # BELONGS_TO:  { domain: User,      range: Tenant,       desc: 用户属于租户（多租户隔离） }
+  # OWNS:        { domain: User,      range: Customer,     desc: 销售负责客户（ReBAC 直接关系） }
+  # COVERS:      { domain: Order,     range: Customer,     desc: 订单属于客户 }
+  # CONTAINS:    { domain: Order,     range: OrderItem,    desc: 订单含明细（可多条） }
+  # PREPARES:    { domain: Order,     range: StockPrepare, desc: 订单产生备货审批（可分批） }
+  # FULFILLS:    { domain: StockPrepare, range: Shipment,  desc: 备货审批产生发货单（可多张） }
+  # GENERATES_INV: { domain: Order,   range: Invoice,      desc: 订单产生开票（可合并/拆分） }
+  # DERIVES:     { domain: PreOrder,  range: Order,        desc: 预订单确认后派生正式订单（1:1） }
+  # PRODUCES:    { domain: Order,     range: Event,        desc: 订单产生事件（append-only） }
+  # <RELATION>:  { domain: <实体>, range: <实体>, desc: <语义> }
+
+# ── events（事件）────────────────────────────────────────────────────────────
+# 格式: 事件名: { trigger: 触发来源, args: [参数…] }
+# 事件是头等节点：每个状态迁移/业务动作都有对应事件；事件不可删改。
+# 幂等锚点（msg_id / idempotency_key）必须在 args 中体现，否则幂等类 CQ 无法验证。
+events:
+  # 示例（B2B 订单履约）：
+  # PreOrderCaptured:  { trigger: 会话存档拉到消息, args: [tenant, group, msgid, intent_features, archive_ref] }
+  # IntentParsed:      { trigger: 意图识别（LLM 候选 + 确定性校验）, args: [pre_order_id, confidence, candidates] }
+  # PreOrderConfirmed: { trigger: 人工确认（卡片按钮）, args: [pre_order_id, operator] }
+  # OrderRequested:    { trigger: 下单（幂等键）, args: [order, customer, items] }
+  # PriceReviewed:     { trigger: 审批节点裁决, args: [task, verdict] }
+  # GoodsShipped:      { trigger: 实际发货（库存联动事务）, args: [shipment, qty] }
+  # InvoiceIssued:     { trigger: 财务确认开票完成, args: [invoice, tax_no] }
+  # ReceiptException:  { trigger: 无回单超期 Timer / 提前申请, args: [order, shipment_ids] }
+  # OrderClosed:       { trigger: 归档完成, args: [order] }
+  # FlowFailed:        { trigger: 异常/超时/补偿, args: [order, error, compensation] }
+  # <EVENT>:           { trigger: <触发来源>, args: [<参数>] }
+
+# ── constraints（守恒约束 / 不变量）──────────────────────────────────────────
+# 格式: - 约束名: "可被推翻的断言（机器可检查）"
+# 每个约束对应一个技术层 claim（claims/ 中的 oracle）。
+# 反面教材：`系统应该可靠` 不可验证；`并发发货后库存永不为负` 可以。
+constraints:
+  # 示例（B2B 订单履约）：
+  # - 备货守恒: "∑(备货确认量) ≤ 订单数量（每明细）"
+  # - 发货守恒: "∑(发货量) ≤ ∑(备货量)；订单全部发货 ⇔ ∑(发货量) = 订单数量"
+  # - 库存守恒: "库存 = 初始 + 入 - 出（出与发货同事务，恒 ≥ 0）"
+  # - 开票守恒: "∑(开票金额/数量) ≤ ∑(有效发货金额/数量)（双维度，开票不超发货）"
+  # - 事件不可变: "Event 只追加（append-only），无 UPDATE/DELETE"
+  # - 消息幂等: "同一 (tenant, msg_id) 只生成一个预订单"
+  # - <约束名>: "<可被推翻的断言>"

@@ -1,0 +1,25 @@
+# CLAIM.HOVER.006 — 变更行 hover / 回滚浮层 / 状态徽章样式
+schema: zkge.claim/v1
+id: CLAIM.HOVER.006
+statement: "变更列表行的悬停高亮、回滚操作浮层、状态徽章使用统一样式，hover 状态清晰可见"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A1
+scope:
+  included: [workspace_changes, hover, revert_overlay, status_badge]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.HOVER.001
+    text: "样式通过 styles.css 的 workspace-change 相关类实现"
+oracle:
+  type: structural
+  expression: "styles.css 含 workspace-change row hover 规则；workspace-change-status.test.ts 通过"
+counterexample:
+  expression: "styles.css 中 change row hover 规则缺失，或回滚浮层/徽章类被删除"
+required_verifiers:
+  - workspace-change-status.test.ts
+  - grep: styles.css hover 规则
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: d8d42210f
+# 还原检查：grep -c "workspace-change.*hover\|workspace-change.*badge\|revert" desktop/frontend/src/styles.css 应 ≥ 5 处

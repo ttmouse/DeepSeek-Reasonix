@@ -1,0 +1,77 @@
+# ============================================================
+# Score Card：能力问题 → 测试映射（chat-panel-resize-min-400）
+# 用途：rebased/merged 后跑一遍，逐项确认每个调整是否被还原
+# ============================================================
+schema: zkge.score-card/v1
+project_id: PROJECT.CHAT-PANEL-RESIZE
+
+# L0-L3 分层
+layering:
+  L0: "构建/类型检查：tsc --noEmit 0 错误"
+  L1: "单元测试：tsx 跑 workspace-layout / scroll-restore / changes-errors / topicbar"
+  L2: "组合行为：app-chrome-tabs / swr-contract"
+  L3: "手动 UI 验收：面包屑 hover / 分隔条视觉 / 变更行 hover"
+
+cases:
+  - id: CQ.RESIZE.001
+    question: "聊天面板在窗口变窄时是否保持 400px 下限，不被右侧面板挤压？"
+    entry: "拖动窗口宽度 + 拖动右侧面板分隔条"
+    test: "workspace-layout.test.ts（40 断言）"
+    level: L1
+  - id: CQ.TOPICBAR.002
+    question: "顶部操作栏次要操作是否收进 More 菜单？"
+    entry: "查看顶部操作栏 + 点击 More 菜单"
+    test: "topicbar-controls.test.ts"
+    level: L1
+  - id: CQ.DOCK.003
+    question: "右侧面板切标签宽度是否稳定？各项目宽度是否独立记忆？"
+    entry: "切换右侧面板标签 + 切换项目"
+    test: "workspace-layout.test.ts + app-chrome-tabs.test.ts"
+    level: L2
+  - id: CQ.SELECT.004
+    question: "文件选择与变更选择是否互不干扰？"
+    entry: "文件视图选文件 → 切变更视图选变更 → 切回文件"
+    test: "workspace-changes-errors.test.tsx"
+    level: L1
+  - id: CQ.SCROLL.005
+    question: "文件树滚动位置在切标签后是否恢复？"
+    entry: "滚动文件树 → 切右侧标签 → 切回"
+    test: "workspace-tree-scroll-restore.test.tsx（5 passed）"
+    level: L1
+  - id: CQ.HOVER.006
+    question: "变更行 hover / 回滚浮层 / 状态徽章样式是否正确？"
+    entry: "鼠标悬停变更行 / 点击回滚"
+    test: "workspace-change-status.test.ts + grep styles.css"
+    level: L1
+  - id: CQ.SIDEBAR.007
+    question: "侧边栏背景是否为暖白色？"
+    entry: "直接观察侧边栏"
+    test: "grep --sidebar-bg = #f9f9f9"
+    level: L0
+  - id: CQ.CRUMB.008
+    question: "文件预览是否显示面包屑路径，hover 显示完整绝对路径？"
+    entry: "打开文件预览 / 切到变更概览"
+    test: "grep crumb 类 + L3 手测"
+    level: L3
+  - id: CQ.RAIL.009
+    question: "侧边栏/面板分隔条是否为 1px 细线 + hover 高亮？"
+    entry: "拖动侧边栏/面板分隔条"
+    test: "grep resizer 规则 + L3 手测"
+    level: L3
+
+coverage:
+  hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005]
+  target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009]
+  honest_declaration: [CQ.SIDEBAR.007]
+  note: "hard_gate 项必须全绿才允许 rebase/merge 通过；target 项 grep+手测；honest 纯色值 grep 即可"
+
+cq_test_mapping:
+  CQ.RESIZE.001: [workspace-layout.test.ts]
+  CQ.TOPICBAR.002: [topicbar-controls.test.ts]
+  CQ.DOCK.003: [workspace-layout.test.ts, app-chrome-tabs.test.ts]
+  CQ.SELECT.004: [workspace-changes-errors.test.tsx]
+  CQ.SCROLL.005: [workspace-tree-scroll-restore.test.tsx]
+  CQ.HOVER.006: [workspace-change-status.test.ts]
+  CQ.SIDEBAR.007: []
+  CQ.CRUMB.008: []
+  CQ.RAIL.009: []

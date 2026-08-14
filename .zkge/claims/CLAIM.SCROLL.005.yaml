@@ -1,0 +1,25 @@
+# CLAIM.SCROLL.005 — 文件树滚动位置恢复
+schema: zkge.claim/v1
+id: CLAIM.SCROLL.005
+statement: "文件树滚动到较深位置后，切换右侧标签再切回，滚动位置被恢复；树未长到足够高度时等待重试而非丢失位置"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A2
+scope:
+  included: [file_tree, scroll_restore]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.SCROLL.001
+    text: "滚动位置持久化到 per-project workspace 状态"
+oracle:
+  type: behavior
+  expression: "pendingScrollRestoreRef 存在；workspace-tree-scroll-restore.test.tsx 5 项全通过；scrollTop 持久化到 reasonix.workspaceState.v2"
+counterexample:
+  expression: "切换标签后 scrollTop 复位为 0，或树高度不足时恢复丢失"
+required_verifiers:
+  - workspace-tree-scroll-restore.test.tsx
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: 7cfb75be2 + 8358e0ebb
+# 还原检查：grep -n "pendingScrollRestoreRef" desktop/frontend/src/components/WorkspacePanel.tsx 必须存在；
+# 测试跑 npx tsx src/__tests__/workspace-tree-scroll-restore.test.tsx 必须 5 passed
