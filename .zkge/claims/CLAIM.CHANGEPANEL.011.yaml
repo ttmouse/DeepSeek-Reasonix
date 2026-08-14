@@ -1,0 +1,28 @@
+# CLAIM.CHANGEPANEL.011 — 改动面板行结构/内边距/按钮/悬停样式
+schema: zkge.claim/v1
+id: CLAIM.CHANGEPANEL.011
+statement: "改动面板使用 workspace-change-row 行结构：整行 hover 高亮（含 revert 按钮共享同一背景）、revert 按钮悬停前隐藏、悬停/键盘聚焦时在状态徽章同槽位浮现、选中行（--active）持久高亮；行内图标、内边距、徽章按钮样式统一"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A1
+scope:
+  included: [workspace_changes_panel, row_layout, hover, revert_button, status_badge, padding]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.CHANGEPANEL.001
+    text: "改动面板行样式类为 workspace-change-row / workspace-change__revert / workspace-change__badge"
+oracle:
+  type: structural
+  expression: "styles.css 含 .workspace-change-row（≥5）、.workspace-change__revert（≥5，含 hover 浮现与 focus-visible 规则）、.workspace-change__badge（≥3）、.workspace-change--active（≥3）"
+counterexample:
+  expression: "workspace-change-row 结构缺失（退回单行 .workspace-change），或 revert 按钮无 hover 浮现，或 --active 选中高亮消失，或徽章/内边距样式回退"
+required_verifiers:
+  - grep: styles.css 类计数
+  - workspace-change-status.test.ts
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: d8d42210f
+# 还原检查（基线 8358e0ebb）：
+#   workspace-change-row: 22   workspace-change__revert: 14
+#   workspace-change__badge: 8  workspace-change--active: 10
+# 回退阈值：row≥5 且 revert≥5 且 badge≥3 且 active≥3

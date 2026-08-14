@@ -18,7 +18,7 @@ bad()  { FAIL=$((FAIL+1)); FAILED_ITEMS+=("$1"); echo "  FAIL  $1"; }
 
 cd "$ROOT/desktop/frontend" || { echo "无法进入 desktop/frontend"; exit 1; }
 
-echo "=== 还原验证：10 项调整 ==="
+echo "=== 还原验证：11 项调整 ==="
 
 # ---------- C1: chat 面板 400px 下限 ----------
 note "C1 workspacePanelAvailableWidth 定义"
@@ -103,6 +103,18 @@ else
   bad "C10 文件树图标（workspace-tree__icon 不足或 FolderTree 按钮位置改变）"
 fi
 
+# ---------- C11: 改动面板行结构/hover/revert/徽章 ----------
+note "C11 workspace-change-row/revert/badge/active"
+row_n=$(grep -c "workspace-change-row" src/styles.css 2>/dev/null || echo 0)
+revert_n=$(grep -c "workspace-change__revert" src/styles.css 2>/dev/null || echo 0)
+badge_n=$(grep -c "workspace-change__badge" src/styles.css 2>/dev/null || echo 0)
+active_n=$(grep -c "workspace-change--active" src/styles.css 2>/dev/null || echo 0)
+if [[ $row_n -ge 5 && $revert_n -ge 5 && $badge_n -ge 3 && $active_n -ge 3 ]]; then
+  ok "C11 改动面板样式（row=$row_n revert=$revert_n badge=$badge_n active=$active_n）"
+else
+  bad "C11 改动面板样式（row=$row_n revert=$revert_n badge=$badge_n active=$active_n，回退阈值 row≥5 revert≥5 badge≥3 active≥3）"
+fi
+
 # ---------- 自动化测试（C1/C4/C5 强相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
@@ -127,5 +139,5 @@ if [[ $FAIL -gt 0 ]]; then
   printf '  FAIL 项: %s\n' "${FAILED_ITEMS[@]}"
   exit 1
 fi
-echo "  全部 10 项调整已还原 ✅"
+echo "  全部 11 项调整已还原 ✅"
 exit 0

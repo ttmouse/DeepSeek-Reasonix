@@ -63,10 +63,15 @@ cases:
     entry: "查看文件树行图标 + 预览区操作组的树开关按钮"
     test: "grep FolderTree + workspace-tree__icon + L3 手测"
     level: L1
+  - id: CQ.CHANGEPANEL.011
+    question: "改动面板行结构、内边距、revert 按钮、状态徽章样式是否正确？"
+    entry: "打开右侧面板变更视图，查看行 hover / revert 按钮 / 徽章 / 选中态"
+    test: "grep workspace-change-row/revert/badge/active + L3 手测"
+    level: L1
 
 coverage:
   hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005]
-  target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009, CQ.TREEICON.010]
+  target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009, CQ.TREEICON.010, CQ.CHANGEPANEL.011]
   honest_declaration: [CQ.SIDEBAR.007]
   note: "hard_gate 项必须全绿才允许 rebase/merge 通过；target 项 grep+手测；honest 纯色值 grep 即可"
 
@@ -81,3 +86,4 @@ cq_test_mapping:
   CQ.CRUMB.008: []
   CQ.RAIL.009: []
   CQ.TREEICON.010: []
+  CQ.CHANGEPANEL.011: []
