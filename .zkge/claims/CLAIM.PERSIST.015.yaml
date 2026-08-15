@@ -1,0 +1,24 @@
+# CLAIM.PERSIST.015 — 侧边栏宽度记忆（dock 树宽 + 文件树宽）
+schema: zkge.claim/v1
+id: CLAIM.PERSIST.015
+statement: "右侧面板（dock）宽度和文件树宽度分别持久化：拖动 dock 分隔条记忆 rightDockTreeWidth；拖动文件树分隔条记忆 workspacePanel:treeWidth；重启/切换标签后恢复各自宽度"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [right_dock_width, file_tree_width, persistence]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PERSIST.015.001
+    text: "dock 宽存 layoutPreferences key rightDockTreeWidth；树宽存 workspacePanel:treeWidth"
+oracle:
+  type: invariant
+  expression: "store/layout.ts saveRightDockTreeWidth→saveLayoutSize(\"rightDockTreeWidth\")；WorkspacePanel.tsx writeWorkspacePanelPreference(WORKSPACE_TREE_WIDTH_KEY)；两者加载路径存在（loadLayoutSize / readWorkspacePanelPreference）"
+counterexample:
+  expression: "dock 宽或树宽任一不持久化（无 save/load），或 key 丢失，重启后宽度回默认"
+required_verifiers:
+  - grep: saveRightDockTreeWidth / WORKSPACE_TREE_WIDTH_KEY / writeWorkspacePanelPreference
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查：store/layout.ts 含 saveRightDockTreeWidth；WorkspacePanel.tsx 含 WORKSPACE_TREE_WIDTH_KEY 且 writeWorkspacePanelPreference 调用 ≥2

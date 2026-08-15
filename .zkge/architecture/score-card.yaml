@@ -78,9 +78,34 @@ cases:
     entry: "查看分栏预览左缘 + 文件树左缘拖拽条"
     test: "grep split-preview border-left:0 + workspace-tree-resizer"
     level: L3
+  - id: CQ.PERSIST.014
+    question: "右侧面板开合状态是否按项目分开记忆？"
+    entry: "项目A关闭面板 → 切到项目B → 切回项目A"
+    test: "grep workspacePanelOpenStorageKey + save/loadWorkspacePanelOpen"
+    level: L2
+  - id: CQ.PERSIST.015
+    question: "dock 宽度与文件树宽度是否持久化？"
+    entry: "拖动 dock/树分隔条 → 重启 → 看宽度是否恢复"
+    test: "grep saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY"
+    level: L2
+  - id: CQ.PERSIST.016
+    question: "打开的文件（预览）是否被记忆并在重启后恢复？"
+    entry: "打开文件 → 关闭面板 → 重开面板"
+    test: "grep WORKSPACE_SELECTED_PATH_KEY + 写/读/清路径"
+    level: L2
+  - id: CQ.PERSIST.017
+    question: "最近打开文件列表是否独立持久化？"
+    entry: "打开多个文件 → 关闭全部预览 → 看最近文件菜单"
+    test: "grep WORKSPACE_RECENT_PATHS_KEY + recentPaths"
+    level: L2
+  - id: CQ.PERSIST.018
+    question: "文件树滚动位置是否持久化？"
+    entry: "滚动文件树 → 重启 → 看滚动位置"
+    test: "grep WORKSPACE_TREE_SCROLL_KEY + latestScrollTopRef"
+    level: L1
 
 coverage:
-  hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005, CQ.TREEWIDTH.012]
+  hard_gate: [CQ.RESIZE.001, CQ.TOPICBAR.002, CQ.DOCK.003, CQ.SELECT.004, CQ.SCROLL.005, CQ.TREEWIDTH.012, CQ.PERSIST.014, CQ.PERSIST.015, CQ.PERSIST.016, CQ.PERSIST.017]
   target: [CQ.HOVER.006, CQ.CRUMB.008, CQ.RAIL.009, CQ.TREEICON.010, CQ.CHANGEPANEL.011, CQ.PANELBORDER.013]
   honest_declaration: [CQ.SIDEBAR.007]
   note: "hard_gate 项必须全绿才允许 rebase/merge 通过；target 项 grep+手测；honest 纯色值 grep 即可"
@@ -99,3 +124,8 @@ cq_test_mapping:
   CQ.CHANGEPANEL.011: []
   CQ.TREEWIDTH.012: [workspace-split.test.ts]
   CQ.PANELBORDER.013: []
+  CQ.PERSIST.014: []
+  CQ.PERSIST.015: []
+  CQ.PERSIST.016: []
+  CQ.PERSIST.017: []
+  CQ.PERSIST.018: []

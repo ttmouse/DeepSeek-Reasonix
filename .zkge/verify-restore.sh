@@ -18,7 +18,7 @@ bad()  { FAIL=$((FAIL+1)); FAILED_ITEMS+=("$1"); echo "  FAIL  $1"; }
 
 cd "$ROOT/desktop/frontend" || { echo "无法进入 desktop/frontend"; exit 1; }
 
-echo "=== 还原验证：13 项调整 ==="
+echo "=== 还原验证：18 项调整 ==="
 
 # ---------- C1: chat 面板 400px 下限 ----------
 note "C1 workspacePanelAvailableWidth 定义"
@@ -134,6 +134,52 @@ else
   bad "C13 面板内部边界（split-preview border-left 或 workspace-tree-resizer 缺失）"
 fi
 
+# ---------- C14: dock 开合按项目记忆 ----------
+note "C14 workspacePanelOpenStorageKey"
+if grep -c "workspacePanelOpenStorageKey" src/store/layout.ts 2>/dev/null | grep -q "^[1-9]" \
+   && grep -c "saveWorkspacePanelOpen(true, activeWorkspaceRoot)\|saveWorkspacePanelOpen(false, activeWorkspaceRoot)" src/App.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C14 dock 开合按项目记忆（workspacePanelOpenStorageKey + 按 workspaceRoot 保存）"
+else
+  bad "C14 dock 开合按项目记忆（workspacePanelOpenStorageKey 或按 root 保存缺失）"
+fi
+
+# ---------- C15: dock 宽 + 树宽持久化 ----------
+note "C15 saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY"
+if grep -c "saveRightDockTreeWidth" src/store/layout.ts 2>/dev/null | grep -q "^[1-9]" \
+   && grep -c "WORKSPACE_TREE_WIDTH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
+  ok "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY ≥2）"
+else
+  bad "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth 或 WORKSPACE_TREE_WIDTH_KEY 缺失）"
+fi
+
+# ---------- C16: 打开的文件状态记忆 ----------
+note "C16 WORKSPACE_SELECTED_PATH_KEY"
+if grep -c "WORKSPACE_SELECTED_PATH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
+   && grep -c "writeWorkspacePanelPreference(WORKSPACE_SELECTED_PATH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY ≥3 + 写入调用）"
+else
+  bad "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY 或写入缺失）"
+fi
+
+# ---------- C17: 最近文件列表独立持久化 ----------
+note "C17 WORKSPACE_RECENT_PATHS_KEY + recentPaths"
+if grep -c "WORKSPACE_RECENT_PATHS_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]" \
+   && grep -c "recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
+   && grep -c "const recentFiles = useMemo(() => \[...recentPaths\]" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C17 最近文件列表独立持久化（RECENT_PATHS_KEY + recentPaths ≥3 + recentFiles 用 recentPaths）"
+else
+  bad "C17 最近文件列表独立持久化（RECENT_PATHS_KEY/recentPaths/recentFiles 缺失）"
+fi
+
+# ---------- C18: 树滚动位置持久化 ----------
+note "C18 WORKSPACE_TREE_SCROLL_KEY + latestScrollTopRef"
+if grep -c "WORKSPACE_TREE_SCROLL_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]" \
+   && grep -c "latestScrollTopRef" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
+  ok "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY ≥2 + latestScrollTopRef ≥2）"
+else
+  bad "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY 或 latestScrollTopRef 缺失）"
+fi
+
 # ---------- 自动化测试（C1/C4/C5 强相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
@@ -158,5 +204,5 @@ if [[ $FAIL -gt 0 ]]; then
   printf '  FAIL 项: %s\n' "${FAILED_ITEMS[@]}"
   exit 1
 fi
-echo "  全部 13 项调整已还原 ✅"
+echo "  全部 18 项调整已还原 ✅"
 exit 0

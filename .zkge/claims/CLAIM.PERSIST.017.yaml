@@ -1,0 +1,25 @@
+# CLAIM.PERSIST.017 — 最近打开文件列表记忆
+schema: zkge.claim/v1
+id: CLAIM.PERSIST.017
+statement: "最近打开文件列表（recentPaths）独立于 live 预览标签持久化：workspacePanel:recentPaths 存最近 N 个打开的文件；关闭全部预览后最近文件菜单仍保留历史；重启后恢复"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [recent_files, persistence]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PERSIST.017.001
+    text: "recentPaths 独立 state + workspacePanel:recentPaths 持久化；与 openTabs 分离"
+oracle:
+  type: invariant
+  expression: "WorkspacePanel.tsx 含 WORKSPACE_RECENT_PATHS_KEY 与独立 recentPaths state；selectFile 时 push；writeWorkspacePanelPreference 持久化；recentFiles 从 recentPaths 派生（非 openTabs）"
+counterexample:
+  expression: "recentPaths 缺失或改用 openTabs（关闭预览后最近文件清空），或不持久化"
+required_verifiers:
+  - grep: WORKSPACE_RECENT_PATHS_KEY / recentPaths / recentFiles
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查：WorkspacePanel.tsx 含 WORKSPACE_RECENT_PATHS_KEY + const [recentPaths, setRecentPaths]；
+# recentFiles = useMemo(... [recentPaths])（不是 [openTabs]）

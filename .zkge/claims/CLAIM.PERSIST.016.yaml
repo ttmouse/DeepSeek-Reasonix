@@ -1,0 +1,24 @@
+# CLAIM.PERSIST.016 — 打开的文件（预览）状态记忆
+schema: zkge.claim/v1
+id: CLAIM.PERSIST.016
+statement: "关闭侧边栏/切换标签/重启后，打开的文件（预览选中路径）被记忆并恢复：workspacePanel:selectedPath 持久化；用户主动关闭预览时清除持久化路径"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [open_file, preview, persistence]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PERSIST.016.001
+    text: "选中文件路径存 workspacePanel:selectedPath；主动关闭预览写 null"
+oracle:
+  type: invariant
+  expression: "WorkspacePanel.tsx 含 WORKSPACE_SELECTED_PATH_KEY；selectedFilePath 变化时 writeWorkspacePanelPreference(key, path)；关闭预览时写 null；初始化时 readWorkspacePanelPreference 恢复"
+counterexample:
+  expression: "selectedFilePath 不持久化，或关闭预览不写 null（重启又打开已关闭的文件），或恢复逻辑缺失"
+required_verifiers:
+  - grep: WORKSPACE_SELECTED_PATH_KEY / writeWorkspacePanelPreference
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查：WorkspacePanel.tsx 含 WORKSPACE_SELECTED_PATH_KEY；写 selectedFilePath 和 null 两处均有

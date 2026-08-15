@@ -1,0 +1,26 @@
+# CLAIM.PERSIST.014 — 侧边栏开合状态按项目记忆
+schema: zkge.claim/v1
+id: CLAIM.PERSIST.014
+statement: "右侧面板（dock）的开合状态按项目根目录（workspaceRoot）分开记忆：切换项目时各自恢复自己的开合状态，互不干扰；同一项目内重启/切换标签后恢复上次开合"
+owner: dev.desktop
+risk_level: R2
+required_assurance_level: A2
+scope:
+  included: [right_dock, open_state, per_project]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PERSIST.014.001
+    text: "开合状态存于 localStorage key workspacePanelOpen.<workspaceRoot>"
+oracle:
+  type: invariant
+  expression: "store/layout.ts 的 workspacePanelOpenStorageKey(workspaceRoot) 按 root 拼 key；loadWorkspacePanelOpen/saveWorkspacePanelOpen 存在；App.tsx 打开/关闭 dock 时调用 saveWorkspacePanelOpen(open, activeWorkspaceRoot)；恢复时 loadWorkspacePanelOpen(activeWorkspaceRoot)"
+counterexample:
+  expression: "dock 开合状态不按项目分开（单 key），或切换项目不恢复各自状态，或 save/load 调用缺失"
+required_verifiers:
+  - grep: workspacePanelOpenStorageKey / saveWorkspacePanelOpen / loadWorkspacePanelOpen
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查（基线 8358e0ebb）：
+#   store/layout.ts 含 workspacePanelOpenStorageKey(workspaceRoot)（按 root 拼 key）
+#   App.tsx 含 saveWorkspacePanelOpen(true/false, activeWorkspaceRoot) 与 loadWorkspacePanelOpen(activeWorkspaceRoot)

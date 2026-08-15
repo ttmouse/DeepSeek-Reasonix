@@ -1,0 +1,24 @@
+# CLAIM.PERSIST.018 — 文件树滚动位置持久化
+schema: zkge.claim/v1
+id: CLAIM.PERSIST.018
+statement: "文件树滚动位置持久化到 workspacePanel:treeScroll（每次滚动写入）；恢复时优先用会话缓存、其次 localStorage；树长够高时恢复（配合 CLAIM.SCROLL.005）"
+owner: dev.desktop
+risk_level: R1
+required_assurance_level: A2
+scope:
+  included: [file_tree, scroll_persistence]
+  excluded: []
+assumptions:
+  - id: ASSUMPTION.PERSIST.018.001
+    text: "滚动位置存 workspacePanel:treeScroll；unmount 时 flush 会话缓存"
+oracle:
+  type: invariant
+  expression: "WorkspacePanel.tsx 含 WORKSPACE_TREE_SCROLL_KEY；onScroll 写 scrollTop；unmount cleanup 写 latestScrollTopRef；恢复读 session ?? localStorage"
+counterexample:
+  expression: "滚动位置不持久化（无 WORKSPACE_TREE_SCROLL_KEY 写入），或 unmount 不 flush"
+required_verifiers:
+  - grep: WORKSPACE_TREE_SCROLL_KEY / latestScrollTopRef
+invalidation_inputs: [specification_digest, source_digest]
+status: UNKNOWN
+source_commit: ee6591b25
+# 还原检查：WorkspacePanel.tsx 含 WORKSPACE_TREE_SCROLL_KEY；onScroll 写 + unmount flush 两处
