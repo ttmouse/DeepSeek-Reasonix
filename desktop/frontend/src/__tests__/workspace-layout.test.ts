@@ -360,5 +360,45 @@ eq(
   "closing a warm terminal removes portaled selection controls",
 );
 
+// C1: the chat pane keeps its 400px floor no matter how wide the dock is
+// dragged — the dock's available width is viewport minus sidebar minus the
+// 400px chat minimum minus the resizer, so chat can never be squeezed below it.
+const chatFloorDock = availableWorkspacePanelWidth({
+  viewportWidth: 1000,
+  sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_WIDTH,
+  chatMinWidth: CHAT_MIN_WIDTH,
+  resizerWidth: RESIZER_WIDTH,
+});
+eq(
+  chatFloorDock + SIDEBAR_WIDTH + CHAT_MIN_WIDTH + RESIZER_WIDTH <= 1000,
+  true,
+  "C1: dock width never consumes the chat 400px floor (chat stays readable)",
+);
+// Sanity: with a wide viewport the dock gets more room, but the chat floor is
+// still reserved — chat is never the thing that shrinks.
+const wideDock = availableWorkspacePanelWidth({
+  viewportWidth: 1600,
+  sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_WIDTH,
+  chatMinWidth: CHAT_MIN_WIDTH,
+  resizerWidth: RESIZER_WIDTH,
+});
+eq(wideDock > chatFloorDock, true, "C1: wider viewport gives the dock more room, chat floor untouched");
+
+// C3: switching dock tabs (context/files/changed) must never resize the dock —
+// the preferred width is a single source (rightDockTreeWidth), not a
+// detail-dependent ternary that would jump the sidebar per tab.
+eq(
+  /const preferredWorkspacePanelWidth = rightDockTreeWidth;/.test(appSource),
+  true,
+  "C3: preferredWorkspacePanelWidth is the single tree width (no detail ternary)",
+);
+eq(
+  /const preferredWorkspacePanelWidth = rightDockDetailActive \? rightDockPreviewWidth : rightDockTreeWidth;/.test(appSource),
+  false,
+  "C3: no preview-width dual system that would resize the sidebar on tab switch",
+);
+
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
 if (failed > 0) process.exit(1);

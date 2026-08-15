@@ -198,6 +198,7 @@ export function WorkspacePanel({
   const workspaceTabId = tabId ?? "";
   const workspaceScopeKey = workspaceScopeKeyProp ?? `${workspaceTabId}\u0000${cwd ?? ""}`;
   const lastWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
+  const scopeSwitchPendingRef = useRef(false);
   const workspaceMemoryKey = workspaceMemoryKeyProp ?? workspaceScopeKey;
   const workspaceMemoryVisitId = workspaceMemoryVisitIdProp ?? workspaceTreeVisitId(workspaceMemoryKey);
   const workspaceRefresh = useWorkspaceRefresh(workspaceTabId, workspaceScopeKey, open);
@@ -233,8 +234,7 @@ export function WorkspacePanel({
   );
   const [previewResource, setPreviewResource] = useState(() => emptyKeyedResource<FilePreview>());
   const [viewMode, setViewMode] = useState<"files" | "changed">(initialViewMode);
-  const selectedChangePathInScope = lastWorkspaceScopeKeyRef.current === workspaceScopeKey ? selectedChangePath : null;
-  const selectedPath = viewMode === "changed" ? selectedChangePathInScope : selectedFilePath;
+  const selectedPath = viewMode === "changed" ? selectedChangePath : selectedFilePath;
   // Both creation and regular workspaces use the same three-layer change view;
   // keep the prop in the seam for older callers while making history collapsed
   // by default everywhere.
@@ -427,9 +427,9 @@ export function WorkspacePanel({
       return;
     }
     // Scope switch must not request the previous scope's selected change:
-    // the stale selectedPath is cleared by the scope-switch effect, but this
-    // callback can still be invoked before that clears, so guard here too.
-    if (lastWorkspaceScopeKeyRef.current !== workspaceScopeKey) return;
+    // the selection is preserved for the original scope, but a request must
+    // not fire for the just-switched scope before the scope effect settles.
+    if (scopeSwitchPendingRef.current) return;
     const requestKey = `${requestScopeKey}\u0000change\u0000${requestPath}`;
     setChangeDetailResource((current) => beginKeyedResourceRequest(current, requestKey, requestId, workspaceRefresh.revisions.content));
     try {
@@ -553,6 +553,7 @@ export function WorkspacePanel({
     if (!open) return;
     if (lastWorkspaceScopeKeyRef.current === workspaceScopeKey) return;
     lastWorkspaceScopeKeyRef.current = workspaceScopeKey;
+    scopeSwitchPendingRef.current = true;
     workingTreeRefreshSchedulerRef.current?.cancel();
     gitMetaRefreshSchedulerRef.current?.cancel();
     changeDetailRequestIdRef.current += 1;
@@ -565,7 +566,6 @@ export function WorkspacePanel({
     setExpandedCommit(null);
     setCommitDetail(null);
     setScopedChangeRows(null);
-    setSelectedChangePath(null);
     lastChangeRevealRequestIdRef.current = null;
     dismissedChangeRevealRequestIdRef.current = null;
     lastChangeListRequestIdRef.current = null;
@@ -747,7 +747,11 @@ export function WorkspacePanel({
     if (!open) return;
     if (viewMode === "changed") {
       void loadWorkspaceChanges();
-      if (selectedPath && lastWorkspaceScopeKeyRef.current === workspaceScopeKey) void loadChangeDetail();
+      // A scope switch just happened in this render batch: the previous
+      // scope's selected change must not be re-requested, but the selection
+      // itself is preserved for when the user returns to that scope.
+      if (selectedPath && !scopeSwitchPendingRef.current) void loadChangeDetail();
+      scopeSwitchPendingRef.current = false;
       if (commitHistoryOpen) void loadGitHistory();
     } else {
       changeDetailRequestIdRef.current += 1;

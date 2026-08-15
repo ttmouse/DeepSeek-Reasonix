@@ -180,10 +180,10 @@ else
   bad "C18 树滚动位置持久化（useWorkspaceTreeScrollPersistence 或 scrollTop 恢复缺失）"
 fi
 
-# ---------- 自动化测试（C1/C4/C5 强相关） ----------
+# ---------- 自动化测试（C1-C6/C12/C14-C18 相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
-for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls; do
+for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls workspace-tree-memory workspace-split workspace-change-status workspace-panel-swr-contract workspace-preview-css; do
   f="src/__tests__/$t.test.tsx"
   [[ -f "$f" ]] || f="src/__tests__/$t.test.ts"
   if [[ -f "$f" ]]; then

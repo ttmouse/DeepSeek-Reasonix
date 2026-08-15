@@ -109,22 +109,22 @@ eq(
 );
 eq(
   finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden)", "grid-template-columns"),
-  "var(--workspace-tree-rail-width) var(--workspace-tree-width) minmax(var(--workspace-preview-min-width), 1fr)",
-  "split mode keeps a narrow tree toggle rail beside the file tree",
+  "var(--workspace-tree-rail-width) minmax(var(--workspace-preview-min-width), 1fr) var(--workspace-tree-width)",
+  "split mode keeps a narrow tree toggle rail beside the file tree (preview left, tree right per user preference)",
 );
-eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-files", "grid-column"), "2", "file tree sits beside the rail");
-eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-preview", "grid-column"), "3", "preview sits after rail and tree");
+eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-files", "grid-column"), "3", "file tree sits at the far right after the preview");
+eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-preview", "grid-column"), "2", "preview sits after the rail, before the tree");
 eq(
   finalDeclaration(".workspace-panel--with-tree-rail .workspace-tree-resizer", "left"),
-  "calc(var(--workspace-tree-rail-width) + var(--workspace-tree-width) - 4px)",
-  "tree resizer accounts for the persistent rail",
+  "calc(100% - var(--workspace-tree-width) - 4px)",
+  "tree resizer sits at the tree's left edge (tree is on the right)",
 );
 eq(
   finalDeclaration(".workspace-panel--tree-hidden", "grid-template-columns"),
-  "var(--workspace-tree-rail-width) minmax(0, 1fr)",
-  "preview-only mode keeps a narrow tree toggle rail",
+  "minmax(0, 1fr)",
+  "preview-only mode drops the tree rail",
 );
-eq(finalDeclaration(".workspace-panel--tree-hidden .workspace-preview", "grid-column"), "2", "preview sits beside the rail");
+eq(finalDeclaration(".workspace-panel--tree-hidden .workspace-preview", "grid-column"), "1", "preview fills the panel when the tree is hidden");
 eq(
   /const filePreviewLimit = 2 \* 1024 \* 1024/.test(appGo),
   true,
