@@ -119,7 +119,7 @@ fi
 note "C12 savedTreeWidth / treeWidthMode / shouldInitializeWorkspaceSplitOnFileSelect"
 if grep -c "treeWidthMode" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[5-9]\|[0-9][0-9]" \
    && grep -c "shouldInitializeWorkspaceSplitOnFileSelect" src/lib/workspaceSplit.ts 2>/dev/null | grep -q "^[1-9]" \
-   && grep -c "savedTreeWidth: treeWidthMode" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+   && grep -c 'savedTreeWidth: treeWidthMode === "manual" ? treeWidth : null' src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
   ok "C12 文件树宽度保持（treeWidthMode ≥5 + shouldInitializeWorkspaceSplitOnFileSelect + savedTreeWidth=manual）"
 else
   bad "C12 文件树宽度保持（treeWidthMode/shouldInitialize/savedTreeWidth 缺失，手动宽度会重置）"
@@ -144,40 +144,40 @@ else
 fi
 
 # ---------- C15: dock 宽 + 树宽持久化 ----------
-note "C15 saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY"
+note "C15 saveRightDockTreeWidth + workspaceTreeMemory treeWidth"
 if grep -c "saveRightDockTreeWidth" src/store/layout.ts 2>/dev/null | grep -q "^[1-9]" \
-   && grep -c "WORKSPACE_TREE_WIDTH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
-  ok "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY ≥2）"
+   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { treeWidth" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + workspaceTreeMemory treeWidth）"
 else
-  bad "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth 或 WORKSPACE_TREE_WIDTH_KEY 缺失）"
+  bad "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth 或 workspaceTreeMemory treeWidth 缺失）"
 fi
 
 # ---------- C16: 打开的文件状态记忆 ----------
-note "C16 WORKSPACE_SELECTED_PATH_KEY"
-if grep -c "WORKSPACE_SELECTED_PATH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
-   && grep -c "writeWorkspacePanelPreference(WORKSPACE_SELECTED_PATH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
-  ok "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY ≥3 + 写入调用）"
+note "C16 workspaceTreeMemory selectedFilePath"
+if grep -c "selectedFilePath" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[5-9]\|[0-9][0-9]" \
+   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { selectedFilePath" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
+  ok "C16 打开的文件状态记忆（selectedFilePath ≥5 + workspaceTreeMemory 持久化）"
 else
-  bad "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY 或写入缺失）"
+  bad "C16 打开的文件状态记忆（selectedFilePath 或 workspaceTreeMemory 持久化缺失）"
 fi
 
 # ---------- C17: 最近文件列表独立持久化 ----------
-note "C17 WORKSPACE_RECENT_PATHS_KEY + recentPaths"
-if grep -c "WORKSPACE_RECENT_PATHS_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]" \
-   && grep -c "recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
+note "C17 recentPaths 独立持久化"
+if grep -c "recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
+   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]" \
    && grep -c "const recentFiles = useMemo(() => \[...recentPaths\]" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
-  ok "C17 最近文件列表独立持久化（RECENT_PATHS_KEY + recentPaths ≥3 + recentFiles 用 recentPaths）"
+  ok "C17 最近文件列表独立持久化（recentPaths ≥3 + workspaceTreeMemory 持久化 + recentFiles 用 recentPaths）"
 else
-  bad "C17 最近文件列表独立持久化（RECENT_PATHS_KEY/recentPaths/recentFiles 缺失）"
+  bad "C17 最近文件列表独立持久化（recentPaths/持久化/recentFiles 缺失）"
 fi
 
 # ---------- C18: 树滚动位置持久化 ----------
-note "C18 WORKSPACE_TREE_SCROLL_KEY + latestScrollTopRef"
-if grep -c "WORKSPACE_TREE_SCROLL_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]" \
-   && grep -c "latestScrollTopRef" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
-  ok "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY ≥2 + latestScrollTopRef ≥2）"
+note "C18 workspaceTreeMemory scrollTop"
+if grep -rn "onWorkspaceTreeScroll" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q . \
+   && grep -n "readWorkspaceTreeMemory(workspaceMemoryKey)?.scrollTop" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q .; then
+  ok "C18 树滚动位置持久化（useWorkspaceTreeScrollPersistence + readWorkspaceTreeMemory scrollTop）"
 else
-  bad "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY 或 latestScrollTopRef 缺失）"
+  bad "C18 树滚动位置持久化（useWorkspaceTreeScrollPersistence 或 scrollTop 恢复缺失）"
 fi
 
 # ---------- 自动化测试（C1/C4/C5 强相关） ----------

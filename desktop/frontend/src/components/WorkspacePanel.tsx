@@ -197,6 +197,7 @@ export function WorkspacePanel({
   const t = useT();
   const workspaceTabId = tabId ?? "";
   const workspaceScopeKey = workspaceScopeKeyProp ?? `${workspaceTabId}\u0000${cwd ?? ""}`;
+  const lastWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
   const workspaceMemoryKey = workspaceMemoryKeyProp ?? workspaceScopeKey;
   const workspaceMemoryVisitId = workspaceMemoryVisitIdProp ?? workspaceTreeVisitId(workspaceMemoryKey);
   const workspaceRefresh = useWorkspaceRefresh(workspaceTabId, workspaceScopeKey, open);
@@ -224,9 +225,16 @@ export function WorkspacePanel({
     () => initialWorkspaceMemory?.selectedChangePath ?? null,
   );
   const [openTabs, setOpenTabs] = useState<string[]>([]);
+  // Independent "recently opened" history: survives closing all preview tabs
+  // (openTabs is the live preview state) and app restarts, so the recent-files
+  // menu keeps the user's file history even after the previews are dismissed.
+  const [recentPaths, setRecentPaths] = useState<string[]>(() =>
+    (initialWorkspaceMemory?.recentPaths ?? []).slice(0, WORKSPACE_MAX_PREVIEW_TABS),
+  );
   const [previewResource, setPreviewResource] = useState(() => emptyKeyedResource<FilePreview>());
   const [viewMode, setViewMode] = useState<"files" | "changed">(initialViewMode);
-  const selectedPath = viewMode === "changed" ? selectedChangePath : selectedFilePath;
+  const selectedChangePathInScope = lastWorkspaceScopeKeyRef.current === workspaceScopeKey ? selectedChangePath : null;
+  const selectedPath = viewMode === "changed" ? selectedChangePathInScope : selectedFilePath;
   // Both creation and regular workspaces use the same three-layer change view;
   // keep the prop in the seam for older callers while making history collapsed
   // by default everywhere.
@@ -264,7 +272,6 @@ export function WorkspacePanel({
   const lastChangeListRequestIdRef = useRef<number | null>(null);
   const dismissedChangeListRequestIdRef = useRef<number | null>(null);
   const currentWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
-  const lastWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
   const changeDetailRequestIdRef = useRef(0);
   const gitHistoryRequestIdRef = useRef(0);
   const previewRequestIdRef = useRef(0);
@@ -363,6 +370,11 @@ export function WorkspacePanel({
   }, [treeWidth, treeWidthMode, workspaceMemoryKey]);
 
   useEffect(() => {
+    if (memoryRestorePendingRef.current) return;
+    rememberWorkspaceTreeState(workspaceMemoryKey, { recentPaths });
+  }, [recentPaths, workspaceMemoryKey]);
+
+  useEffect(() => {
     if (memoryRestorePendingRef.current || dockTreeWidth == null || dockPreviewWidth == null) return;
     rememberWorkspaceTreeState(workspaceMemoryKey, { dockTreeWidth, dockPreviewWidth });
   }, [dockPreviewWidth, dockTreeWidth, workspaceMemoryKey]);
@@ -414,6 +426,10 @@ export function WorkspacePanel({
       setChangeDetailResource(emptyKeyedResource());
       return;
     }
+    // Scope switch must not request the previous scope's selected change:
+    // the stale selectedPath is cleared by the scope-switch effect, but this
+    // callback can still be invoked before that clears, so guard here too.
+    if (lastWorkspaceScopeKeyRef.current !== workspaceScopeKey) return;
     const requestKey = `${requestScopeKey}\u0000change\u0000${requestPath}`;
     setChangeDetailResource((current) => beginKeyedResourceRequest(current, requestKey, requestId, workspaceRefresh.revisions.content));
     try {
@@ -480,7 +496,11 @@ export function WorkspacePanel({
         setTreeWidth(initialWorkspaceSplitTreeWidth({
           panelWidth,
           railWidth: WORKSPACE_TREE_RAIL_WIDTH,
-          savedTreeWidth: null,
+          // Preserve a user-resized (manual) tree width: only first-time
+          // splits (no saved width yet) default to an even 50/50 division.
+          // Reopening a file after closing its preview must keep the
+          // remembered width, not snap back to the initial split.
+          savedTreeWidth: treeWidthMode === "manual" ? treeWidth : null,
           treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
           previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
         }));
@@ -499,6 +519,7 @@ export function WorkspacePanel({
       });
       setFilter("");
       setOpenTabs((tabs) => [...tabs.filter((tab) => tab !== path), path].slice(-WORKSPACE_MAX_PREVIEW_TABS));
+      setRecentPaths((paths) => [...paths.filter((p) => p !== path), path].slice(-WORKSPACE_MAX_PREVIEW_TABS));
       const dirs = parentDirs(path);
       updateOpenDirs((prev) => new Set([...Array.from(prev), ...dirs]));
       dirs.forEach((dir) => void loadDir(dir));
@@ -544,6 +565,7 @@ export function WorkspacePanel({
     setExpandedCommit(null);
     setCommitDetail(null);
     setScopedChangeRows(null);
+    setSelectedChangePath(null);
     lastChangeRevealRequestIdRef.current = null;
     dismissedChangeRevealRequestIdRef.current = null;
     lastChangeListRequestIdRef.current = null;
@@ -725,7 +747,7 @@ export function WorkspacePanel({
     if (!open) return;
     if (viewMode === "changed") {
       void loadWorkspaceChanges();
-      if (selectedPath) void loadChangeDetail();
+      if (selectedPath && lastWorkspaceScopeKeyRef.current === workspaceScopeKey) void loadChangeDetail();
       if (commitHistoryOpen) void loadGitHistory();
     } else {
       changeDetailRequestIdRef.current += 1;
@@ -953,6 +975,7 @@ export function WorkspacePanel({
   const previewTitle = changedMode && !selectedPath
     ? scopedChangeRows ? t("context.sessionChanges") : t("workspace.changedTab")
     : currentFileName;
+  const activeSelectedPath = selectedPath;
   // Changed overview shows just the project name (matching the file-preview
   // breadcrumb); hovering reveals the full absolute workspace root.
   const previewSubtitleCrumbs = changedMode && !selectedChangePath && !scopedChangeRows
@@ -977,7 +1000,7 @@ export function WorkspacePanel({
     if (dirParts.length > 0 && dirParts[0] !== root) crumbs.push(...dirLabels);
     return crumbs;
   })() : [];
-  const recentFiles = useMemo(() => [...openTabs].reverse(), [openTabs]);
+  const recentFiles = useMemo(() => [...recentPaths].reverse(), [recentPaths]);
 
   const workspaceSearchFallbackSequence = workspaceRefreshFallbackSequence(workspaceRefresh);
 
