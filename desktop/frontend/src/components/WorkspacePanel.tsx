@@ -1207,10 +1207,14 @@ export function WorkspacePanel({
       pendingScrollRestoreRef.current = saved;
     }
     const target = pendingScrollRestoreRef.current;
-    // Strictly less-than: when the tree's total height equals the saved offset
-    // exactly, it is still reachable — using <= would leave the restore
-    // pending forever and the tree stuck at the top.
-    if (virtualizer.getTotalSize() < target) return; // tree not tall enough yet
+    // A saved offset is only reachable once the tree's total height exceeds
+    // the offset by at least one viewport: the maximum scroll position is
+    // totalSize - viewportHeight. Using totalSize < target would clear the
+    // pending restore once content just barely exceeds the offset, but before
+    // it provides enough scrollable space — the browser then clamps the scroll
+    // and the deep-scroll restore is silently lost.
+    const viewportHeight = treeRef.current?.clientHeight ?? 0;
+    if (virtualizer.getTotalSize() - viewportHeight < target) return; // not enough scrollable space yet
     virtualizer.scrollToOffset(target, { align: "start" });
     pendingScrollRestoreRef.current = null;
   }, [open, treeRows.length, virtualizer.getTotalSize(), workspaceMemoryKey, virtualizer]);
