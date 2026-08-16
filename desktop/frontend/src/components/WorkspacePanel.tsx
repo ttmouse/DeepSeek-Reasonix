@@ -44,6 +44,8 @@ import { mergeWorkspaceSearchResults } from "../lib/workspaceTreeSearch";
 import {
   readWorkspaceTreeMemory,
   rememberWorkspaceTreeOpenDirs,
+  rememberWorkspaceTreeScroll,
+  rememberWorkspaceTreeState,
   touchWorkspaceTreeVisit,
   workspaceTreeVisitId,
 } from "../lib/workspaceTreeMemory";
@@ -86,48 +88,10 @@ const WORKSPACE_CONTEXT_MENU_SELECTION_HEIGHT = 48;
 const WORKSPACE_MAX_PREVIEW_TABS = 5;
 
 // WorkspacePanel is unmounted when the dock switches tabs (context/files/
-// changed), and the app restarts. Persist the tree width and the last opened
-// file so both survive: keyed by the workspace memory key so different
-// projects/sessions keep their own layout and open file.
-const WORKSPACE_TREE_WIDTH_KEY = "workspacePanel:treeWidth";
-const WORKSPACE_SELECTED_PATH_KEY = "workspacePanel:selectedPath";
-const WORKSPACE_TREE_SCROLL_KEY = "workspacePanel:treeScroll";
-// Independent "recently opened" history, kept separate from the live preview
-// tabs so closing all previews does not wipe the recent-files menu.
-const WORKSPACE_RECENT_PATHS_KEY = "workspacePanel:recentPaths";
-
-// Session-level cache that survives WorkspacePanel unmounting when the dock
-// switches between context / files / changed tabs. The dock renders a single
-// active panel, so switching tabs unmounts this component; without a module
-// cache the opened file, tree width and scroll position would reset on every
-// tab switch.
-const workspacePanelSession = new Map<string, { treeWidth?: number; selectedPath?: string | null; scrollTop?: number }>();
-
-function readWorkspacePanelPreference<T>(key: string, memoryKey: string): T | null {
-  try {
-    const raw = localStorage.getItem(`${key}:${memoryKey}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function writeWorkspacePanelPreference(key: string, memoryKey: string, value: unknown): void {
-  try {
-    localStorage.setItem(`${key}:${memoryKey}`, JSON.stringify(value));
-  } catch {
-    /* ignore quota / storage failures */
-  }
-}
-
-function rememberWorkspacePanelSession(
-  memoryKey: string,
-  patch: { treeWidth?: number; selectedPath?: string | null; scrollTop?: number },
-): void {
-  const current = workspacePanelSession.get(memoryKey) ?? {};
-  workspacePanelSession.set(memoryKey, { ...current, ...patch });
-}
+// changed), and the app restarts. All per-project panel state (tree width,
+// last opened file, scroll position, recent files) is persisted through the
+// workspaceTreeMemory envelope keyed by the workspace memory key, so
+// different projects/sessions keep their own layout and open file.
 
 type WorkspaceRevealRequest = { id: number; path: string };
 type WorkspaceFileListRequest = { id: number; paths: string[] };
@@ -309,29 +273,23 @@ export function WorkspacePanel({
   const [revealedRootPaths, setRevealedRootPaths] = useState<Set<string> | null>(
     () => initialWorkspaceMemory && initialWorkspaceMemory.visitId !== workspaceMemoryVisitId ? new Set() : null,
   );
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(() => {
-    const session = workspacePanelSession.get(workspaceMemoryKey);
-    if (session && session.selectedPath !== undefined) return session.selectedPath;
-    const saved = readWorkspacePanelPreference<string>(WORKSPACE_SELECTED_PATH_KEY, workspaceMemoryKey);
-    return saved && typeof saved === "string" ? saved : null;
-  });
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(
+    () => initialWorkspaceMemory?.selectedFilePath ?? null,
+  );
   const [selectedChange, setSelectedChange] = useState<{ scopeKey: string; path: string } | null>(null);
   const selectedChangePath = selectedChange?.scopeKey === workspaceScopeKey ? selectedChange.path : null;
   const setSelectedChangePath = useCallback((path: string | null) => {
     setSelectedChange(path ? { scopeKey: workspaceScopeKey, path } : null);
   }, [workspaceScopeKey]);
   const [openTabs, setOpenTabs] = useState<string[]>(() => {
-    const session = workspacePanelSession.get(workspaceMemoryKey);
-    if (session && session.selectedPath) return [session.selectedPath];
-    const saved = readWorkspacePanelPreference<string>(WORKSPACE_SELECTED_PATH_KEY, workspaceMemoryKey);
+    const saved = initialWorkspaceMemory?.selectedFilePath;
     return saved && typeof saved === "string" ? [saved] : [];
   });
   // Recently opened files menu: an independent history that survives closing
   // all preview tabs (openTabs above is the live preview state).
-  const [recentPaths, setRecentPaths] = useState<string[]>(() => {
-    const saved = readWorkspacePanelPreference<string[]>(WORKSPACE_RECENT_PATHS_KEY, workspaceMemoryKey);
-    return Array.isArray(saved) ? saved.slice(0, WORKSPACE_MAX_PREVIEW_TABS) : [];
-  });
+  const [recentPaths, setRecentPaths] = useState<string[]>(() =>
+    (initialWorkspaceMemory?.recentPaths ?? []).slice(0, WORKSPACE_MAX_PREVIEW_TABS),
+  );
   const [preview, setPreview] = useState<FilePreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [viewMode, setViewMode] = useState<"files" | "changed">(initialViewMode);
@@ -356,9 +314,7 @@ export function WorkspacePanel({
   const [scopedChangeRows, setScopedChangeRows] = useState<WorkspaceChangeListEntry[] | null>(null);
   const [treeVisible, setTreeVisible] = useState(true);
   const [treeWidth, setTreeWidth] = useState<number>(() => {
-    const session = workspacePanelSession.get(workspaceMemoryKey);
-    if (session && session.treeWidth != null) return clampWorkspaceTreeWidth(session.treeWidth);
-    const saved = readWorkspacePanelPreference<number>(WORKSPACE_TREE_WIDTH_KEY, workspaceMemoryKey);
+    const saved = initialWorkspaceMemory?.treeWidth;
     return saved != null && Number.isFinite(saved) ? clampWorkspaceTreeWidth(saved) : WORKSPACE_TREE_DEFAULT_WIDTH;
   });
   const [treeWidthMode, setTreeWidthMode] = useState<WorkspaceSplitTreeWidthMode>("manual");
@@ -917,45 +873,18 @@ export function WorkspacePanel({
   // Persist the tree width and last opened file across dock-tab switches and
   // app restarts so the files panel restores the same layout and preview.
   // Written on every change (not gated on `open`) so the final state lands in
-  // the module session cache even when the component unmounts mid-interaction.
+  // the per-project workspace memory even when the component unmounts.
   useEffect(() => {
-    rememberWorkspacePanelSession(workspaceMemoryKey, { treeWidth });
-    writeWorkspacePanelPreference(WORKSPACE_TREE_WIDTH_KEY, workspaceMemoryKey, treeWidth);
-  }, [treeWidth, workspaceMemoryKey]);
+    rememberWorkspaceTreeState(workspaceMemoryKey, { treeWidth, treeWidthMode });
+  }, [treeWidth, treeWidthMode, workspaceMemoryKey]);
 
   useEffect(() => {
-    if (selectedFilePath) {
-      rememberWorkspacePanelSession(workspaceMemoryKey, { selectedPath: selectedFilePath });
-      writeWorkspacePanelPreference(WORKSPACE_SELECTED_PATH_KEY, workspaceMemoryKey, selectedFilePath);
-    } else {
-      rememberWorkspacePanelSession(workspaceMemoryKey, { selectedPath: null });
-      writeWorkspacePanelPreference(WORKSPACE_SELECTED_PATH_KEY, workspaceMemoryKey, null);
-    }
+    rememberWorkspaceTreeState(workspaceMemoryKey, { selectedFilePath });
   }, [selectedFilePath, workspaceMemoryKey]);
 
   useEffect(() => {
-    writeWorkspacePanelPreference(WORKSPACE_RECENT_PATHS_KEY, workspaceMemoryKey, recentPaths);
+    rememberWorkspaceTreeState(workspaceMemoryKey, { recentPaths });
   }, [recentPaths, workspaceMemoryKey]);
-
-  // Unmount: flush whatever the latest state is into the session cache.
-  // The cleanup closure must read refs (not render-scoped values) because the
-  // effect's deps are empty, so its closure would otherwise hold the first
-  // render's treeWidth/selectedFilePath and clobber the cache with initial values.
-  const latestTreeWidthRef = useRef(treeWidth);
-  const latestSelectedFilePathRef = useRef(selectedFilePath);
-  const latestScrollTopRef = useRef(0);
-  latestTreeWidthRef.current = treeWidth;
-  latestSelectedFilePathRef.current = selectedFilePath;
-  useEffect(() => {
-    return () => {
-      rememberWorkspacePanelSession(workspaceMemoryKey, {
-        treeWidth: latestTreeWidthRef.current,
-        selectedPath: latestSelectedFilePathRef.current,
-        scrollTop: latestScrollTopRef.current,
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceMemoryKey]);
 
   // Track and persist the tree scroll position so switching tabs or
   // restarting restores where the user was in the directory tree.
@@ -963,9 +892,7 @@ export function WorkspacePanel({
     const el = treeRef.current;
     if (!open || !el) return;
     const onScroll = () => {
-      latestScrollTopRef.current = el.scrollTop;
-      rememberWorkspacePanelSession(workspaceMemoryKey, { scrollTop: el.scrollTop });
-      writeWorkspacePanelPreference(WORKSPACE_TREE_SCROLL_KEY, workspaceMemoryKey, el.scrollTop);
+      rememberWorkspaceTreeScroll(workspaceMemoryKey, el.scrollTop);
     };
     // Do NOT call onScroll() on mount: the freshly mounted element sits at
     // scrollTop 0, so persisting it here would overwrite the saved offset
@@ -1275,8 +1202,7 @@ export function WorkspacePanel({
   useEffect(() => {
     if (!open || treeRows.length === 0) return;
     if (pendingScrollRestoreRef.current == null) {
-      const saved = workspacePanelSession.get(workspaceMemoryKey)?.scrollTop
-        ?? readWorkspacePanelPreference<number>(WORKSPACE_TREE_SCROLL_KEY, workspaceMemoryKey);
+      const saved = readWorkspaceTreeMemory(workspaceMemoryKey)?.scrollTop;
       if (saved == null || !Number.isFinite(saved) || saved <= 0) return;
       pendingScrollRestoreRef.current = saved;
     }
@@ -1286,7 +1212,6 @@ export function WorkspacePanel({
     // pending forever and the tree stuck at the top.
     if (virtualizer.getTotalSize() < target) return; // tree not tall enough yet
     virtualizer.scrollToOffset(target, { align: "start" });
-    latestScrollTopRef.current = target;
     pendingScrollRestoreRef.current = null;
   }, [open, treeRows.length, virtualizer.getTotalSize(), workspaceMemoryKey, virtualizer]);
 
