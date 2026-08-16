@@ -1662,6 +1662,19 @@ export function WorkspacePanel({
                 {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
               </button>
             </Tooltip>
+            {previewVisible && !changedMode && (
+              <Tooltip label={actualTreeVisible ? t("workspace.hideTree") : t("workspace.showTree")}>
+                <button
+                  className={`workspace-iconbtn${actualTreeVisible ? " workspace-iconbtn--on" : ""}`}
+                  type="button"
+                  aria-label={actualTreeVisible ? t("workspace.hideTree") : t("workspace.showTree")}
+                  aria-pressed={actualTreeVisible}
+                  onClick={toggleTreeRail}
+                >
+                  <FolderTree size={15} />
+                </button>
+              </Tooltip>
+            )}
             {selectedPath && (
               <Tooltip label={t("workspace.closePreview")}>
                 <button className="workspace-iconbtn" onClick={closePreviewArea}>
@@ -2119,22 +2132,6 @@ export function WorkspacePanel({
           )}
         </div>
       </section>}
-
-      {showTreeRail && (
-        <section className="workspace-tree-rail" aria-label={actualTreeVisible ? t("workspace.hideTree") : t("workspace.showTree")}>
-          <Tooltip label={actualTreeVisible ? t("workspace.hideTree") : t("workspace.showTree")} side="right">
-            <button
-              className={`workspace-tree-reveal workspace-iconbtn${actualTreeVisible ? " workspace-iconbtn--on" : ""}`}
-              type="button"
-              aria-label={actualTreeVisible ? t("workspace.hideTree") : t("workspace.showTree")}
-              aria-pressed={actualTreeVisible}
-              onClick={toggleTreeRail}
-            >
-              <FolderTree size={15} />
-            </button>
-          </Tooltip>
-        </section>
-      )}
 
       {actualTreeVisible && previewVisible && (
         <button
