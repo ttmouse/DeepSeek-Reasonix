@@ -54,10 +54,10 @@ import type {
   GitCommitDetailView,
   RewindResultView,
   WorkspaceChangeDetailView,
-  WorkspaceChangesView,
   WireCompletionSummary,
 } from "../lib/types";
 import { workspaceGitStatusLabel } from "../lib/workspaceChanges";
+import { useWorkspaceChangesResource } from "../lib/useWorkspaceChangesResource";
 import {
   completionGapLabel,
   completionReviewLabel,
@@ -290,6 +290,13 @@ export function WorkspacePanel({
   const workspaceMemoryKey = workspaceMemoryKeyProp ?? workspaceScopeKey;
   const workspaceMemoryVisitId = workspaceMemoryVisitIdProp ?? workspaceTreeVisitId(workspaceMemoryKey);
   const workspaceRefresh = useWorkspaceRefresh(workspaceTabId, workspaceScopeKey, open);
+  const {
+    workspaceChanges,
+    loadingWorkspaceChanges,
+    workspaceChangesErr,
+    loadWorkspaceChanges,
+    resetWorkspaceChanges,
+  } = useWorkspaceChangesResource(workspaceTabId, workspaceScopeKey, workspaceRefresh.revisions.workingTree);
   const initialWorkspaceMemory = readWorkspaceTreeMemory(workspaceMemoryKey);
   const panelRef = useRef<HTMLElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -333,7 +340,6 @@ export function WorkspacePanel({
   // by default everywhere.
   const groupedChangesLayout = creationMode !== false || viewMode === "changed";
   const [gitHistory, setGitHistory] = useState<GitCommitView[]>([]);
-  const [workspaceChanges, setWorkspaceChanges] = useState<WorkspaceChangesView | null>(null);
   const [changeDetail, setChangeDetail] = useState<WorkspaceChangeDetailView | null>(null);
   const [loadingChangeDetail, setLoadingChangeDetail] = useState(false);
   const [changeDetailErr, setChangeDetailErr] = useState("");
@@ -373,7 +379,6 @@ export function WorkspacePanel({
   const dismissedChangeListRequestIdRef = useRef<number | null>(null);
   const currentWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
   const lastWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
-  const workspaceChangesRequestIdRef = useRef(0);
   const changeDetailRequestIdRef = useRef(0);
   const gitHistoryRequestIdRef = useRef(0);
   const previewRequestIdRef = useRef(0);
@@ -460,27 +465,6 @@ export function WorkspacePanel({
       }
     }
   }, [selectedChangePath, workspaceScopeKey, workspaceTabId]);
-
-  const loadWorkspaceChanges = useCallback(async () => {
-    const requestId = ++workspaceChangesRequestIdRef.current;
-    const requestTabId = workspaceTabId;
-    const requestScopeKey = workspaceScopeKey;
-    try {
-      const result = await app.WorkspaceChanges(requestTabId);
-      if (workspaceChangesRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) {
-        setWorkspaceChanges({
-          files: Array.isArray(result?.files) ? result.files : [],
-          gitAvailable: result?.gitAvailable !== false,
-          gitErr: result?.gitErr,
-          gitBranch: result?.gitBranch,
-        });
-      }
-    } catch {
-      if (workspaceChangesRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) {
-        setWorkspaceChanges({ files: [], gitAvailable: false });
-      }
-    }
-  }, [workspaceScopeKey, workspaceTabId]);
 
   const loadChangeDetail = useCallback(async () => {
     const requestId = ++changeDetailRequestIdRef.current;
@@ -636,11 +620,10 @@ export function WorkspacePanel({
     lastWorkspaceScopeKeyRef.current = workspaceScopeKey;
     workingTreeRefreshSchedulerRef.current?.cancel();
     gitMetaRefreshSchedulerRef.current?.cancel();
-    workspaceChangesRequestIdRef.current += 1;
+    resetWorkspaceChanges();
     changeDetailRequestIdRef.current += 1;
     gitHistoryRequestIdRef.current += 1;
     commitDetailRequestIdRef.current += 1;
-    setWorkspaceChanges(null);
     setChangeDetail(null);
     setChangeDetailErr("");
     setLoadingChangeDetail(false);
@@ -1962,12 +1945,20 @@ export function WorkspacePanel({
                   {workspaceGitWarning}
                 </div>
               )}
+              {workspaceChangesErr && (
+                <div className="workspace-note workspace-note--error" role="alert">
+                  {t("workspace.changesUnavailable")}: {workspaceChangesErr}
+                </div>
+              )}
               {groupedChangesLayout ? (
                 <>
                   {sessionChanges.length > 0 && renderChangeScope(t("context.sessionChanges"), sessionChanges)}
                   {gitWorkingChanges.length > 0 && renderChangeScope(t("workspace.workingChanges"), gitWorkingChanges)}
-                  {!loadingHistory && !hasFileChanges && !workspaceGitWarning && (
+                  {!loadingWorkspaceChanges && !workspaceChangesErr && !hasFileChanges && !workspaceGitWarning && (
                     <div className="workspace-empty">{t("context.noChanges")}</div>
+                  )}
+                  {loadingWorkspaceChanges && !workspaceChanges && (
+                    <div className="workspace-empty">{t("workspace.loadingChanges")}</div>
                   )}
                   {loadingHistory ? (
                     <div className="workspace-empty">{t("workspace.loading")}</div>
