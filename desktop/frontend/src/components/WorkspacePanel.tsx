@@ -1212,12 +1212,14 @@ export function WorkspacePanel({
     // totalSize - viewportHeight. Using totalSize < target would clear the
     // pending restore once content just barely exceeds the offset, but before
     // it provides enough scrollable space — the browser then clamps the scroll
-    // and the deep-scroll restore is silently lost.
-    const viewportHeight = treeRef.current?.clientHeight ?? 0;
+    // and the deep-scroll restore is silently lost. Use the virtualizer's own
+    // viewport rect (reliable after remount) rather than reading clientHeight
+    // at restore time, which can be 0 while the tree is still settling.
+    const viewportHeight = virtualizer.scrollRect?.height ?? treeRef.current?.clientHeight ?? 0;
     if (virtualizer.getTotalSize() - viewportHeight < target) return; // not enough scrollable space yet
     virtualizer.scrollToOffset(target, { align: "start" });
     pendingScrollRestoreRef.current = null;
-  }, [open, treeRows.length, virtualizer.getTotalSize(), workspaceMemoryKey, virtualizer]);
+  }, [open, treeRows.length, virtualizer.getTotalSize(), virtualizer.scrollRect?.height, workspaceMemoryKey, virtualizer]);
 
   const virtualTreeItems = virtualizer.getVirtualItems();
   const compactProbePaths = virtualTreeItems
