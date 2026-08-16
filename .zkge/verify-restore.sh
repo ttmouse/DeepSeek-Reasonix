@@ -183,7 +183,7 @@ fi
 # ---------- 自动化测试（C1-C6/C12/C14-C18 相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
-for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls workspace-tree-memory workspace-split workspace-change-status workspace-preview-css; do
+for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls workspace-tree-memory workspace-split workspace-change-status workspace-preview-css workspace-panel-open-migration; do
   f="src/__tests__/$t.test.tsx"
   [[ -f "$f" ]] || f="src/__tests__/$t.test.ts"
   if [[ -f "$f" ]]; then

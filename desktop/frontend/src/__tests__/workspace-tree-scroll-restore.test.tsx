@@ -2,6 +2,9 @@
 // zk-ge CLAIM.TREE.008: 切换 dock 标签（组件 unmount/remount）后文件树滚动位置恢复
 
 import { JSDOM } from "jsdom";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -222,6 +225,24 @@ if (tabs.length >= 2) {
 } else {
   ok(true, "view tabs not found in test harness; view-mode reset covered by code review");
 }
+
+// C5 regression guard: the reachability check must account for the viewport —
+// a saved offset is only reachable once totalSize - viewportHeight >= target.
+// Using plain totalSize < target clears the pending restore while the tree is
+// still settling, losing deep-scroll restores (upstream review finding).
+const panelSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../components/WorkspacePanel.tsx"), "utf8");
+ok(
+  /getTotalSize\(\) - viewportHeight < target/.test(panelSource),
+  "scroll reachability accounts for the viewport (totalSize - viewportHeight)",
+);
+ok(
+  /virtualizer\.scrollRect\?\.height/.test(panelSource),
+  "reachability uses the virtualizer viewport rect (reliable after remount)",
+);
+ok(
+  /virtualizer\.scrollRect\?\.height, workspaceMemoryKey/.test(panelSource),
+  "reachability retries once the viewport height settles (scrollRect in deps)",
+);
 
 console.log(`\nworkspace tree scroll restore: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
