@@ -147,7 +147,6 @@ import {
   applyLayoutStyleDefaults,
   clampCreationRightDockTreeWidth,
   clampCreationSidebarWidth,
-  clampRightDockPreviewWidth,
   clampRightDockTreeWidth,
   clampSidebarWidth,
   clampTerminalHeight,
@@ -1175,7 +1174,6 @@ export default function App() {
   const rightDockTreeWidth = useLayoutStore((s) => s.rightDockTreeWidth);
   const setRightDockTreeWidth = useLayoutStore((s) => s.setRightDockTreeWidth);
   const rightDockPreviewWidth = useLayoutStore((s) => s.rightDockPreviewWidth);
-  const setRightDockPreviewWidth = useLayoutStore((s) => s.setRightDockPreviewWidth);
   const workspacePreviewActive = useLayoutStore((s) => s.workspacePreviewActive);
   const setWorkspacePreviewActive = useLayoutStore((s) => s.setWorkspacePreviewActive);
   const attentionChimeEvents = useRef(new Set<string>());
@@ -1629,10 +1627,12 @@ export default function App() {
     activeTab?.scope ?? "",
     activeTab?.workspaceRoot ?? state.meta?.cwd ?? "",
   ].join("\u0000");
-  const restoreWorkspaceDockWidths = useCallback((treeWidth: number, previewWidth: number) => {
-    setRightDockTreeWidth(rightDockTreeWidthClamp(treeWidth));
-    setRightDockPreviewWidth(clampRightDockPreviewWidth(previewWidth));
-  }, [rightDockTreeWidthClamp]);
+  const restoreWorkspaceDockWidths = useCallback((treeWidth: number, _previewWidth: number) => {
+    // Single-width dock: only the tree width is meaningful; clamp it to the
+    // dynamic available width (chat keeps its 400px floor), never a fixed
+    // 560 ceiling, so the user's remembered width is preserved when reopened.
+    setRightDockTreeWidth(rightDockTreeWidthClamp(treeWidth, workspacePanelAvailableWidth));
+  }, [rightDockTreeWidthClamp, workspacePanelAvailableWidth]);
   const sidebarImDetailConnection = useMemo(
     () => sidebarImConnections.find((connection) => connection.id === sidebarImDetailConnectionId) ?? null,
     [sidebarImConnections, sidebarImDetailConnectionId],
