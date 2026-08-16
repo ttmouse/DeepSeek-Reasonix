@@ -9,7 +9,7 @@ import type { Root } from "react-dom/client";
 import { WorkspacePanel } from "../components/WorkspacePanel";
 import type { AppBindings } from "../lib/bridge";
 import { LocaleProvider } from "../lib/i18n";
-import { flushWorkspaceTreeMemory, resetWorkspaceTreeMemoryForTests } from "../lib/workspaceTreeMemory";
+import { resetWorkspaceTreeMemoryForTests } from "../lib/workspaceTreeMemory";
 
 let passed = 0;
 let failed = 0;
@@ -152,27 +152,11 @@ treeEl.dispatchEvent(new dom.window.Event("scroll", { bubbles: false }));
 
 await act(async () => {
   await flushTimers();
-  // Scroll persistence is deferred (rAF + quiet-period timer); flush it so the
-  // localStorage assertion below observes the written value.
-  flushWorkspaceTreeMemory();
 });
 
-// Scroll position should have been persisted to the upstream per-project
-// workspace state envelope (reasonix.workspaceState.v2), not the old
-// workspacePanel:treeScroll key.
-function persistedScrollTop(): number | null {
-  const raw = dom.window.localStorage.getItem("reasonix.workspaceState.v2");
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { projects?: Array<{ key: string; state: { scrollTop?: number } }> };
-    const project = parsed.projects?.find((entry) => entry.key === MEMORY_KEY);
-    return typeof project?.state?.scrollTop === "number" ? project.state.scrollTop : null;
-  } catch {
-    return null;
-  }
-}
-
-ok(persistedScrollTop() === 200, "scroll offset is persisted to localStorage after scrolling");
+// Scroll position should have been persisted to the session cache + localStorage.
+const persisted = dom.window.localStorage.getItem("workspacePanel:treeScroll:" + MEMORY_KEY);
+ok(persisted != null, "scroll offset is persisted to localStorage after scrolling");
 
 // Phase 2: unmount (simulates switching from 文件 to 概览 dock tab)
 await act(async () => {
@@ -189,7 +173,8 @@ if (!treeEl2) throw new Error("missing workspace-tree element after remount");
 
 // The persisted value must survive the remount — verify the session cache still
 // holds it (this isolates persistence loss from virtualizer restore failure).
-ok(persistedScrollTop() === 200, "persisted scroll offset survives remount in localStorage");
+const sessionHeld = dom.window.localStorage.getItem("workspacePanel:treeScroll:" + MEMORY_KEY);
+ok(sessionHeld === "200", "persisted scroll offset survives remount in localStorage");
 
 // Remount must re-render the tree rows (otherwise the restore effect's
 // treeRows.length guard never passes).

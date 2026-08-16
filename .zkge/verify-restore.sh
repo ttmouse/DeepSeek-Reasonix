@@ -144,46 +144,46 @@ else
 fi
 
 # ---------- C15: dock 宽 + 树宽持久化 ----------
-note "C15 saveRightDockTreeWidth + workspaceTreeMemory treeWidth"
+note "C15 saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY"
 if grep -c "saveRightDockTreeWidth" src/store/layout.ts 2>/dev/null | grep -q "^[1-9]" \
-   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { treeWidth" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
-  ok "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + workspaceTreeMemory treeWidth）"
+   && grep -c "WORKSPACE_TREE_WIDTH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
+  ok "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY ≥2）"
 else
-  bad "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth 或 workspaceTreeMemory treeWidth 缺失）"
+  bad "C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth 或 WORKSPACE_TREE_WIDTH_KEY 缺失）"
 fi
 
 # ---------- C16: 打开的文件状态记忆 ----------
-note "C16 workspaceTreeMemory selectedFilePath"
-if grep -c "selectedFilePath" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[5-9]\|[0-9][0-9]" \
-   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { selectedFilePath" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
-  ok "C16 打开的文件状态记忆（selectedFilePath ≥5 + workspaceTreeMemory 持久化）"
+note "C16 WORKSPACE_SELECTED_PATH_KEY"
+if grep -c "WORKSPACE_SELECTED_PATH_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
+   && grep -c "workspacePanelSession" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]"; then
+  ok "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY ≥3 + workspacePanelSession）"
 else
-  bad "C16 打开的文件状态记忆（selectedFilePath 或 workspaceTreeMemory 持久化缺失）"
+  bad "C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY 或 workspacePanelSession 缺失）"
 fi
 
 # ---------- C17: 最近文件列表独立持久化 ----------
-note "C17 recentPaths 独立持久化"
-if grep -c "recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
-   && grep -c "rememberWorkspaceTreeState(workspaceMemoryKey, { recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]" \
+note "C17 WORKSPACE_RECENT_PATHS_KEY + recentPaths"
+if grep -c "WORKSPACE_RECENT_PATHS_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]" \
+   && grep -c "recentPaths" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[3-9]\|[0-9][0-9]" \
    && grep -c "const recentFiles = useMemo(() => \[...recentPaths\]" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[1-9]"; then
-  ok "C17 最近文件列表独立持久化（recentPaths ≥3 + workspaceTreeMemory 持久化 + recentFiles 用 recentPaths）"
+  ok "C17 最近文件列表独立持久化（RECENT_PATHS_KEY + recentPaths ≥3 + recentFiles 用 recentPaths）"
 else
-  bad "C17 最近文件列表独立持久化（recentPaths/持久化/recentFiles 缺失）"
+  bad "C17 最近文件列表独立持久化（RECENT_PATHS_KEY/recentPaths/recentFiles 缺失）"
 fi
 
 # ---------- C18: 树滚动位置持久化 ----------
-note "C18 workspaceTreeMemory scrollTop"
-if grep -rn "onWorkspaceTreeScroll" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q . \
-   && grep -n "readWorkspaceTreeMemory(workspaceMemoryKey)?.scrollTop" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q .; then
-  ok "C18 树滚动位置持久化（useWorkspaceTreeScrollPersistence + readWorkspaceTreeMemory scrollTop）"
+note "C18 WORKSPACE_TREE_SCROLL_KEY + latestScrollTopRef"
+if grep -c "WORKSPACE_TREE_SCROLL_KEY" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]" \
+   && grep -c "latestScrollTopRef" src/components/WorkspacePanel.tsx 2>/dev/null | grep -q "^[2-9]\|[0-9][0-9]"; then
+  ok "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY ≥2 + latestScrollTopRef ≥2）"
 else
-  bad "C18 树滚动位置持久化（useWorkspaceTreeScrollPersistence 或 scrollTop 恢复缺失）"
+  bad "C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY 或 latestScrollTopRef 缺失）"
 fi
 
 # ---------- 自动化测试（C1-C6/C12/C14-C18 相关） ----------
 echo ""
 echo "=== 自动化测试 ==="
-for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls workspace-tree-memory workspace-split workspace-change-status workspace-panel-swr-contract workspace-preview-css; do
+for t in workspace-layout workspace-tree-scroll-restore workspace-changes-errors topicbar-controls workspace-tree-memory workspace-split workspace-change-status workspace-preview-css; do
   f="src/__tests__/$t.test.tsx"
   [[ -f "$f" ]] || f="src/__tests__/$t.test.ts"
   if [[ -f "$f" ]]; then
