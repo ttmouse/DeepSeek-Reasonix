@@ -1,0 +1,1 @@
+4983b6908 docs(zkge): add claim-driven rebase guide (4 phases + conflict arbitration)

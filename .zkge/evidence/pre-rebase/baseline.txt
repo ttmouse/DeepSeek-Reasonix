@@ -1,0 +1,28 @@
+=== 还原验证：18 项调整 ===
+  PASS  C1 chat 400px 下限（workspacePanelAvailableWidth 引用 ≥4 处）
+  PASS  C2 More 菜单（组件存在 + App 引用）
+  PASS  C3 单宽度 dock（preferredWorkspacePanelWidth = rightDockTreeWidth，无 detail 分支）
+  PASS  C4 文件/变更选择隔离（selectedChangePath ≥5 处）
+  PASS  C5 树滚动恢复（pendingScrollRestoreRef ≥4 处）
+  PASS  C6 变更行 hover/徽章样式（workspace-change 类 ≥10）
+  PASS  C7 侧边栏暖白（--sidebar-bg = #f9f9f9）
+  PASS  C8 面包屑（workspace-current-file__crumb = 4）
+  PASS  C9 分隔条细线（resizer 规则 ≥5）
+  PASS  C10 文件树图标（workspace-tree__icon ≥4 + toggleTreeRail 按钮存在 + FolderTree 图标 ≥1）
+  PASS  C11 改动面板样式（row=22 revert=14 badge=8 active=10）
+  PASS  C12 文件树宽度保持（treeWidthMode ≥5 + shouldInitializeWorkspaceSplitOnFileSelect + savedTreeWidth=manual）
+  PASS  C13 面板内部边界（split-preview 去左边框 + workspace-tree-resizer ≥3）
+  PASS  C14 dock 开合按项目记忆（workspacePanelOpenStorageKey + 按 workspaceRoot 保存）
+  PASS  C15 dock 宽 + 树宽持久化（saveRightDockTreeWidth + WORKSPACE_TREE_WIDTH_KEY ≥2）
+  PASS  C16 打开的文件状态记忆（WORKSPACE_SELECTED_PATH_KEY ≥3 + 写入调用）
+  PASS  C17 最近文件列表独立持久化（RECENT_PATHS_KEY + recentPaths ≥3 + recentFiles 用 recentPaths）
+  PASS  C18 树滚动位置持久化（WORKSPACE_TREE_SCROLL_KEY ≥2 + latestScrollTopRef ≥2）
+
+=== 自动化测试 ===
+  PASS  测试 workspace-layout
+  PASS  测试 workspace-tree-scroll-restore
+  PASS  测试 workspace-changes-errors
+  PASS  测试 topicbar-controls
+
+=== 结果：22 通过 / 0 失败 ===
+  全部 18 项调整已还原 ✅
