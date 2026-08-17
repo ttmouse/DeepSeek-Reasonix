@@ -47,10 +47,10 @@ import {
 } from "../lib/keyedResource";
 import { shouldScrollWorkspaceTreeSelection } from "../lib/workspaceTreeReveal";
 import { mergeWorkspaceSearchResults } from "../lib/workspaceTreeSearch";
+import { useWorkspaceTreeScrollPersistence } from "../lib/useWorkspaceTreeScrollPersistence";
 import {
   readWorkspaceTreeMemory,
   rememberWorkspaceTreeOpenDirs,
-  rememberWorkspaceTreeScroll,
   rememberWorkspaceTreeState,
   touchWorkspaceTreeVisit,
   workspaceTreeVisitId,
@@ -890,20 +890,11 @@ export function WorkspacePanel({
   }, [recentPaths, workspaceMemoryKey]);
 
   // Track and persist the tree scroll position so switching tabs or
-  // restarting restores where the user was in the directory tree.
-  useEffect(() => {
-    const el = treeRef.current;
-    if (!open || !el) return;
-    const onScroll = () => {
-      rememberWorkspaceTreeScroll(workspaceMemoryKey, el.scrollTop);
-    };
-    // Do NOT call onScroll() on mount: the freshly mounted element sits at
-    // scrollTop 0, so persisting it here would overwrite the saved offset
-    // before the restoration effect (virtualizer.scrollToOffset) runs. Only
-    // real user scrolling and the restoration scroll event persist values.
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [open, workspaceMemoryKey]);
+  // restarting restores where the user was in the directory tree. The hook
+  // updates the in-memory snapshot on every scroll and only flushes to
+  // localStorage on scrollend / pagehide / visibility-hidden (upstream #8841),
+  // so rapid tree scrolling never hits the storage layer synchronously.
+  const onWorkspaceTreeScroll = useWorkspaceTreeScrollPersistence({ memoryKey: workspaceMemoryKey, open, scrollRef: treeRef });
 
   useWorkspaceRefreshInvalidation({ commitHistoryOpen,
     filter,
@@ -2273,6 +2264,7 @@ export function WorkspacePanel({
         <div
           className="workspace-tree"
           ref={treeRef}
+          onScroll={onWorkspaceTreeScroll}
           onContextMenu={openTreeBlankMenu}
           style={{
             height: "100%",
