@@ -30,6 +30,7 @@ export function TopicbarMoreMenu({
   exportSession,
   openChangedDock,
   toggleTerminal,
+  prefetchTerminal,
   openSessionSummary,
   tasksOpen,
 }: {
@@ -38,6 +39,7 @@ export function TopicbarMoreMenu({
   exportSession: (format: "markdown" | "json" | "pdf" | "image") => void;
   openChangedDock: () => void;
   toggleTerminal: () => void;
+  prefetchTerminal?: () => void;
   openSessionSummary: () => void;
   tasksOpen: boolean;
 }) {
@@ -151,7 +153,14 @@ export function TopicbarMoreMenu({
             <GitBranch size={14} />
             <span>{t("workspace.changedTab")}</span>
           </button>
-          <button className="topicbar__menu-item" type="button" role="menuitem" onClick={() => { closeMenu(); toggleTerminal(); }}>
+          <button
+            className="topicbar__menu-item"
+            type="button"
+            role="menuitem"
+            onPointerEnter={prefetchTerminal}
+            onFocus={prefetchTerminal}
+            onClick={() => { closeMenu(); toggleTerminal(); }}
+          >
             <TerminalSquare size={14} />
             <span>{t("rightDock.terminal")}</span>
           </button>

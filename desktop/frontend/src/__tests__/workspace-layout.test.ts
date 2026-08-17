@@ -314,11 +314,11 @@ eq(
   "terminal and xterm remain in a lazy chunk",
 );
 eq(
-  /onPointerEnter=\{prefetchTerminalPanel\}/.test(appSource)
-    && /onFocus=\{prefetchTerminalPanel\}/.test(appSource)
+  /onPointerEnter=\{prefetchTerminal\}/.test(moreMenuSource)
+    && /onFocus=\{prefetchTerminal\}/.test(moreMenuSource)
     && /void import\("\.\.\/components\/TerminalPanel"\)/.test(terminalLifecycleSource),
   true,
-  "pointer and keyboard intent prefetch the terminal chunk before opening",
+  "pointer and keyboard intent prefetch the terminal chunk before opening (More menu)",
 );
 eq(
   /useWarmTerminalPanel\(terminalPanelOpen, terminalResizing\)/.test(appSource)

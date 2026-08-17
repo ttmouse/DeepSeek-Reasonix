@@ -1941,6 +1941,12 @@ body,
 }
 html {
   cursor: default;
+  /* WebKit/WKWebView auto-inflates text when layout changes (e.g. the file
+     preview split appearing on first open). Nothing else in the app depends
+     on text inflation, and it rescaled code rows so line spacing ballooned
+     until the layout settled. Pin it off app-wide; the code viewer also
+     re-asserts it locally. */
+  -webkit-text-size-adjust: 100%;
 }
 body {
   --font-scale: var(--typography-interface-scale, var(--global-font-scale));
@@ -5426,6 +5432,11 @@ button.reasoning-summary:focus-visible {
   font-size: var(--font-code);
   line-height: 1.55;
   color: var(--fg);
+  /* The preview pane changes width while a file opens (split initializes).
+     WebKit re-runs text inflation on that relayout; code rows must never be
+     rescaled — their row height is line-height × font-size, so inflation
+     shows up as huge gaps between lines until the layout settles. */
+  -webkit-text-size-adjust: 100%;
 }
 .code-line-row {
   display: flex;
@@ -5457,6 +5468,13 @@ button.reasoning-summary:focus-visible {
   padding: 0 13px;
   white-space: pre;
   line-height: inherit;
+  /* A wrapped code line would double the row height (the "big gaps between
+     lines" symptom). white-space: pre already prevents wrapping; re-assert
+     it explicitly so theme packs or later cascades cannot downgrade the
+     line to pre-wrap/normal and fold long lines during the preview's
+     width transition. */
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 /* ── search bar (Ctrl+F) ──────────────────────────────────────────────── */
