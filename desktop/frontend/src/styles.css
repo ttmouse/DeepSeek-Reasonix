@@ -10403,6 +10403,9 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   min-height: 0;
   max-width: none;
+  max-height: none; /* override .code--scroll-y's min(60vh, 28rem) so the
+                       preview fills its container even for virtual-scrolled
+                       (large) files that opt into the .code--scroll-y class */
   margin: 0;
   border: 0;
   border-radius: 0;

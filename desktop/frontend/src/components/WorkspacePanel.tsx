@@ -1627,6 +1627,17 @@ export function WorkspacePanel({
       !preview.binary &&
       !isMarkdown,
   );
+  // The preview body must keep its flex-column layout while a code file is
+  // loading. Switching it to the padded block layout mid-load and back again
+  // makes WebKit leave stale gaps between rows once the viewer mounts.
+  const codePreviewLayoutActive = Boolean(
+    selectedFilePath &&
+      !changedMode &&
+      !isMarkdown &&
+      !preview?.err &&
+      !preview?.kind &&
+      !preview?.binary,
+  );
   const openCodeSearch = () => {
     if (!codePreviewActive || !selectedFilePath) return;
     setCodeSearchRequestPath(selectedFilePath);
@@ -1785,7 +1796,7 @@ export function WorkspacePanel({
         </header>
 
         <div
-          className={`workspace-preview__body${codePreviewActive ? " workspace-preview__body--code" : ""}`}
+          className={`workspace-preview__body${codePreviewLayoutActive ? " workspace-preview__body--code" : ""}`}
           ref={previewBodyRef}
           onContextMenu={openSelectionMenu}
           onMouseUp={showSelectionToolbar}
@@ -2106,7 +2117,7 @@ export function WorkspacePanel({
             </div>
           ) : !selectedFilePath ? (
             <div className="workspace-empty">{t("workspace.pickFile")}</div>
-          ) : loadingPreview ? (
+          ) : loadingPreview && !preview ? (
             <div className="workspace-empty">{t("workspace.loading")}</div>
           ) : preview?.err ? (
             <div className="workspace-empty workspace-empty--error">
@@ -2118,6 +2129,7 @@ export function WorkspacePanel({
             <div className="workspace-empty">{t("workspace.binary")}</div>
           ) : preview ? (
             <>
+              {loadingPreview && <div className="workspace-resource-status" role="status">{t("workspace.loading")}</div>}
               {preview.truncated && <div className="workspace-note">{t("workspace.truncated")}</div>}
               {isMarkdown ? (
                 <Markdown text={preview.body} />
