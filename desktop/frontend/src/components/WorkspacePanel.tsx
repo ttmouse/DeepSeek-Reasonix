@@ -39,6 +39,12 @@ import { createRafResizeUpdater } from "../lib/resizeDrag";
 import { useWorkspaceRefresh } from "../lib/workspaceRefreshStore";
 import { useWorkspaceRefreshInvalidation, workspaceRefreshFallbackSequence } from "../lib/workspaceRefreshInvalidation";
 import { createWorkspaceRefreshScheduler } from "../lib/workspaceRefreshScheduler";
+import {
+  beginKeyedResourceRequest,
+  emptyKeyedResource,
+  rejectKeyedResourceRequest,
+  resolveKeyedResourceRequest,
+} from "../lib/keyedResource";
 import { shouldScrollWorkspaceTreeSelection } from "../lib/workspaceTreeReveal";
 import { mergeWorkspaceSearchResults } from "../lib/workspaceTreeSearch";
 import {
@@ -290,8 +296,7 @@ export function WorkspacePanel({
   const [recentPaths, setRecentPaths] = useState<string[]>(() =>
     (initialWorkspaceMemory?.recentPaths ?? []).slice(0, WORKSPACE_MAX_PREVIEW_TABS),
   );
-  const [preview, setPreview] = useState<FilePreview | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewResource, setPreviewResource] = useState(() => emptyKeyedResource<FilePreview>());
   const [viewMode, setViewMode] = useState<"files" | "changed">(initialViewMode);
   // Both creation and regular workspaces use the same three-layer change view;
   // keep the prop in the seam for older callers while making history collapsed
@@ -335,6 +340,10 @@ export function WorkspacePanel({
   const dismissedChangeListRequestIdRef = useRef<number | null>(null);
   const currentWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
   const lastWorkspaceScopeKeyRef = useRef(workspaceScopeKey);
+  const previewKey = selectedFilePath ? `${workspaceScopeKey}\u0000preview\u0000${selectedFilePath}` : null;
+  const preview = previewKey && previewResource.key === previewKey ? previewResource.data : null;
+  const loadingPreview = previewKey != null && previewResource.key === previewKey && previewResource.status === "refreshing";
+  const previewErr = previewKey && previewResource.key === previewKey ? previewResource.error : "";
   const changeDetailRequestIdRef = useRef(0);
   const gitHistoryRequestIdRef = useRef(0);
   const previewRequestIdRef = useRef(0);
@@ -661,7 +670,7 @@ export function WorkspacePanel({
     setScopedFilePaths(paths);
     setSelectedFilePath(null);
     setOpenTabs([]);
-    setPreview(null);
+    setPreviewResource(emptyKeyedResource());
     setFilter("");
     setExpandedCommit(null);
     setCommitDetail(null);
@@ -825,32 +834,26 @@ export function WorkspacePanel({
     if (!selectedFilePath) return;
     const requestId = ++previewRequestIdRef.current;
     const requestScopeKey = workspaceScopeKey;
+    const requestPath = selectedFilePath;
+    const requestKey = `${requestScopeKey}\u0000preview\u0000${requestPath}`;
     let live = true;
-    setLoadingPreview(true);
+    setPreviewResource((current) => beginKeyedResourceRequest(current, requestKey, requestId, workspaceRefresh.revisions.content));
     app
-      .ReadFileForTab(workspaceTabId, selectedFilePath)
+      .ReadFileForTab(workspaceTabId, requestPath)
       .then((next) => {
-        if (live && previewRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) setPreview(next);
+        if (live && previewRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) {
+          setPreviewResource((current) => resolveKeyedResourceRequest(current, requestKey, requestId, next, workspaceRefresh.revisions.content));
+        }
       })
       .catch((err) => {
         if (live && previewRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) {
-          setPreview({
-            path: selectedFilePath,
-            body: "",
-            size: 0,
-            truncated: false,
-            binary: false,
-            err: String(err?.message ?? err),
-          });
+          setPreviewResource((current) => rejectKeyedResourceRequest(current, requestKey, requestId, String(err?.message ?? err)));
         }
-      })
-      .finally(() => {
-        if (live && previewRequestIdRef.current === requestId && currentWorkspaceScopeKeyRef.current === requestScopeKey) setLoadingPreview(false);
       });
     return () => {
       live = false;
     };
-  }, [selectedFilePath, workspaceScopeKey, workspaceTabId]);
+  }, [selectedFilePath, workspaceRefresh.revisions.content, workspaceScopeKey, workspaceTabId]);
 
   useEffect(() => {
     if (!open || !selectedFilePath) return;
@@ -1329,7 +1332,7 @@ export function WorkspacePanel({
     // is intentionally left untouched so it survives this action.
     setOpenTabs([]);
     setSelectedFilePath(null);
-    setPreview(null);
+    setPreviewResource(emptyKeyedResource());
     setSelectionMenu(null);
     setTreeMenu(null);
     setTreeVisible(true);
@@ -1622,6 +1625,7 @@ export function WorkspacePanel({
       !changedMode &&
       preview &&
       !loadingPreview &&
+      !previewErr &&
       !preview.err &&
       !preview.kind &&
       !preview.binary &&
@@ -1634,6 +1638,7 @@ export function WorkspacePanel({
     selectedFilePath &&
       !changedMode &&
       !isMarkdown &&
+      !previewErr &&
       !preview?.err &&
       !preview?.kind &&
       !preview?.binary,
@@ -2119,9 +2124,9 @@ export function WorkspacePanel({
             <div className="workspace-empty">{t("workspace.pickFile")}</div>
           ) : loadingPreview && !preview ? (
             <div className="workspace-empty">{t("workspace.loading")}</div>
-          ) : preview?.err ? (
+          ) : preview?.err || (previewErr && !preview) ? (
             <div className="workspace-empty workspace-empty--error">
-              {/no such file|not found|enoent/i.test(preview.err) ? t("workspace.fileDeleted") : preview.err}
+              {/no such file|not found|enoent/i.test(previewErr || preview?.err || "") ? t("workspace.fileDeleted") : (previewErr || preview?.err)}
             </div>
           ) : preview?.kind ? (
             renderMediaPreview(preview)
@@ -2130,6 +2135,7 @@ export function WorkspacePanel({
           ) : preview ? (
             <>
               {loadingPreview && <div className="workspace-resource-status" role="status">{t("workspace.loading")}</div>}
+              {previewErr && <div className="workspace-resource-status workspace-resource-status--error">{previewErr}</div>}
               {preview.truncated && <div className="workspace-note">{t("workspace.truncated")}</div>}
               {isMarkdown ? (
                 <Markdown text={preview.body} />
