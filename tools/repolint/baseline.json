@@ -647,6 +647,7 @@
       "file-size": 31
     },
     "internal/bot/qq/gateway.go": {
+      "file-size": 13,
       "function-size": 11
     },
     "internal/bot/render.go": {

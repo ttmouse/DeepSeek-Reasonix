@@ -353,3 +353,23 @@ func jsonResponse(status int, v any) *http.Response {
 		Body:       io.NopCloser(bytes.NewReader(data)),
 	}
 }
+
+// TestQQIdentifyIntentsAvoidUnauthorizedBits: Identify 的 intent 集合不得
+// 包含未授权即被 gateway 以 op=9 断开的位（GUILD_MESSAGES 1<<9、INTERACTION
+// 1<<26 等），且必须覆盖 Reasonix 核心的群聊/C2C 事件（1<<25）。
+func TestQQIdentifyIntentsAvoidUnauthorizedBits(t *testing.T) {
+	if qqIdentifyIntents&(1<<9) != 0 {
+		t.Fatalf("qqIdentifyIntents contains GUILD_MESSAGES (1<<9): gateway rejects it with op=9 INVALID_SESSION for bots without guild-message permission")
+	}
+	if qqIdentifyIntents&(1<<26) != 0 {
+		t.Fatalf("qqIdentifyIntents contains INTERACTION (1<<26): requires applied high-level capability")
+	}
+	if qqIdentifyIntents&intentGroupAndC2C == 0 {
+		t.Fatalf("qqIdentifyIntents must include GROUP_AND_C2C_EVENT (1<<25) for QQ group/C2C messaging")
+	}
+	// 全部位都来自已命名 intent，防止未来误加未授权位。
+	allowed := intentGuilds | intentGuildMembers | intentDirectMessage | intentGroupAndC2C | intentPublicGuildMessages
+	if qqIdentifyIntents&^allowed != 0 {
+		t.Fatalf("qqIdentifyIntents contains undeclared bits %b", qqIdentifyIntents&^allowed)
+	}
+}
