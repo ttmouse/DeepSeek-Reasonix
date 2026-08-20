@@ -38954,3 +38954,5 @@ body > .mermaid-diagram--fullscreen {
   transition: background 0.12s;
 }
 .instruction-panel__cancel-btn:hover {
+  background: var(--bg-sub);
+}
