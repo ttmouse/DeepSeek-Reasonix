@@ -26,6 +26,7 @@ import {
   Puzzle,
   X,
   TerminalSquare,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { useGoalActionHandler } from "./lib/goalAction";
@@ -289,6 +290,7 @@ const WorkspacePanel = lazy(async () => {
   ]);
   return { default: module.WorkspacePanel };
 });
+const InstructionPanel = lazy(() => import("./components/InstructionPanel").then((module) => ({ default: module.InstructionPanel })));
 
 const CHAT_MIN_WIDTH = 400;
 const WORKSPACE_RESIZER_WIDTH = 8;
@@ -5140,6 +5142,16 @@ export default function App() {
                     <span className="workbench-dock__tab-label">{t("rightDock.remote")}</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={rightDockMode === "instructions"}
+                  className={`workbench-dock__tab${rightDockMode === "instructions" ? " workbench-dock__tab--active" : ""}`}
+                  onClick={() => openRightDockMode("instructions")}
+                >
+                  <BookOpen size={13} />
+                  <span className="workbench-dock__tab-label">{t("instruction.title")}</span>
+                </button>
               </div>
             </div>
             <div className="workbench-dock__body">
@@ -5165,6 +5177,10 @@ export default function App() {
                     refreshKey={dockRefreshKey + state.contextPanelSeq}
                     usageSeq={state.usageSeq}
                   />
+                </Suspense>
+              ) : rightDockMode === "instructions" ? (
+                <Suspense fallback={null}>
+                  <InstructionPanel onPrompt={handleTranscriptPrompt} />
                 </Suspense>
               ) : (
                 <Suspense fallback={null}>
