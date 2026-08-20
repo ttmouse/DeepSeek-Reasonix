@@ -9,6 +9,7 @@ import { ToolCard } from "./ToolCard";
 import { ExtensionCard } from "./ExtensionCard";
 import { ArrowDown, Loader2, RotateCcw } from "lucide-react";
 import { Welcome } from "./Welcome";
+import { ChatHistorySidebar } from "./ChatHistorySidebar";
 import { ReadOnlyBatch } from "./ReadOnlyBatch";
 import { ToolGroup } from "./ToolGroup";
 import { getProcessFoldPreference, onProcessFoldPreferenceChange, type ProcessFoldPreference } from "../lib/processFoldPreference";
@@ -65,7 +66,6 @@ type AssistantReasoningDisplay = "normal" | "hide";
 const EMPTY_CHECKPOINTS: CheckpointMeta[] = [];
 const EMPTY_INVOCATION_METADATA: InvocationMetadataMap = {};
 const NO_HELD_ROWS: readonly TranscriptRow[] = [];
-const QuestionJumpBar = lazy(() => import("./QuestionJumpBar"));
 const SHOW_SCROLL_DIAGNOSTICS = typeof __BUILD_CHANNEL__ === "undefined" || __BUILD_CHANNEL__ === "test" || import.meta.env.DEV;
 const ScrollDiagnosticPanel = SHOW_SCROLL_DIAGNOSTICS ? lazy(() => import("./ScrollDiagnosticPanel")) : null;
 
@@ -409,7 +409,7 @@ export function Transcript({
     questions,
     loadedByTurn,
     totalQuestions,
-    activeQuestion,
+    ,
     setActiveQuestion,
     scheduleActiveQuestionSync,
     turnForUser,
@@ -1040,14 +1040,7 @@ export function Transcript({
       )}
 
       {!empty && showQuestionNav && (
-        <Suspense fallback={null}>
-          <QuestionJumpBar
-            loadedQuestions={questions}
-            totalQuestions={totalQuestions}
-            activeTurn={activeQuestion}
-            onJump={handleJumpToQuestion}
-          />
-        </Suspense>
+        <ChatHistorySidebar questions={questions} onJump={handleJumpToQuestion} />
       )}
 
       {!empty && !isAtBottom && scrollElement && hasTranscriptScrollableRange(scrollElement) && (
