@@ -18,7 +18,7 @@ function ok(value: boolean, label: string) {
 
 function installLocalStorage(seed: Record<string, string>) {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost/" });
-  globalThis.window = dom.window;
+  globalThis.window = dom.window as unknown as Window & typeof globalThis;
   globalThis.localStorage = dom.window.localStorage;
   for (const [key, value] of Object.entries(seed)) {
     dom.window.localStorage.setItem(key, value);

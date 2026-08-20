@@ -6794,9 +6794,9 @@ body > .mermaid-diagram--fullscreen {
   transition: border-color 0.12s;
 }
 .composer-card--resized {
-  /* --composer-height is always the user's logical height; the run strip's
-     reservation lives in this calc so the live resize drag (which writes the
-     raw logical height) and the React render path can never disagree. */
+  /* --composer-height excludes the run strip and may grow above the user's
+     saved minimum to reveal a longer draft. The strip reservation stays in
+     this calc so live resize and content sizing share one coordinate space. */
   height: calc(var(--composer-height) + var(--composer-run-strip-reserved, 0px));
   display: flex;
   flex-direction: column;
@@ -6804,10 +6804,9 @@ body > .mermaid-diagram--fullscreen {
 .composer-card:focus-within {
   border-color: var(--fg-faint);
 }
-/* Run strip: an in-flow bar at the top of the card. For user-resized cards
-   (fixed --composer-height), the JS adds the strip's reserved height so the
-   meta row stays fully visible. For auto-height cards the card grows
-   naturally. */
+/* Run strip: an in-flow bar at the top of the card. For user-sized cards JS
+   adds the strip's reserved height so the input's logical minimum is unchanged.
+   For natural-height cards the card grows without the explicit reservation. */
 .composer-run-strip {
   display: flex;
   align-items: center;
@@ -7226,8 +7225,8 @@ body > .mermaid-diagram--fullscreen {
   vertical-align: text-bottom;
 }
 .composer-card--resized .composer__rich-input {
-  /* Fill the user's fixed card height and scroll inside; height: auto would
-     collapse the input to its intrinsic height and break the resized layout. */
+  /* Fill the current logical card height during live resize; content sizing
+     supplies an inline height after the gesture settles. */
   height: 100%;
   min-height: 0;
   overflow-y: auto;
@@ -7247,8 +7246,8 @@ body > .mermaid-diagram--fullscreen {
   display: none;                    /* Chrome / Safari / Wails webview */
 }
 .composer-card--resized .composer__input {
-  /* The resized card gets no inline textarea height from JS; height: auto
-     would pin the rows=1 textarea to a single visible line forever. */
+  /* Fill the current logical card height during live resize; content sizing
+     supplies an inline height after the gesture settles. */
   height: 100%;
   min-height: 0;
   max-height: none;

@@ -33,6 +33,7 @@ import type { ControllerLiveStore } from "../lib/useController";
 import { clearLayoutSize, loadOptionalLayoutSize, saveLayoutSize } from "../lib/layoutPreferences";
 import { createRafResizeUpdater } from "../lib/resizeDrag";
 import { observeComposerMenuViewport } from "../lib/composerMenuViewport";
+import { resolveComposerContentSizing } from "../lib/composerSizing";
 import { useToast } from "../lib/toast";
 import { type CollaborationMode, type CommandInfo, type ComposerInsertRequest, type ContextInfo, type DirEntry, type EffortInfo, type GoalRuntime, type HistoryMessage, type Mode, type PromptHistoryEntry, type QualityFloor, type SessionMeta, type SessionReference, type SlashArgItem, type SlashArgsResult, type ToolApprovalMode, type BalanceInfo } from "../lib/types";
 import {
@@ -394,10 +395,6 @@ function clampComposerHeight(height: number): number {
   return Math.min(Math.max(Math.round(height), COMPOSER_MIN_HEIGHT), composerMaxHeight());
 }
 
-function composerAutoInputMaxHeight(extraReservedHeight = 0): number {
-  return Math.max(32, composerMaxHeight() - COMPOSER_AUTO_RESERVED_HEIGHT - extraReservedHeight);
-}
-
 function loadComposerHeight(): number | null {
   return loadOptionalLayoutSize("composerHeight", clampComposerHeight);
 }
@@ -733,6 +730,8 @@ export function Composer({
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // A saved manual height is a floor, not a hard cap: longer drafts may grow
+  // above it and return to it when their content shrinks.
   const [composerHeight, setComposerHeight] = useState<number | null>(loadComposerHeight);
   const [composerResizing, setComposerResizing] = useState(false);
   const [textareaAutoHeight, setTextareaAutoHeight] = useState<number | null>(null);
@@ -2927,11 +2926,6 @@ export function Composer({
   }, []);
 
   const measureTextareaAutoHeight = useCallback(() => {
-    if (composerHeight !== null) {
-      setTextareaAutoHeight(null);
-      setTextareaAutoOverflow(false);
-      return;
-    }
     // Creation empty hero starts single-line but must grow so multi-line drafts
     // stay readable before send (review: fixed 20px + overflow:hidden clipped).
     if (heroMode) {
@@ -2958,12 +2952,15 @@ export function Composer({
     const previousHeight = node?.style.height;
     if (node) node.style.height = "auto";
     const scrollHeight = richHeight || node?.scrollHeight || 0;
-    const maxHeight = composerAutoInputMaxHeight();
-    const nextHeight = Math.min(scrollHeight, maxHeight);
-    const nextOverflow = scrollHeight > maxHeight + 1;
+    const sizing = resolveComposerContentSizing({
+      contentHeight: scrollHeight,
+      manualLogicalHeight: composerHeight,
+      maxLogicalHeight: composerMaxHeight(),
+      reservedHeight: COMPOSER_AUTO_RESERVED_HEIGHT,
+    });
     if (node && previousHeight !== undefined) node.style.height = previousHeight;
-    setTextareaAutoHeight((current) => (current === nextHeight ? current : nextHeight));
-    setTextareaAutoOverflow((current) => (current === nextOverflow ? current : nextOverflow));
+    setTextareaAutoHeight((current) => (current === sizing.inputHeight ? current : sizing.inputHeight));
+    setTextareaAutoOverflow((current) => (current === sizing.overflow ? current : sizing.overflow));
   }, [composerHeight, heroMode, invocations.length]);
 
   useLayoutEffect(() => {
@@ -2971,7 +2968,6 @@ export function Composer({
   }, [text, measureTextareaAutoHeight]);
 
   useEffect(() => {
-    if (composerHeight !== null) return;
     let frame = 0;
     const update = () => {
       if (frame) window.cancelAnimationFrame(frame);
@@ -3009,7 +3005,7 @@ export function Composer({
 
     e.preventDefault();
     const startY = e.clientY;
-    const startHeight = composerHeight ?? composerLogicalHeight(card);
+    const startHeight = Math.max(composerHeight ?? COMPOSER_MIN_HEIGHT, composerLogicalHeight(card));
     let nextHeight = clampComposerHeight(startHeight);
     let moved = false;
     card.style.setProperty("--composer-height", `${nextHeight}px`);
@@ -3047,7 +3043,10 @@ export function Composer({
 
   const onComposerResizeKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     const card = composerCardRef.current;
-    const current = composerHeight ?? (card ? composerLogicalHeight(card) : COMPOSER_MIN_HEIGHT);
+    const current = Math.max(
+      composerHeight ?? COMPOSER_MIN_HEIGHT,
+      card ? composerLogicalHeight(card) : COMPOSER_MIN_HEIGHT,
+    );
     const step = e.shiftKey ? 32 : 16;
     let next: number | null = null;
     if (e.key === "ArrowUp" || e.key === "PageUp") next = current + step;
@@ -3597,21 +3596,29 @@ export function Composer({
 
   // When the run strip is visible inside a user-resized card, the card grows
   // by the strip's reserved height so the meta row stays fully visible.
-  // --composer-height carries only the user's logical height; the reservation
-  // is a separate variable consumed by the CSS calc, so the live resize drag
-  // (which writes raw logical heights) stays consistent with this render path.
+  // --composer-height stays in logical card-height space. It may be the saved
+  // manual floor or a larger content-derived height; the run-strip reservation
+  // remains separate so the live resize writer uses the same coordinate space.
   const showRunStrip = Boolean(retry || running);
-  const composerCardStyle = composerHeight === null
+  const effectiveComposerHeight = composerHeight === null
+    ? null
+    : resolveComposerContentSizing({
+        contentHeight: textareaAutoHeight ?? 0,
+        manualLogicalHeight: composerHeight,
+        maxLogicalHeight: composerMaxHeight(),
+        reservedHeight: COMPOSER_AUTO_RESERVED_HEIGHT,
+      }).logicalHeight;
+  const composerCardStyle = effectiveComposerHeight === null
     ? undefined
     : ({
-        "--composer-height": `${composerHeight}px`,
+        "--composer-height": `${effectiveComposerHeight}px`,
         "--composer-run-strip-reserved": `${showRunStrip ? COMPOSER_RUN_STRIP_RESERVED : 0}px`,
       } as CSSProperties);
-  const textareaStyle = composerHeight === null && textareaAutoHeight !== null
+  const textareaStyle = !composerResizing && textareaAutoHeight !== null
     ? ({ height: `${textareaAutoHeight}px`, overflowY: textareaAutoOverflow ? "auto" : "hidden" } as CSSProperties)
     : undefined;
   const composerAutoExpanded = composerHeight === null && textareaAutoHeight !== null && textareaAutoHeight > 40;
-  const composerResizeValue = composerHeight ?? clampComposerHeight((textareaAutoHeight ?? 0) + COMPOSER_AUTO_RESERVED_HEIGHT);
+  const composerResizeValue = effectiveComposerHeight ?? clampComposerHeight((textareaAutoHeight ?? 0) + COMPOSER_AUTO_RESERVED_HEIGHT);
   void onSetMode;
   const chooseApprovalMode = (nextMode: ToolApprovalMode) => {
     onSetToolApprovalMode(nextMode);

@@ -102,6 +102,24 @@ await act(async () => {
   arbiter!.scrollerRef(scrollElement);
 });
 
+// Composer wrap shrinks the in-flow viewport. Tail-follow must pin the native
+// tail synchronously so jump-bottom cannot flash before the coalesced frame.
+await act(async () => arbiter?.reset());
+scrollExtent = 500;
+scrollElement.scrollTop = 400;
+Object.defineProperty(scrollElement, "clientHeight", { configurable: true, value: 100 });
+await act(async () => arbiter?.followGrowingTail());
+await flushFrames();
+Object.defineProperty(scrollElement, "clientHeight", { configurable: true, value: 80 });
+await act(async () => arbiter?.followGrowingTail());
+check(scrollElement.scrollTop === 420, "footer-driven viewport shrink pins the native tail before rAF");
+await act(async () => arbiter?.deliverScroll());
+check(arbiter?.isAtBottom === true, "tail-follow keeps isAtBottom through a composer-wrap gap");
+await flushFrames();
+Object.defineProperty(scrollElement, "clientHeight", { configurable: true, value: 725 });
+scrollExtent = 15_829;
+scrollElement.scrollTop = 14_567.47;
+
 // Returned Windows geometry: the native extent collapses after a downward
 // wheel and rebounds while scrollTop remains clamped 1,949px too high.
 await act(async () => arbiter?.deliverScroll());

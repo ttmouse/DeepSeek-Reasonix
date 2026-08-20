@@ -22,7 +22,7 @@ function noticeIds(items: readonly { kind: string; id: string }[]): string[] {
   return items.filter((item) => item.kind === "notice").map((item) => item.id);
 }
 
-const replace = (items: readonly { kind: string; id: string }[]) =>
+const replace = (items: readonly { kind: string; id: string; text?: string }[]) =>
   reducer(initialState, {
     type: "history_replace",
     items: [...items] as never,
@@ -35,7 +35,7 @@ console.log("\nmodel-switch notice survives history replaces");
 
 {
   let s = initialState;
-  s = reducer(s, { type: "user", text: "hello", submissionId: "s1" });
+  s = reducer(s, { type: "user", text: "hello", seq: 0, submissionId: "s1" });
   s = reducer(s, {
     type: "local_notice",
     level: "info",
@@ -67,9 +67,9 @@ console.log("\nmodel-switch notice survives history replaces");
   // Notices carry the originating user id and stay with that turn instead of
   // migrating to the newest message.
   let s = initialState;
-  s = reducer(s, { type: "user", text: "first", submissionId: "s1" });
+  s = reducer(s, { type: "user", text: "first", seq: 0, submissionId: "s1" });
   s = reducer(s, { type: "local_notice", level: "info", text: "notice A", variant: "model-switch", turnUserID: "u0" });
-  s = reducer(s, { type: "user", text: "second", submissionId: "s2" });
+  s = reducer(s, { type: "user", text: "second", seq: 1, submissionId: "s2" });
   s = reducer(s, { type: "local_notice", level: "info", text: "notice B", variant: "model-switch", turnUserID: "u1" });
   s = reducer(s, {
     type: "history_replace",
@@ -81,7 +81,7 @@ console.log("\nmodel-switch notice survives history replaces");
     totalTurns: 2,
     hasOlder: false,
   } as never);
-  const order = s.items.map((item) => (item.kind === "notice" ? `notice:${item.text}` : `${item.kind}:${item.text}`));
+  const order = s.items.map((item) => (item.kind === "notice" ? `notice:${item.text}` : `${item.kind}:${"text" in item ? item.text : ""}`));
   eq(
     order.join(","),
     "user:first,notice:notice A,user:second,notice:notice B",

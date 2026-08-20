@@ -31,7 +31,7 @@ function assertBudget(label, actual, budget) {
 const initialJS = initialAssetPaths(".js");
 const initialCSS = initialAssetPaths(".css");
 if (!initialJS.length) throw new Error("no initial JavaScript assets found in dist/index.html");
-if (!initialCSS.length) throw new Error("no initial CSS assets found in dist/index.html");
+// initial CSS 允许为空：styles.css 走 ?url 延迟加载，feature 样式走 lazy chunk。
 
 // main.tsx intentionally loads styles.css before mounting React so the inline
 // boot shell can paint without waiting for the full application stylesheet.
@@ -89,7 +89,14 @@ console.log("\nbundle budgets");
 const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 429.4 : 428.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
-assertBudget("render-blocking CSS gzip", initialCSSGzip, 4 * 1024);
+// Render-blocking CSS is intentionally absent: styles.css loads deferred via
+// ?url, and feature styles (heartbeat) live in lazy chunks loaded on demand.
+// An empty initial CSS list is the desired state, not a build error.
+if (initialCSS.length > 0) {
+  assertBudget("render-blocking CSS gzip", initialCSSGzip, 4 * 1024);
+} else {
+  process.stdout.write("  PASS  render-blocking CSS: none (all styles deferred)\n");
+}
 // Extension surfaces, Task Monitor, and compact decision receipts share the
 // application stylesheet loaded before React mounts. Keep their combined
 // allowance bounded even though the file is no longer render-blocking.

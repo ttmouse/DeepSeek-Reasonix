@@ -1378,6 +1378,8 @@ function makeMockApp(): AppBindings {
   let mockActiveThemeId = "";
   let mockBaseStyle = "graphite";
   let mockThemeMode: "auto" | "light" | "dark" = "dark";
+  let mockHeartbeatRevision = 0;
+  let mockHeartbeatTasks: unknown[] = [];
   // Vite rewrites these literal asset URLs in both dev and production builds.
   // Keeping them on the browser mock makes local visual acceptance match the
   // Wails bridge, whose ListThemePacks response carries the same two URLs.
@@ -4932,11 +4934,16 @@ function makeMockApp(): AppBindings {
       settings.agent = { ...settings.agent, reasoningLanguage: normalized };
     },
     // ── Heartbeat mock ──
-    async HeartbeatListTasks() { return []; },
-    async HeartbeatReloadTasks() { return []; },
-    async HeartbeatSaveTasks(_tasks: unknown) {},
-    async HeartbeatReloadConfig() { return { revision: 0, etag: "", tasks: [] }; },
-    async HeartbeatSaveConfig(_update: unknown) { return { revision: 0, etag: "", tasks: [] }; },
+    async HeartbeatListTasks() { return mockHeartbeatTasks; },
+    async HeartbeatReloadTasks() { return mockHeartbeatTasks; },
+    async HeartbeatSaveTasks(tasks: unknown) { mockHeartbeatTasks = Array.isArray(tasks) ? tasks : []; },
+    async HeartbeatReloadConfig() { return { revision: mockHeartbeatRevision, etag: `mock-${mockHeartbeatRevision}`, tasks: mockHeartbeatTasks }; },
+    async HeartbeatSaveConfig(update: unknown) {
+      const tasks = (update as { tasks?: unknown[] } | null)?.tasks;
+      mockHeartbeatTasks = Array.isArray(tasks) ? tasks : [];
+      mockHeartbeatRevision += 1;
+      return { revision: mockHeartbeatRevision, etag: `mock-${mockHeartbeatRevision}`, tasks: mockHeartbeatTasks };
+    },
     async HeartbeatTriggerNow(_id: string) {},
     async HeartbeatGenerateID() { return "mock-" + Date.now().toString(36); },
     async ListTasks() { return []; },

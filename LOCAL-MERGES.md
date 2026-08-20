@@ -5,13 +5,14 @@
 
 ## 当前基线
 
-- 上游基线：`upstream/main-v2 @ 3bc93c07a`（2026-08-20，Merge pull request #8748）
+- 上游基线：`upstream/main-v2 @ a8c41e239`（2026-08-20，Merge pull request #9190，含 v1.31.0 发布 + PR #8261 heartbeat 面板优化 + PR #9179 composer 相关）
 - 生成报告：`bash tools/local-merge-report.sh local/dev`
 
 ## 合并清单
 
 | 合并日期 | 分支 | 说明 | 上游状态 |
 |---|---|---|---|
+| 2026-08-20 | pr/switch-model-while-streaming | 回答运行中切换模型，下一轮生效（PR #9187，cherry-pick） | PR #9187（OPEN） |
 | 2026-08-20 | feat/new-skin-custom | 右侧 dock 快捷指令面板（InstructionPanel，squash 提取） | 未合入 |
 | 2026-08-20 | fix/qq-gateway-handshake | 修复 QQ 网关握手（drop unauthorized intents） | 未合入 |
 | 2026-08-20 | feat/chat-history-sidebar | 类ChatGPT对话历史侧边栏（悬停浮层+滚动同步），保留 Virtuoso 结构替换 QuestionJumpBar | PR #5634（CONFLICTING） |

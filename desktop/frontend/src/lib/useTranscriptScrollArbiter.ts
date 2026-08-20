@@ -38,7 +38,7 @@ import {
   transcriptScrollEventCancelsReaderExtentGuard,
   transcriptKeyboardScrollDelta,
 } from "./transcriptReaderExtentStability";
-import { hasTranscriptScrollableRange, nativeTranscriptBottomTop, nativeTranscriptDistanceFromBottom, TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX } from "./transcriptScrollGeometry";
+import { hasTranscriptScrollableRange, nativeTranscriptBottomTop, nativeTranscriptDistanceFromBottom, pinTranscriptTailAfterViewportShrink, TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX, type TranscriptFollowGeometry } from "./transcriptScrollGeometry";
 import type { TranscriptRow } from "./transcriptRows";
 import { captureTranscriptVirtuosoState } from "./transcriptStateSnapshot";
 import { captureTranscriptLayoutAnchor, type TranscriptLayoutAnchor } from "./transcriptVirtuosoRecovery";
@@ -96,7 +96,7 @@ export function useTranscriptScrollArbiter({
   const layoutTransientIdleTimerRef = useRef<number | null>(null);
   const resizeSettleFrameRef = useRef<number | null>(null);
   const readerIntentTimerRef = useRef<number | null>(null);
-  const lastFollowExtentRef = useRef<number | null>(null);
+  const followGeometryRef = useRef<TranscriptFollowGeometry>({ contentExtent: null, viewportExtent: null });
   const recoveryRef = useRef<ActiveTranscriptRecovery | null>(null);
   const nextRecoveryIdRef = useRef(0);
   // Last known-good viewport anchor: updated on every completed recovery, on
@@ -277,7 +277,8 @@ export function useTranscriptScrollArbiter({
     stateRef.current = state;
     modeRef.current = state.mode;
     pinnedRef.current = state.mode === "tail-follow";
-    setIsAtBottom(state.atBottom);
+    // Keep jump-bottom manual-only while tail-follow repairs footer resize gaps.
+    setIsAtBottom(state.atBottom || state.mode === "tail-follow");
     if (scrollRef.current) scrollRef.current.dataset.scrollMode = state.mode;
   }, []);
 
@@ -497,7 +498,7 @@ export function useTranscriptScrollArbiter({
   const reset = useCallback(() => {
     invalidateAsyncFrames();
     endReaderIntent();
-    lastFollowExtentRef.current = null;
+    followGeometryRef.current = { contentExtent: null, viewportExtent: null };
     dispatch({ type: "RESET" });
   }, [dispatch, endReaderIntent, invalidateAsyncFrames]);
 
@@ -588,6 +589,7 @@ export function useTranscriptScrollArbiter({
       invalidateAsyncFrames();
     }
     scrollRef.current = element;
+    followGeometryRef.current.viewportExtent = element?.clientHeight ?? null;
     if (element) {
       element.dataset.scrollMode = stateRef.current.mode;
       deliverScroll(element);
@@ -612,11 +614,12 @@ export function useTranscriptScrollArbiter({
     if (readerDeltaY !== undefined) readerExtent.arm(readerDeltaY);
     armReaderIntentIdle();
   }, [armReaderIntentIdle, deliverScroll, dispatch, readerExtent]);
-
   const followGrowingTail = useCallback(() => {
     layoutTransientRef.current = true;
     armLayoutTransientIdle();
     readerExtent.observe();
+    const pinnedTop = scrollRef.current && pinTranscriptTailAfterViewportShrink(scrollRef.current, followGeometryRef.current, pinnedRef.current);
+    if (pinnedTop !== null) noteTranscriptScrollWrite({ owner: "tail-follow", kind: "scrollTo", top: pinnedTop });
     if (followFrameRef.current !== null) return;
     const generation = generationRef.current;
     const scrollElement = scrollRef.current;
@@ -626,8 +629,8 @@ export function useTranscriptScrollArbiter({
       const element = scrollRef.current;
       if (element) {
         const scrollHeight = element.scrollHeight;
-        const previous = lastFollowExtentRef.current;
-        lastFollowExtentRef.current = scrollHeight;
+        const previous = followGeometryRef.current.contentExtent;
+        followGeometryRef.current.contentExtent = scrollHeight;
         if (previous != null && isTranscriptContentShrink(scrollHeight - previous)) {
           dispatch({ type: "CONTENT_SHRANK" });
           return;
