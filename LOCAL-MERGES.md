@@ -15,6 +15,7 @@
 | 2026-08-20 | feat/new-skin-custom | 右侧 dock 快捷指令面板（InstructionPanel，squash 提取） | 未合入 |
 | 2026-08-20 | fix/qq-gateway-handshake | 修复 QQ 网关握手（drop unauthorized intents） | 未合入 |
 | 2026-08-20 | feat/chat-history-sidebar | 类ChatGPT对话历史侧边栏（悬停浮层+滚动同步），保留 Virtuoso 结构替换 QuestionJumpBar | PR #5634（CONFLICTING） |
+| 2026-08-20 | fix/workspace-tree-icon-gap | 清理 workspace 预览面板：移除 44px rail 列、冗余面包屑与空 meta 行（cherry-pick 功能提交） | PR #9193（OPEN） |
 
 ## 维护操作速查
 
