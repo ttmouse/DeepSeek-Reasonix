@@ -154,7 +154,7 @@ await act(async () => {
   separator.dispatchEvent(new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "End" }));
   await flushTimers();
 });
-eq(Number(separator.getAttribute("aria-valuenow")), 616, "End preserves minimum space for the rail and preview");
+eq(Number(separator.getAttribute("aria-valuenow")), 660, "End widens the tree to keep only the preview minimum");
 
 await act(async () => {
   root.unmount();

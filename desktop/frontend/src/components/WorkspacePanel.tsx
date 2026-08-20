@@ -89,14 +89,13 @@ import { WORKSPACE_TURN_VERIFICATION_ID, WorkspaceTurnVerification } from "./Wor
 import { useWorkspaceChangesResource } from "../lib/useWorkspaceChangesResource";
 import {
   workspaceBasename as basename, workspaceEntryPath as entryPath,
-  workspaceFormatBytes as formatBytes, workspaceFormatCommitDate as formatCommitDate,
+  workspaceFormatCommitDate as formatCommitDate,
   workspaceParentDirs as parentDirs, workspaceParentPath as parentPath,
-  workspaceShortCwd as shortCwd, workspaceTopLevelDirPath as topLevelDirPath,
+  workspaceTopLevelDirPath as topLevelDirPath,
 } from "../lib/workspacePanelFormat";
 
 const WORKSPACE_TREE_MIN_WIDTH = 140;
 const WORKSPACE_TREE_DEFAULT_WIDTH = 300;
-const WORKSPACE_TREE_RAIL_WIDTH = 44;
 const WORKSPACE_PREVIEW_MIN_WIDTH = 140;
 const WORKSPACE_PREVIEW_TARGET_WIDTH = 360;
 const WORKSPACE_DUAL_PANEL_TARGET_WIDTH = WORKSPACE_TREE_DEFAULT_WIDTH + WORKSPACE_PREVIEW_TARGET_WIDTH;
@@ -114,7 +113,6 @@ function clampWorkspaceTreeWidth(width: number, panelWidth?: number): number {
   return clampWorkspaceSplitTreeWidth({
     width,
     panelWidth,
-    railWidth: WORKSPACE_TREE_RAIL_WIDTH,
     treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
     previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
   });
@@ -492,7 +490,6 @@ export function WorkspacePanel({
       if (initializeSplit) {
         setTreeWidth(initialWorkspaceSplitTreeWidth({
           panelWidth,
-          railWidth: WORKSPACE_TREE_RAIL_WIDTH,
           // Preserve a user-resized (manual) tree width: only first-time
           // splits (no saved width yet) default to an even 50/50 division.
           // Reopening a file after closing its preview must keep the
@@ -902,8 +899,6 @@ export function WorkspacePanel({
     [loadDir, revealedRootPaths, updateOpenDirs],
   );
 
-  const breadcrumbDirs = selectedPath ? parentDirs(selectedPath) : [""];
-  const pathParts = selectedPath?.split("/").filter(Boolean) ?? [];
   const sessionChanges = useMemo(
     () => workspaceChanges?.files.filter((c) => c.sources.includes("session")) ?? [],
     [workspaceChanges],
@@ -1174,12 +1169,10 @@ export function WorkspacePanel({
   const filePreviewActive = openTabs.length > 0 || selectedPath !== null;
   const changeDetailActive = changedMode && expandedCommit !== null;
   const previewVisible = changedMode || filePreviewActive;
-  const showTreeRail = previewVisible && !changedMode;
   const splitPanesFit = useMemo(
     () =>
       workspaceSplitCanFit({
         panelWidth,
-        railWidth: WORKSPACE_TREE_RAIL_WIDTH,
         treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
         previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
       }),
@@ -1195,14 +1188,13 @@ export function WorkspacePanel({
         mode: treeWidthMode,
         currentTreeWidth: treeWidth,
         panelWidth,
-        railWidth: WORKSPACE_TREE_RAIL_WIDTH,
         treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
         previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
       }),
     [panelWidth, treeWidth, treeWidthMode],
   );
   const maxTreeWidthForPanel = useMemo(
-    () => Math.max(WORKSPACE_TREE_MIN_WIDTH, (panelWidth ?? WORKSPACE_DUAL_PANEL_TARGET_WIDTH) - WORKSPACE_TREE_RAIL_WIDTH - WORKSPACE_PREVIEW_MIN_WIDTH),
+    () => Math.max(WORKSPACE_TREE_MIN_WIDTH, (panelWidth ?? WORKSPACE_DUAL_PANEL_TARGET_WIDTH) - WORKSPACE_PREVIEW_MIN_WIDTH),
     [panelWidth],
   );
 
@@ -1249,7 +1241,6 @@ export function WorkspacePanel({
   const showTreeEvenSplit = useCallback(() => {
     setTreeWidth(initialWorkspaceSplitTreeWidth({
       panelWidth,
-      railWidth: WORKSPACE_TREE_RAIL_WIDTH,
       savedTreeWidth: null,
       treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
       previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
@@ -1318,7 +1309,6 @@ export function WorkspacePanel({
           clientX: moveEvent.clientX,
           panelLeft: rect.left,
           panelWidth: rect.width,
-          railWidth: WORKSPACE_TREE_RAIL_WIDTH,
           treeMinWidth: WORKSPACE_TREE_MIN_WIDTH,
           previewMinWidth: WORKSPACE_PREVIEW_MIN_WIDTH,
           treeOnRight: true,
@@ -1516,7 +1506,7 @@ export function WorkspacePanel({
     <MarkdownImageTabContext.Provider value={workspaceTabId}>
     <aside
       ref={panelRef}
-      className={`workspace-panel${embeddedDockMode ? " workspace-panel--embedded" : ""}${showTreeRail ? " workspace-panel--with-tree-rail" : ""}${changedMode ? " workspace-panel--detail-only" : ""}${changedMode && !selectedPath ? " workspace-panel--changed-overview" : ""}${previewVisible && actualTreeVisible ? " workspace-panel--split-preview" : ""}${actualTreeVisible ? "" : " workspace-panel--tree-hidden"}${previewVisible ? "" : " workspace-panel--preview-hidden"}${treeResizing ? " workspace-panel--tree-resizing" : ""}`}
+      className={`workspace-panel${embeddedDockMode ? " workspace-panel--embedded" : ""}${changedMode ? " workspace-panel--detail-only" : ""}${changedMode && !selectedPath ? " workspace-panel--changed-overview" : ""}${previewVisible && actualTreeVisible ? " workspace-panel--split-preview" : ""}${actualTreeVisible ? "" : " workspace-panel--tree-hidden"}${previewVisible ? "" : " workspace-panel--preview-hidden"}${treeResizing ? " workspace-panel--tree-resizing" : ""}`}
       aria-label={t("workspace.title")}
       style={panelStyle}
       onKeyDownCapture={(event) => {
@@ -1631,46 +1621,6 @@ export function WorkspacePanel({
             </div>
           </AnchoredPopover>
         </header>
-
-        <div className="workspace-preview__meta">
-          <Tooltip label={cwd}>
-            <button
-              className="workspace-crumb"
-              onClick={() => {
-                setFilter("");
-                showTreeEvenSplit();
-                updateOpenDirs((prev) => new Set([...Array.from(prev), ""]));
-                void loadDir("");
-              }}
-            >
-              {shortCwd(cwd) || t("workspace.title")}
-            </button>
-          </Tooltip>
-          {pathParts.map((part, index) => {
-            const isLast = index === pathParts.length - 1;
-            const dir = pathParts.slice(0, index + 1).join("/") + "/";
-            return (
-              <span className="workspace-crumb-group" key={`${part}-${index}`}>
-                <span>›</span>
-                <Tooltip label={isLast ? (selectedPath ?? undefined) : dir}>
-                  <button
-                    className={`workspace-crumb${isLast ? " workspace-crumb--current" : ""}`}
-                    onClick={() => {
-                      if (isLast) return;
-                      showTreeEvenSplit();
-                      setFilter("");
-                      updateOpenDirs((prev) => new Set([...Array.from(prev), ...breadcrumbDirs, dir]));
-                      void loadDir(dir);
-                    }}
-                  >
-                    {part}
-                  </button>
-                </Tooltip>
-              </span>
-            );
-          })}
-          {preview && preview.size > 0 && <span className="workspace-preview__size">{formatBytes(preview.size)}</span>}
-        </div>
 
         <div
           className={`workspace-preview__body${codePreviewLayoutActive ? " workspace-preview__body--code" : ""}`}

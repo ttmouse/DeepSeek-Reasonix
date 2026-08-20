@@ -117,22 +117,23 @@ eq(
   "0px",
   "themed workspace code keeps the line-number gutter flush",
 );
+const splitDom = `<html><head></head><body><aside class="workspace-panel"><section class="workspace-files"></section><section class="workspace-preview"></section><button class="workspace-tree-resizer"></button></aside></body></html>`;
 eq(
-  finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden)", "grid-template-columns"),
-  "var(--workspace-tree-rail-width) minmax(var(--workspace-preview-min-width), 1fr) var(--workspace-tree-width)",
-  "split mode keeps a narrow tree toggle rail beside the file tree (preview left, tree right per user preference)",
+  computedDeclaration(splitDom, ".workspace-panel", "grid-template-columns"),
+  "minmax(var(--workspace-preview-min-width), 1fr) var(--workspace-tree-width)",
+  "split mode is a two-column layout: preview on the left, file tree on the right (the tree toggle rail is gone)",
 );
-eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-files", "grid-column"), "3", "file tree sits at the far right after the preview");
-eq(finalDeclaration(".workspace-panel--with-tree-rail:not(.workspace-panel--tree-hidden) .workspace-preview", "grid-column"), "2", "preview sits after the rail, before the tree");
+eq(computedDeclaration(splitDom, ".workspace-files", "grid-column"), "2", "file tree sits at the far right after the preview");
+eq(computedDeclaration(splitDom, ".workspace-preview", "grid-column"), "1", "preview sits to the left of the tree");
 eq(
-  finalDeclaration(".workspace-panel--with-tree-rail .workspace-tree-resizer", "left"),
+  computedDeclaration(splitDom, ".workspace-tree-resizer", "left"),
   "calc(100% - var(--workspace-tree-width) - 4px)",
   "tree resizer sits at the tree's left edge (tree is on the right)",
 );
 eq(
   finalDeclaration(".workspace-panel--tree-hidden", "grid-template-columns"),
   "minmax(0, 1fr)",
-  "preview-only mode drops the tree rail",
+  "preview-only mode drops the file tree",
 );
 eq(finalDeclaration(".workspace-panel--tree-hidden .workspace-preview", "grid-column"), "1", "preview fills the panel when the tree is hidden");
 eq(
