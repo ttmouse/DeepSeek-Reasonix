@@ -5,13 +5,14 @@
 
 ## 当前基线
 
-- 上游基线：`upstream/main-v2 @ 37e364152`（2026-08-20，Merge pull request #9151）
+- 上游基线：`upstream/main-v2 @ 3bc93c07a`（2026-08-20，Merge pull request #8748）
 - 生成报告：`bash tools/local-merge-report.sh local/dev`
 
 ## 合并清单
 
 | 合并日期 | 分支 | 说明 | 上游状态 |
 |---|---|---|---|
+| 2026-08-20 | feat/new-skin-custom | 右侧 dock 快捷指令面板（InstructionPanel，squash 提取） | 未合入 |
 | 2026-08-20 | fix/qq-gateway-handshake | 修复 QQ 网关握手（drop unauthorized intents） | 未合入 |
 
 ## 维护操作速查
