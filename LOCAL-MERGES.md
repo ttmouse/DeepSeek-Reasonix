@@ -32,5 +32,5 @@ git merge <分支1> <分支2> ...   # 重新合入，rerere 复用冲突解法
 # 然后更新本文件基线 + 表格
 
 # 查看历史记录（git 原生，不可篡改）
-git log local/dev --merges --grep="本地 PR" --format="%h %ad %s" --date=short
+git log local/dev --grep="本地 PR" --format="%h %ad %s" --date=short
 ```

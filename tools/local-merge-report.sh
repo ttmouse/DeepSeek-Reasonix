@@ -17,4 +17,4 @@ echo "=== 落后/领先上游 ==="
 git rev-list --left-right --count "$UPSTREAM_REF"...$BRANCH | awk '{print "落后上游: "$1" 个提交, 领先上游: "$2" 个提交"}'
 echo
 echo "=== 本地自定义合并 (merge: * (本地 PR)) ==="
-git log "$BRANCH" --merges --grep="本地 PR" --format="%h %ad %s" --date=short || echo "(无)"
+git log "$BRANCH" --grep="本地 PR" --format="%h %ad %s" --date=short || echo "(无)"
