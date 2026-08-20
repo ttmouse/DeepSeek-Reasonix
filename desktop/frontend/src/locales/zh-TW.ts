@@ -766,7 +766,7 @@ export const zhTW: Record<DictKey, string> = {
   "heartbeat.fieldNewConversation": "對話模式",
   "heartbeat.newConversationEachRunOn": "每次執行新建對話",
   "heartbeat.newConversationEachRunOff": "複用同一對話",
-  "instruction.title": "指令面板",
+  "instruction.title": "快捷",
   "instruction.add": "新增指示",
   "instruction.empty": "暂无指示",
   "instruction.contentPlaceholder": "输入指示内容…",

@@ -997,7 +997,7 @@ export const zh: Record<DictKey, string> = {
   "heartbeat.fieldNewConversation": "对话模式",
   "heartbeat.newConversationEachRunOn": "每次执行新建对话",
   "heartbeat.newConversationEachRunOff": "复用同一对话",
-  "instruction.title": "自定义指令",
+  "instruction.title": "快捷",
   "instruction.add": "添加",
   "instruction.empty": "还没有自定义指令，点击「添加」创建一个。",
   "instruction.contentPlaceholder": "写下你的指令…",
