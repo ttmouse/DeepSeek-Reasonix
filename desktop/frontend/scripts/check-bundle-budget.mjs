@@ -83,14 +83,18 @@ console.log("\nbundle budgets");
 // DingTalk channel status and locale wiring move the current-base production
 // build from 427.2 to 427.7 KiB and test from 428.6 to 429.1 KiB. Keep about
 // 0.1 KiB of build-SHA headroom with a 0.5 KiB (about 0.117%) ratchet per gate.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 429.2 : 427.8;
+// ChatGPT-style history sidebar (feat/chat-history-sidebar) replaces the lazy
+// question rail with an eagerly-imported hover panel: +0.1 KiB gzip production
+// (427.7 → 427.8). Keep the same 0.2 KiB headroom, so 428.0 / 429.4.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 429.4 : 428.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 assertBudget("render-blocking CSS gzip", initialCSSGzip, 4 * 1024);
 // Extension surfaces, Task Monitor, and compact decision receipts share the
 // application stylesheet loaded before React mounts. Keep their combined
 // allowance bounded even though the file is no longer render-blocking.
-assertBudget("deferred app-shell CSS gzip", appShellCSSGzip, 114 * 1024);
+// ChatHistorySidebar adds its ch-* styles (~130 lines, +0.2 KiB gzip): 114.0 → 114.4.
+assertBudget("deferred app-shell CSS gzip", appShellCSSGzip, 114.4 * 1024);
 if (localeChunks.length !== 2) {
   throw new Error(`expected 2 on-demand Chinese locale chunks, found ${localeChunks.length}`);
 }
@@ -127,7 +131,9 @@ const rawInitialBytes = [...initialJS, ...initialCSS, ...appShellCSS]
 // channel gates. Retain that attributable UI capacity with 0.1 KiB of build-SHA
 // headroom without widening the gzip or largest-chunk exceptions. The local
 // right-dock instruction panel (custom prompt cards) adds its component +
-// locale keys + panel styles: +4.5 KiB raw production over that gate.
-const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_363.0 : 2_357.8;
+// locale keys + panel styles: +4.5 KiB raw production over that gate. The
+// ChatGPT-style history sidebar adds its component (~187 lines): +4.6 KiB raw
+// (2357.7 → 2362.4), so 2362.6 production / 2367.8 test with 0.2 KiB headroom.
+const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_367.8 : 2_362.6;
 assertBudget("initial raw JavaScript and CSS", rawInitialBytes, rawInitialBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk raw", largestInitialJSRaw, 1_000 * 1024);
