@@ -121,7 +121,10 @@ for (const path of localeChunks) {
   // language. DingTalk setup and mention guidance add at most 0.2 KiB more
   // (0.36%); retain the complete security and group-chat copy instead of
   // abbreviating user-facing instructions to fit the old locale ratchet.
-  const budget = name.startsWith("zh-TW-") ? 56.6 * 1024 : 55.9 * 1024;
+  // The Browser Relay settings page adds connection/auth/manual-install
+  // copy (~25 keys per locale); zh-TW is the largest chunk and needs +0.4
+  // KiB gzip headroom (56.6 → 57.0 KiB).
+  const budget = name.startsWith("zh-TW-") ? 57.0 * 1024 : 55.9 * 1024;
   assertBudget(`${name} gzip`, gzipBytes(path), budget);
 }
 
