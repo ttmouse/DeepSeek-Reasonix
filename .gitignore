@@ -47,7 +47,6 @@ node_modules/
 
 # Project-local Reasonix state; keep the checked-in review command.
 /.reasonix/*
-!/.reasonix/commands/
 !/.reasonix/commands/review.md
 
 # Stray Reasonix state written under a package dir by a test whose RealPath
@@ -57,6 +56,30 @@ desktop/**/.reasonix/
 
 # CodeGraph per-project index (rebuilt locally; never committed)
 .codegraph/
+
+# Local tool state (Codex, plan, workbuddy, kun-canvas, zk-ge, pr-monitor)
+.codex/
+.kun-canvas/
+.plan/
+.workbuddy/
+.zkge/
+.pr-monitor-last-check
+.pr-monitor-state.json
+
+# Desktop runtime data / logs (rebuilt locally)
+desktop/data/
+desktop/logs/
+
+# Test-residue home directory + build test artifacts
+Users/
+build-test.app/
+
+# DeepSeek runtime state (routines run records; rebuilt locally)
+.dsh/
+
+# Local git worktrees (parallel development checkouts)
+.worktrees/
+.cindy-worktrees/
 
 # Editor / OS
 .DS_Store
@@ -77,3 +100,4 @@ site/.generated/
 
 # Committed pointer at REASONIX.md; overrides a global CLAUDE.md ignore rule.
 !/CLAUDE.md
+.alma-snapshots

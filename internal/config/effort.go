@@ -111,6 +111,12 @@ func EffortCapabilityForEntry(e *ProviderEntry) EffortCapability {
 		// runs with thinking on out of the box; "auto" means "don't override
 		// the model default" (== adaptive for M3).
 		return EffortCapability{Supported: true, Levels: []string{"auto", "adaptive", "disabled"}, Default: "adaptive"}
+	case isMimoEntry(e):
+		// MiMo is reachable through official Responses API hosts and OpenAI
+		// compatible mirrors that do not set reasoning_protocol explicitly.
+		// Mirror the documented binary thinking knob either way so the effort
+		// UI does not vanish on those entries.
+		return mimoEffortCapability()
 	case isZhipuEntry(e):
 		// Zhipu GLM exposes a binary thinking knob (enabled|disabled) on its
 		// OpenAI-compatible endpoint and ignores reasoning_effort, so /effort
@@ -216,6 +222,11 @@ func NormalizeEffort(e *ProviderEntry, raw string) (string, error) {
 		default:
 			return "", fmt.Errorf("usage: /effort auto|adaptive|disabled")
 		}
+	case isMimoEntry(e):
+		// Same host-based detection as the capability lookup above; accept the
+		// documented binary-knob vocabulary even without an explicit
+		// reasoning_protocol so a persisted /effort value keeps working.
+		return normalizeOpenAIReasoningEffort(e, level)
 	case isZhipuEntry(e):
 		// GLM's knob is binary (enabled|disabled); map Anthropic / OpenAI-style
 		// depth levels onto the nearest valid value so a stale /effort high|low
@@ -456,8 +467,20 @@ func modelReasoningCapabilityForEntry(e *ProviderEntry) (modelReasoningCapabilit
 	if e == nil {
 		return modelReasoningCapability{}, false
 	}
-	cap, ok := modelReasoningCapabilities[strings.ToLower(strings.TrimSpace(e.Model))]
-	return cap, ok
+	name := strings.ToLower(strings.TrimSpace(e.Model))
+	if cap, ok := modelReasoningCapabilities[name]; ok {
+		return cap, true
+	}
+	// Some gateways list models with a vendor/protocol prefix (e.g.
+	// "deepseek/deepseek-v4-flash"). Match the bare model name too so those
+	// entries inherit the built-in reasoning capability instead of being
+	// reported as unsupported (which hides the effort UI entirely).
+	if _, model, ok := strings.Cut(name, "/"); ok {
+		if cap, found := modelReasoningCapabilities[model]; found {
+			return cap, true
+		}
+	}
+	return modelReasoningCapability{}, false
 }
 
 func normalizeBuiltInModelEffortAlias(e *ProviderEntry, supported []string, level string) string {
