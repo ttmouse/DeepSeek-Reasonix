@@ -92,7 +92,10 @@ console.log("\nbundle budgets");
 // explicit and narrow; the measured build is 431.1 KiB gzip.
 // The web-search tool card now resolves the same display projection lazily so
 // its filtered count matches the assistant Sources panel.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 431.5 : 431.5;
+// local/dev merge (66 upstream commits) adds the frontend diagnostics wiring,
+// retained-transcript navigation owner, and local Browser Relay settings page;
+// the measured build is 432.6 KiB gzip. Keep a narrow 0.4 KiB headroom.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 433.0 : 433.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 // Render-blocking CSS is intentionally absent: styles.css loads deferred via
@@ -109,7 +112,9 @@ if (initialCSS.length > 0) {
 // Navigation overlay styles add a bounded 0.1 KiB to the deferred shell.
 // The cleaned source panel adds 0.1 KiB gzip to the deferred shell on top of
 // the retained-transcript navigation allowance; keep the ratchet explicit.
-assertBudget("deferred app-shell CSS gzip", appShellCSSGzip, 114.4 * 1024);
+// local/dev merge adds the local right-dock/chat-history ch-* styles on top
+// of upstream's deferred shell work; measured 115.2 KiB gzip.
+assertBudget("deferred app-shell CSS gzip", appShellCSSGzip, 115.6 * 1024);
 if (localeChunks.length !== 2) {
   throw new Error(`expected 2 on-demand Chinese locale chunks, found ${localeChunks.length}`);
 }
@@ -167,6 +172,8 @@ const rawInitialBytes = [...initialJS, ...initialCSS, ...appShellCSS]
 // to its user message in the settled rows (so it never jumps to the bottom
 // after the turn) adds ~0.2 KiB more.
 // Preserving the notice across history replaces (merge helper) adds ~0.2 KiB.
-const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_367.8 : 2_362.6;
+// local/dev merge (66 upstream commits + Browser Relay settings page) raises
+// the measured raw bundle to 2365.7 KiB; keep 0.9 KiB headroom.
+const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_370.9 : 2_366.6;
 assertBudget("initial raw JavaScript and CSS", rawInitialBytes, rawInitialBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk raw", largestInitialJSRaw, 1_000 * 1024);
