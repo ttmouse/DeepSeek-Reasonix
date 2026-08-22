@@ -32,7 +32,10 @@ export function ChatHistorySidebar({ questions, onJump }: ChatHistorySidebarProp
 
   // Sync active dot: map transcript scroll proportion to question index
   useEffect(() => {
-    const transcript = document.querySelector(".transcript") as HTMLElement | null;
+    // Scope to the transcript this sidebar belongs to (the nav is rendered
+    // inside it) instead of a document-global query — other transcripts in
+    // split/creation layouts must not hijack the listener.
+    const transcript = barRef.current?.closest(".transcript") as HTMLElement | null;
     if (!transcript) return;
 
     const sync = () => {

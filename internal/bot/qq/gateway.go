@@ -541,6 +541,9 @@ func (a *adapter) handleDispatch(msg gatewayPayload) {
 		ib.ChatType = bot.ChatDirect
 		ib.ChatID = evt.GuildID
 	case "MESSAGE_CREATE":
+		// Identify 未声明 1<<9 GUILD_MESSAGES（普通 bot 无该权限时声明即 op=9
+		// 断连），故此事件正常情况下不会送达；保留本分支仅作为已授权 bot 的
+		// 兜底——若网关仍派发普通频道消息，按消息处理而不是丢进 default。
 		ib.ChatType = bot.ChatDM
 		ib.ChatID = evt.ChannelID
 	default:

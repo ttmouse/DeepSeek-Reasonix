@@ -9500,6 +9500,7 @@ func (a *App) deferModelSwitch(tab *WorkspaceTab, name string, busy error) error
 		return fmt.Errorf("tab %q changed while switching model; retry", tab.ID)
 	}
 	prevModel := tab.model
+	prevEffort := cloneStringPtr(tab.effort)
 	tab.model = resolved
 	// Carry the normalized effort alongside the model, exactly like the
 	// immediate switch path, so the deferred generic rebuild does not run the
@@ -9512,10 +9513,12 @@ func (a *App) deferModelSwitch(tab *WorkspaceTab, name string, busy error) error
 			// Roll back the tab identity: the old controller is still running
 			// under the previous model, and keeping the new model here would
 			// both mislead the UI and make a retry a no-op via the
-			// currentModel match in SetModelForTab.
+			// currentModel match in SetModelForTab. Restore the previous
+			// effort too — a nil here would silently drop the user's effort
+			// preference on this failure path.
 			a.mu.Lock()
 			tab.model = prevModel
-			tab.effort = nil
+			tab.effort = prevEffort
 			a.saveTabsLocked()
 			a.mu.Unlock()
 			return fmt.Errorf("persist selected model: %w", err)

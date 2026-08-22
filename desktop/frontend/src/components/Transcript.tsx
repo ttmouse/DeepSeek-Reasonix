@@ -409,7 +409,7 @@ export function Transcript({
     questions,
     loadedByTurn,
     totalQuestions,
-    ,
+    /* activeQuestion */,
     setActiveQuestion,
     scheduleActiveQuestionSync,
     turnForUser,

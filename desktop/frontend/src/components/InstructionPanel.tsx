@@ -1,6 +1,9 @@
 // InstructionPanel shows user-customizable prompt cards in the right dock.
 // Each card is one prompt text. Click to send, hover to edit/delete.
-// Data is persisted to ~/.reasonix/custom-instructions.json via Go backend.
+// Data persists to localStorage; when the Go backend exposes
+// Load/SaveCustomInstructions (wails binding) it is additionally mirrored to
+// ~/.reasonix/custom-instructions.json. The binding is optional — every call
+// degrades gracefully to localStorage when absent.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { useT } from "../lib/i18n";
