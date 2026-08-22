@@ -127,7 +127,7 @@ func TestBrowserNavigate(t *testing.T) {
 
 	// Schema validation: url required.
 	var schema struct {
-		Required []string `json:"required"`
+		Required []string               `json:"required"`
 		Props    map[string]interface{} `json:"properties"`
 	}
 	json.Unmarshal(navTool.Schema(), &schema)
@@ -548,18 +548,18 @@ func TestAllToolsRegistered(t *testing.T) {
 func TestAlmaEquivalency(t *testing.T) {
 	// Alma ChromeRelay → Reasonix mapping
 	almaToReasonix := map[string]string{
-		"ChromeRelayListTabs":    "browser_list_pages",
-		"ChromeRelayNavigate":    "browser_navigate",
-		"ChromeRelayClick":       "browser_click",
-		"ChromeRelayType":        "browser_type",
-		"ChromeRelayScreenshot":  "browser_screenshot",
-		"ChromeRelayRead":        "browser_read",
-		"ChromeRelayReadDom":     "browser_read_dom",
-		"ChromeRelayEval":        "browser_eval",
-		"ChromeRelayScroll":      "browser_scroll",
-		"ChromeRelayBack":        "browser_go_back",
-		"ChromeRelayForward":     "browser_go_forward",
-		"ChromeRelayUpload":      "browser_upload_file",
+		"ChromeRelayListTabs":   "browser_list_pages",
+		"ChromeRelayNavigate":   "browser_navigate",
+		"ChromeRelayClick":      "browser_click",
+		"ChromeRelayType":       "browser_type",
+		"ChromeRelayScreenshot": "browser_screenshot",
+		"ChromeRelayRead":       "browser_read",
+		"ChromeRelayReadDom":    "browser_read_dom",
+		"ChromeRelayEval":       "browser_eval",
+		"ChromeRelayScroll":     "browser_scroll",
+		"ChromeRelayBack":       "browser_go_back",
+		"ChromeRelayForward":    "browser_go_forward",
+		"ChromeRelayUpload":     "browser_upload_file",
 	}
 
 	for almaName, reasonixName := range almaToReasonix {
