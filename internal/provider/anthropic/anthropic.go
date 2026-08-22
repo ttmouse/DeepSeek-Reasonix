@@ -628,6 +628,15 @@ func (c *client) readStream(ctx context.Context, resp *http.Response, out chan<-
 						return
 					}
 				}
+			case "web_search_tool_result_delta":
+				// Some DeepSeek-compatible streams deliver the result array in a
+				// delta instead of the block-start content; without this the card
+				// stays empty and the model-written source list is all that shows.
+				if next := searches.resultsDelta(ev.Index, ev.Delta.WebSearchResults); next != nil {
+					if !send(provider.Chunk{Type: provider.ChunkServerSearch, ServerSearch: next}) {
+						return
+					}
+				}
 			}
 		case "content_block_stop":
 			if tc := tools[ev.Index]; tc != nil {

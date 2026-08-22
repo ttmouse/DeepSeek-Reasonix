@@ -392,6 +392,7 @@ jobs:
           pnpm --dir frontend test:stream
           pnpm --dir frontend test:motion
           pnpm --dir frontend test:motion-browser
+          pnpm --dir frontend test:composer
           pnpm --dir frontend test:transcript
           pnpm --dir frontend test:transcript-browser
 

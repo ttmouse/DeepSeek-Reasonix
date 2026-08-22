@@ -51,6 +51,7 @@ type turnRuntime struct {
 	// allowed audit can report Recovered=true.
 	readinessRecovered             bool
 	automaticReadinessContinuation bool
+	mutationExpected               bool
 
 	// recoveryTaskSummary is the bounded task text for this Agent.Run. It lets
 	// a shared recovery gate review sub-agent mutations against the child

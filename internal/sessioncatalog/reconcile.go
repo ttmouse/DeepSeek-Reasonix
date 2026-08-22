@@ -36,7 +36,7 @@ func (c *Catalog) ReconcileDirectory(ctx context.Context, target DirectoryTarget
 		c.failDirectoryScan(ctx, target.Path, err)
 		return err
 	}
-	if unchanged, err := c.directoryScanCanSkip(ctx, target.Path, signature); err != nil {
+	if unchanged, err := c.directoryScanCanSkip(ctx, target, signature); err != nil {
 		return err
 	} else if unchanged {
 		return nil
@@ -704,9 +704,10 @@ func Rebuild(ctx context.Context, path string, targets []DirectoryTarget) (Statu
 		return status, nil
 	}
 	err := projectiondb.Rebuild(ctx, projectiondb.OpenOptions{
-		Path:       path,
-		MemoryName: "session-catalog-rebuild",
-		Migrations: sessionMigrations(),
+		Path:         path,
+		MemoryName:   "session-catalog-rebuild",
+		Migrations:   sessionMigrations(),
+		RetainBackup: true,
 	}, func(ctx context.Context, db *sql.DB) error {
 		// Populate through a catalog that owns this temporary database handle
 		// without starting background repair workers.

@@ -45,25 +45,9 @@ const (
 	opHeartbeatAck = 11
 )
 
-// QQ gateway intents（QQ 开放平台 Bot API v2）。
-// 注意：只声明已授权/必需的 intent。未授权的 intent（如 GUILD_MESSAGES
-// 1<<9、INTERACTION 1<<26）会让 gateway 以 op=9 INVALID_SESSION 断开——
-// 未认证/未发布的 bot 没有频道消息权限，传 1<<9 必然握手失败（#7512 有
-// 逐 bit 协议级验证）。频道消息用 PUBLIC_GUILD_MESSAGES (1<<30) 替代
-// GUILD_MESSAGES，普通 bot 即有权限。
-const (
-	intentGuilds              = 1 << 0  // 频道（含 AT_MESSAGE_CREATE 等频道事件）
-	intentGuildMembers        = 1 << 1  // 频道成员
-	intentDirectMessage       = 1 << 12 // 私信（DIRECT_MESSAGE_CREATE）
-	intentGroupAndC2C         = 1 << 25 // 群聊与 C2C 消息（GROUP_AT_MESSAGE_CREATE / C2C_MESSAGE_CREATE）
-	intentPublicGuildMessages = 1 << 30 // 公共频道消息（替代 1<<9 GUILD_MESSAGES）
-)
-
-// qqIdentifyIntents 是 Identify 时声明的 intent 集合：覆盖 Reasonix 需要的
-// 群聊/C2C @、私信与频道事件，且全部为普通 bot 有权限的 intent（不包含
-// 1<<9 GUILD_MESSAGES / 1<<26 INTERACTION 等需申请的高阶能力）。
-const qqIdentifyIntents = intentGuilds | intentGuildMembers | intentDirectMessage |
-	intentGroupAndC2C | intentPublicGuildMessages
+// QQ gateway intents 已迁至 intents.go：先按 private-guild profile（含
+// 1<<9 GUILD_MESSAGES）尝试，被 op=9 拒绝时自动降级到 public-guild events
+// （1<<30），兼顾已授权 bot 的 MESSAGE_CREATE 与未授权 bot 的握手成功。
 
 var qqMarkdownWrapperRe = regexp.MustCompile("(?is)^```(?:markdown|md)\\s*\\r?\\n([\\s\\S]*?)\\r?\\n```$")
 
@@ -129,6 +113,7 @@ type wsClient struct {
 }
 
 func (a *adapter) gatewayLoop(ctx context.Context) {
+	selectedIntents := qqPrivateIdentifyIntents
 	bot.RunWithRetry(ctx, a.logger, "qq gateway", bot.RetryConfig{}, func(ctx context.Context) error {
 		token, err := a.getAccessToken(ctx)
 		if err != nil {
@@ -137,7 +122,10 @@ func (a *adapter) gatewayLoop(ctx context.Context) {
 		// connectGateway blocks for the connection's lifetime, returning on
 		// disconnect or error; RunWithRetry handles the cancellation-aware
 		// backoff and reconnect.
-		return a.connectGateway(ctx, token)
+		_, err = connectQQGatewayWithIntentFallback(ctx, token, &selectedIntents, a.connectGateway, func() {
+			a.logger.Warn("qq private-guild intent rejected; retrying with public-guild events")
+		})
+		return err
 	})
 }
 
@@ -234,7 +222,7 @@ func qqExpiresInSeconds(value any) (int, error) {
 	}
 }
 
-func (a *adapter) connectGateway(ctx context.Context, token string) error {
+func (a *adapter) connectGateway(ctx context.Context, token string, intents int) error {
 	gatewayURL, err := a.getGatewayURL(ctx, token)
 	if err != nil {
 		return err
@@ -276,7 +264,7 @@ func (a *adapter) connectGateway(ctx context.Context, token string) error {
 	// Identify
 	identify := identifyData{
 		Token:   fmt.Sprintf("QQBot %s", token),
-		Intents: qqIdentifyIntents,
+		Intents: intents,
 		Shard:   [2]int{0, 1},
 		Properties: properties{
 			OS:      "linux",
@@ -293,20 +281,19 @@ func (a *adapter) connectGateway(ctx context.Context, token string) error {
 	if err := decoder.Decode(&msg); err != nil {
 		return fmt.Errorf("read ready: %w", err)
 	}
-	if msg.Op == opDispatch && msg.T == "READY" {
-		var ready struct {
-			SessionID string `json:"session_id"`
-		}
-		if err := json.Unmarshal(msg.D, &ready); err != nil {
-			return fmt.Errorf("decode ready: %w", err)
-		}
-		ws.sessionID = ready.SessionID
-		a.sessionID = ready.SessionID
-		a.seq = msg.S
-		a.logger.Info("qq gateway ready", "sandbox", a.cfg.Sandbox, "heartbeat_ms", ws.heartbeatMs)
-	} else {
-		a.logger.Warn("qq gateway expected ready event", "op", msg.Op, "event", msg.T)
+	if err := validateQQReadyPayload(msg); err != nil {
+		return err
 	}
+	var ready struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(msg.D, &ready); err != nil {
+		return fmt.Errorf("decode ready: %w", err)
+	}
+	ws.sessionID = ready.SessionID
+	a.sessionID = ready.SessionID
+	a.seq = msg.S
+	a.logger.Info("qq gateway ready", "sandbox", a.cfg.Sandbox, "heartbeat_ms", ws.heartbeatMs)
 
 	// 启动 heartbeat
 	heartbeatCtx, heartbeatCancel := context.WithCancel(ctx)

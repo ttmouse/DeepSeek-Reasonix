@@ -1646,6 +1646,7 @@ func build(ctx context.Context, opts Options) (*BuildResult, error) {
 		CapabilityLedger:             capLedger,
 		CapabilityAudit:              capAudit,
 		ContextWindow:                entry.ContextWindow,
+		MaxOutputTokens:              entry.MaxOutputTokens,
 		SoftCompactRatio:             cfg.Agent.SoftCompactRatio,
 		ToolResultSnipRatio:          cfg.Agent.ToolResultSnipRatio,
 		CompactRatio:                 cfg.Agent.CompactRatio,

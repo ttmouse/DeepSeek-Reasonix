@@ -75,6 +75,35 @@ func TestHandleDispatchC2CUsesUserOpenID(t *testing.T) {
 	}
 }
 
+func TestHandleDispatchPublicGuildMessageUsesGuildChatType(t *testing.T) {
+	a := &adapter{
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		msgCh:  make(chan bot.InboundMessage, 1),
+	}
+	raw, err := json.Marshal(map[string]any{
+		"id":         "msg-1",
+		"content":    "hello",
+		"channel_id": "channel-1",
+		"author": map[string]string{
+			"member_openid": "member-1",
+			"username":      "user",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a.handleDispatch(gatewayPayload{T: "AT_MESSAGE_CREATE", D: raw})
+
+	msg := <-a.msgCh
+	if msg.ChatType != bot.ChatGuild {
+		t.Fatalf("chat type = %q, want %q", msg.ChatType, bot.ChatGuild)
+	}
+	if msg.ChatID != "channel-1" {
+		t.Fatalf("chat id = %q, want channel-1", msg.ChatID)
+	}
+}
+
 func TestQQSendURLDirectMessage(t *testing.T) {
 	got := qqSendURL(bot.OutboundMessage{ChatType: bot.ChatDirect, ChatID: "guild-1"})
 	want := fmt.Sprintf("%s/v2/dms/%s/messages", qqBaseURL, "guild-1")
@@ -356,20 +385,24 @@ func jsonResponse(status int, v any) *http.Response {
 
 // TestQQIdentifyIntentsAvoidUnauthorizedBits: Identify 的 intent 集合不得
 // 包含未授权即被 gateway 以 op=9 断开的位（GUILD_MESSAGES 1<<9、INTERACTION
-// 1<<26 等），且必须覆盖 Reasonix 核心的群聊/C2C 事件（1<<25）。
+// 1<<26 等），且必须覆盖 Reasonix 核心的群聊/C2C 事件（1<<25）。private
+// profile 可含 1<<9（保留 MESSAGE_CREATE），由 intents.go 的 fallback 在被
+// 拒时降级到 public profile（1<<30）。
 func TestQQIdentifyIntentsAvoidUnauthorizedBits(t *testing.T) {
-	if qqIdentifyIntents&(1<<9) != 0 {
-		t.Fatalf("qqIdentifyIntents contains GUILD_MESSAGES (1<<9): gateway rejects it with op=9 INVALID_SESSION for bots without guild-message permission")
+	if qqPublicIdentifyIntents&(1<<9) != 0 {
+		t.Fatalf("qqPublicIdentifyIntents contains GUILD_MESSAGES (1<<9): gateway rejects it with op=9 INVALID_SESSION for bots without guild-message permission")
 	}
-	if qqIdentifyIntents&(1<<26) != 0 {
-		t.Fatalf("qqIdentifyIntents contains INTERACTION (1<<26): requires applied high-level capability")
+	if qqPublicIdentifyIntents&(1<<26) != 0 {
+		t.Fatalf("qqPublicIdentifyIntents contains INTERACTION (1<<26): requires applied high-level capability")
 	}
-	if qqIdentifyIntents&intentGroupAndC2C == 0 {
-		t.Fatalf("qqIdentifyIntents must include GROUP_AND_C2C_EVENT (1<<25) for QQ group/C2C messaging")
-	}
-	// 全部位都来自已命名 intent，防止未来误加未授权位。
-	allowed := intentGuilds | intentGuildMembers | intentDirectMessage | intentGroupAndC2C | intentPublicGuildMessages
-	if qqIdentifyIntents&^allowed != 0 {
-		t.Fatalf("qqIdentifyIntents contains undeclared bits %b", qqIdentifyIntents&^allowed)
+	// 两个 profile 都必须覆盖群聊/C2C，且全部位来自已命名 intent。
+	allowed := intentGuilds | intentGuildMembers | intentDirectMessage | intentGroupAndC2C | intentPublicGuildMessages | intentPrivateGuildMessages
+	for name, ints := range map[string]int{"private": qqPrivateIdentifyIntents, "public": qqPublicIdentifyIntents} {
+		if ints&intentGroupAndC2C == 0 {
+			t.Fatalf("%s profile must include GROUP_AND_C2C_EVENT (1<<25) for QQ group/C2C messaging", name)
+		}
+		if ints&^allowed != 0 {
+			t.Fatalf("%s profile contains undeclared bits %b", name, ints&^allowed)
+		}
 	}
 }

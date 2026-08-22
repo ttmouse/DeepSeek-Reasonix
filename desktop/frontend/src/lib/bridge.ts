@@ -1205,6 +1205,15 @@ type MockProviderPresetTemplate = {
   description: string;
   keyEnv: string;
   provider: ProviderView;
+  providers?: ProviderView[];
+  recommended?: boolean;
+  billingMode?: string;
+  displayGroup?: string;
+  displaySection?: string;
+  displayTier?: string;
+  routeKind?: string;
+  optional?: boolean;
+  displayOrder?: number;
 };
 
 function mockProviderTemplate(p: Pick<ProviderView, "name" | "kind" | "baseUrl" | "models" | "default" | "apiKeyEnv"> & Partial<ProviderView>): ProviderView {
@@ -1237,8 +1246,12 @@ function mockProviderTemplate(p: Pick<ProviderView, "name" | "kind" | "baseUrl" 
   };
 }
 
-function mockPreset(id: string, label: string, description: string, keyEnv: string, provider: ProviderView): MockProviderPresetTemplate {
-  return { id, label, description, keyEnv, provider };
+function mockPreset(id: string, label: string, description: string, keyEnv: string, provider: ProviderView, metadata: Partial<Pick<MockProviderPresetTemplate, "recommended" | "billingMode" | "displayGroup" | "displaySection" | "displayTier" | "routeKind" | "optional" | "displayOrder">> = {}): MockProviderPresetTemplate {
+  return { id, label, description, keyEnv, provider, providers: [provider], ...metadata };
+}
+
+function mockBundlePreset(id: string, label: string, description: string, keyEnv: string, providers: ProviderView[], metadata: Partial<Pick<MockProviderPresetTemplate, "recommended" | "billingMode" | "displayGroup" | "displaySection" | "displayTier" | "routeKind" | "optional" | "displayOrder">> = {}): MockProviderPresetTemplate {
+  return { id, label, description, keyEnv, provider: providers[0], providers, ...metadata };
 }
 
 const mockKimiAPIModels = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.7-code-highspeed", "kimi-k2.6", "kimi-k2.5"];
@@ -1258,13 +1271,25 @@ const mockQwenAPIModels = ["qwen3.7-plus", "qwen3.7-max", "qwen3.6-plus", "qwen3
 const mockQwenPlanModels = ["qwen3.7-plus", "qwen3.6-plus", "kimi-k2.5", "glm-5", "MiniMax-M2.5", "qwen3.5-plus", "qwen3-max-2026-01-23", "qwen3-coder-next", "qwen3-coder-plus", "glm-4.7"];
 const mockQwenPlanVisionModels = ["qwen3.7-plus", "qwen3.6-plus", "qwen3.5-plus", "kimi-k2.5"];
 const mockStepFunModels = ["step-3.7-flash", "step-3.5-flash", "step-3.5-flash-2603"];
-const mockOpenCodeGoModels = ["glm-5.2", "glm-5.1", "kimi-k3", "kimi-k2.7-code", "kimi-k2.6", "deepseek-v4-pro", "deepseek-v4-flash", "mimo-v2.5-pro", "mimo-v2.5"];
+const mockOpenCodeGoModels = ["glm-5.3", "glm-5.2", "glm-5.1", "kimi-k3", "kimi-k2.7-code", "kimi-k2.6", "deepseek-v4-pro", "deepseek-v4-flash", "mimo-v2.5-pro", "mimo-v2.5", "hy3"];
 const mockNovitaModels = ["zai-org/glm-5.2", "moonshotai/kimi-k2.7-code", "minimax/minimax-m3", "deepseek/deepseek-v4-pro", "deepseek/deepseek-v4-flash", "qwen/qwen3.7-max", "qwen/qwen3.6-plus", "zai-org/glm-5v-turbo"];
 const mockGMIModels = ["zai-org/GLM-5.2-FP8", "deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-V4-Flash", "moonshotai/Kimi-K2.7-Code", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5"];
 const mockVercelModels = ["anthropic/claude-sonnet-4.6", "anthropic/claude-opus-4.8", "openai/gpt-5.4", "openai/gpt-5.4-pro", "moonshotai/kimi-k2.7-code", "zai/glm-5.2", "deepseek/deepseek-v4-pro"];
 const mockOllamaCloudModels = ["glm-5.2", "kimi-k2.7-code", "deepseek-v4-pro", "deepseek-v4-flash", "minimax-m3", "nemotron-3-nano:30b", "qwen3-coder-next"];
 
 const mockProviderPresetTemplates: MockProviderPresetTemplate[] = [
+  mockBundlePreset(
+    "opencode-go-recommended",
+    "OpenCode Go (Recommended)",
+    "One key, three safe routes: Chat, Anthropic Messages, and Responses. Defaults use a low-cost effort and a 32K output cap.",
+    "OPENCODE_GO_API_KEY",
+    [
+      mockProviderTemplate({ name: "opencode-go", kind: "openai", baseUrl: "https://opencode.ai/zen/go/v1", models: mockOpenCodeGoModels, visionModels: ["kimi-k3"], default: "glm-5.3", apiKeyEnv: "OPENCODE_GO_API_KEY", contextWindow: 128000, modelOverrides: [{ model: "glm-5.3", reasoningProtocol: "openai", supportedEfforts: ["low", "high", "max"], defaultEffort: "low", maxOutputTokens: 32768 }, { model: "kimi-k3", reasoningProtocol: "openai", supportedEfforts: ["high", "max"], defaultEffort: "max", contextWindow: 1048576, maxOutputTokens: 32768 }] }),
+      mockProviderTemplate({ name: "opencode-go-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen/go", models: ["qwen3.8-max", "qwen3.7-plus", "qwen3.7-max", "qwen3.6-plus", "minimax-m3", "minimax-m2.7", "minimax-m2.5"], visionModels: ["qwen3.8-max", "qwen3.7-plus", "qwen3.6-plus"], default: "qwen3.7-plus", apiKeyEnv: "OPENCODE_GO_API_KEY", thinking: "adaptive", contextWindow: 262144 }),
+      mockProviderTemplate({ name: "opencode-go-responses", kind: "responses", baseUrl: "https://opencode.ai/zen/go/v1", models: ["grok-4.5", "gpt-5.6-luna", "muse-spark-1.2-contributor"], visionModels: ["grok-4.5", "gpt-5.6-luna", "muse-spark-1.2-contributor"], default: "grok-4.5", apiKeyEnv: "OPENCODE_GO_API_KEY", contextWindow: 500000, supportedEfforts: ["low", "medium", "high"], defaultEffort: "low" }),
+    ],
+    { recommended: true, billingMode: "subscription_equivalent", displayGroup: "opencode", displaySection: "go", displayTier: "primary", routeKind: "bundle", displayOrder: 0 },
+  ),
   mockPreset("deepseek-responses", "DeepSeek Official Responses API", "Official stateless DeepSeek Responses API for Flash and Pro with server-side web search.", "DEEPSEEK_API_KEY", mockProviderTemplate({ name: "deepseek-responses", kind: "responses", baseUrl: "https://api.deepseek.com", models: ["deepseek-v4-flash", "deepseek-v4-pro"], default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", balanceUrl: "https://api.deepseek.com/user/balance", webSearch: true, serverWebSearchCapability: true, contextWindow: 1000000, modelOverrides: [{ model: "deepseek-v4-flash", reasoningProtocol: "", supportedEfforts: ["disabled", "low", "high", "max"], defaultEffort: "high" }, { model: "deepseek-v4-pro", reasoningProtocol: "", supportedEfforts: ["disabled", "high", "max"], defaultEffort: "high" }] })),
   mockPreset("longcat-openai", "LongCat OpenAI", "LongCat Platform OpenAI-compatible endpoint for LongCat-2.0.", "LONGCAT_API_KEY", mockProviderTemplate({ name: "longcat-openai", kind: "openai", baseUrl: "https://api.longcat.chat/openai/v1", modelsUrl: "https://api.longcat.chat/openai/v1/models", models: mockLongCatModels, default: "LongCat-2.0", apiKeyEnv: "LONGCAT_API_KEY", contextWindow: 131072, thinking: "enabled", supportedEfforts: ["enabled", "disabled"], defaultEffort: "enabled" })),
   mockPreset("longcat-anthropic", "LongCat Anthropic", "LongCat Platform Anthropic-compatible Messages endpoint for LongCat-2.0.", "LONGCAT_API_KEY", mockProviderTemplate({ name: "longcat-anthropic", kind: "anthropic", baseUrl: "https://api.longcat.chat/anthropic", modelsUrl: "https://api.longcat.chat/anthropic/v1/models", models: mockLongCatModels, default: "LongCat-2.0", apiKeyEnv: "LONGCAT_API_KEY", authHeader: true, contextWindow: 131072, thinking: "enabled", supportedEfforts: ["enabled", "disabled"], defaultEffort: "enabled" })),
@@ -1290,11 +1315,12 @@ const mockProviderPresetTemplates: MockProviderPresetTemplate[] = [
   mockPreset("glm-coding-plan-cn-anthropic", "GLM Coding Plan CN Anthropic", "Zhipu GLM China coding-plan Anthropic-compatible endpoint.", "GLM_PLAN_API_KEY", mockProviderTemplate({ name: "glm-coding-plan-cn-anthropic", kind: "anthropic", baseUrl: "https://open.bigmodel.cn/api/anthropic", models: mockGLMAnthropicModels, default: "glm-5.2", apiKeyEnv: "GLM_PLAN_API_KEY", authHeader: true, thinking: "adaptive", contextWindow: 1000000 })),
   mockPreset("zai-coding-plan-global", "Z.AI Coding Plan Global", "Z.AI international coding-plan endpoint.", "ZAI_CODING_API_KEY", mockProviderTemplate({ name: "zai-coding-plan-global", kind: "openai", baseUrl: "https://api.z.ai/api/coding/paas/v4", models: mockGLMCodingModels, default: "glm-5.2", apiKeyEnv: "ZAI_CODING_API_KEY", contextWindow: 1000000, thinking: "enabled", supportedEfforts: ["enabled", "disabled"], defaultEffort: "enabled" })),
   mockPreset("zai-coding-plan-global-anthropic", "Z.AI Coding Plan Global Anthropic", "Z.AI international coding-plan Anthropic-compatible endpoint.", "ZAI_CODING_API_KEY", mockProviderTemplate({ name: "zai-coding-plan-global-anthropic", kind: "anthropic", baseUrl: "https://api.z.ai/api/anthropic", models: mockGLMAnthropicModels, default: "glm-5.2", apiKeyEnv: "ZAI_CODING_API_KEY", authHeader: true, thinking: "adaptive", contextWindow: 1000000 })),
-  mockPreset("opencode-go", "OpenCode Go", "OpenCode Go relay with per-model capability overrides.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go", kind: "openai", baseUrl: "https://opencode.ai/zen/go/v1", models: mockOpenCodeGoModels, visionModels: ["kimi-k3"], default: "glm-5.2", apiKeyEnv: "OPENCODE_GO_API_KEY", contextWindow: 128000, modelOverrides: [{ model: "kimi-k3", reasoningProtocol: "openai", supportedEfforts: ["high", "max"], defaultEffort: "max", contextWindow: 1048576 }] })),
-  mockPreset("opencode-go-anthropic", "OpenCode Go Anthropic", "OpenCode Go subscription Anthropic-compatible route for Qwen and MiniMax.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen/go", models: ["qwen3.7-plus", "qwen3.7-max", "qwen3.6-plus", "minimax-m3", "minimax-m2.7", "minimax-m2.5"], visionModels: ["qwen3.7-plus", "qwen3.6-plus"], default: "qwen3.7-plus", apiKeyEnv: "OPENCODE_GO_API_KEY", thinking: "adaptive", contextWindow: 262144 })),
-  mockPreset("opencode-go-deepseek-anthropic", "OpenCode Go DeepSeek Anthropic", "OpenCode Go Anthropic Messages route for DeepSeek Flash with server-side web search.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-deepseek-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen/go", models: ["deepseek-v4-flash"], default: "deepseek-v4-flash", apiKeyEnv: "OPENCODE_GO_API_KEY", thinking: "adaptive", webSearch: true, serverWebSearchCapability: true, contextWindow: 262144, supportedEfforts: ["disabled", "high", "max"], defaultEffort: "high" })),
-  mockPreset("opencode-go-deepseek-responses", "OpenCode Go DeepSeek Responses", "OpenCode Go stateless Responses API route for DeepSeek Flash with server-side web search.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-deepseek-responses", kind: "responses", baseUrl: "https://opencode.ai/zen/go/v1", models: ["deepseek-v4-flash"], default: "deepseek-v4-flash", apiKeyEnv: "OPENCODE_GO_API_KEY", webSearch: true, serverWebSearchCapability: true, contextWindow: 128000, supportedEfforts: ["disabled", "high", "max"], defaultEffort: "high" })),
-  mockPreset("opencode-zen-anthropic", "OpenCode Zen Anthropic", "OpenCode Zen Anthropic-compatible route for Claude and Qwen models.", "OPENCODE_API_KEY", mockProviderTemplate({ name: "opencode-zen-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen", models: ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5", "qwen3.6-plus", "qwen3.5-plus", "qwen3.6-plus-free"], visionModels: ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"], default: "claude-sonnet-4-6", apiKeyEnv: "OPENCODE_API_KEY", contextWindow: 262144 })),
+  mockPreset("opencode-go", "OpenCode Go", "OpenCode Go relay with per-model capability overrides.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go", kind: "openai", baseUrl: "https://opencode.ai/zen/go/v1", models: mockOpenCodeGoModels, visionModels: ["kimi-k3"], default: "glm-5.2", apiKeyEnv: "OPENCODE_GO_API_KEY", contextWindow: 128000, modelOverrides: [{ model: "glm-5.3", reasoningProtocol: "openai", supportedEfforts: ["low", "high", "max"], defaultEffort: "high" }, { model: "glm-5.2", reasoningProtocol: "openai", supportedEfforts: ["high", "max"], defaultEffort: "high" }, { model: "kimi-k3", reasoningProtocol: "openai", supportedEfforts: ["high", "max"], defaultEffort: "max", contextWindow: 1048576 }, { model: "hy3", reasoningProtocol: "openai", supportedEfforts: ["none", "low", "high"], defaultEffort: "high" }] }), { displayGroup: "opencode", displaySection: "go", displayTier: "compatibility", routeKind: "chat", displayOrder: 90 }),
+  mockPreset("opencode-go-anthropic", "OpenCode Go Anthropic", "OpenCode Go subscription Anthropic-compatible route for Qwen and MiniMax.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen/go", models: ["qwen3.8-max", "qwen3.7-plus", "qwen3.7-max", "qwen3.6-plus", "minimax-m3", "minimax-m2.7", "minimax-m2.5"], visionModels: ["qwen3.8-max", "qwen3.7-plus", "qwen3.6-plus"], default: "qwen3.7-plus", apiKeyEnv: "OPENCODE_GO_API_KEY", thinking: "adaptive", contextWindow: 262144 }), { displayGroup: "opencode", displaySection: "go", displayTier: "advanced", routeKind: "anthropic", displayOrder: 20 }),
+  mockPreset("opencode-go-responses", "OpenCode Go Responses", "OpenCode Go Responses API route for Grok 4.5, GPT 5.6 Luna, and Muse Spark.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-responses", kind: "responses", baseUrl: "https://opencode.ai/zen/go/v1", models: ["grok-4.5", "gpt-5.6-luna", "muse-spark-1.2-contributor"], visionModels: ["grok-4.5", "gpt-5.6-luna", "muse-spark-1.2-contributor"], default: "grok-4.5", apiKeyEnv: "OPENCODE_GO_API_KEY", contextWindow: 500000, supportedEfforts: ["low", "medium", "high"], defaultEffort: "high", modelOverrides: [{ model: "grok-4.5", reasoningProtocol: "", supportedEfforts: ["low", "medium", "high"], defaultEffort: "high", contextWindow: 500000 }, { model: "gpt-5.6-luna", reasoningProtocol: "", supportedEfforts: ["none", "low", "medium", "high", "xhigh", "max"], defaultEffort: "high", contextWindow: 1050000 }, { model: "muse-spark-1.2-contributor", reasoningProtocol: "", supportedEfforts: ["minimal", "low", "medium", "high", "xhigh"], defaultEffort: "high", contextWindow: 1048576 }] }), { displayGroup: "opencode", displaySection: "go", displayTier: "advanced", routeKind: "responses", displayOrder: 30 }),
+  mockPreset("opencode-go-deepseek-anthropic", "OpenCode Go DeepSeek Anthropic", "OpenCode Go Anthropic Messages route for DeepSeek Flash with server-side web search.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-deepseek-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen/go", models: ["deepseek-v4-flash"], default: "deepseek-v4-flash", apiKeyEnv: "OPENCODE_GO_API_KEY", thinking: "adaptive", webSearch: true, serverWebSearchCapability: true, contextWindow: 262144, supportedEfforts: ["disabled", "high", "max"], defaultEffort: "high" }), { displayGroup: "opencode", displaySection: "go", displayTier: "advanced", routeKind: "search-anthropic", optional: true, displayOrder: 40 }),
+  mockPreset("opencode-go-deepseek-responses", "OpenCode Go DeepSeek Responses", "OpenCode Go stateless Responses API route for DeepSeek Flash with server-side web search.", "OPENCODE_GO_API_KEY", mockProviderTemplate({ name: "opencode-go-deepseek-responses", kind: "responses", baseUrl: "https://opencode.ai/zen/go/v1", models: ["deepseek-v4-flash"], default: "deepseek-v4-flash", apiKeyEnv: "OPENCODE_GO_API_KEY", webSearch: true, serverWebSearchCapability: true, contextWindow: 1000000, supportedEfforts: ["disabled", "high", "max"], defaultEffort: "high" }), { displayGroup: "opencode", displaySection: "go", displayTier: "advanced", routeKind: "search-responses", optional: true, displayOrder: 50 }),
+  mockPreset("opencode-zen-anthropic", "OpenCode Zen Anthropic", "OpenCode Zen Anthropic-compatible route for Claude and Qwen models.", "OPENCODE_API_KEY", mockProviderTemplate({ name: "opencode-zen-anthropic", kind: "anthropic", baseUrl: "https://opencode.ai/zen", models: ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5", "qwen3.6-plus", "qwen3.5-plus", "qwen3.6-plus-free"], visionModels: ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"], default: "claude-sonnet-4-6", apiKeyEnv: "OPENCODE_API_KEY", contextWindow: 262144 }), { displayGroup: "opencode", displaySection: "zen", displayTier: "primary", routeKind: "zen-anthropic", displayOrder: 100 }),
   mockPreset("qwen-cn", "Qwen CN API", "Alibaba DashScope China standard OpenAI-compatible endpoint.", "QWEN_API_KEY", mockProviderTemplate({ name: "qwen-cn", kind: "openai", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", models: mockQwenAPIModels, visionModels: ["qwen3.7-plus", "qwen3.6-plus", "qwen3.5-plus", "kimi-k2.5"], default: "qwen3.7-plus", apiKeyEnv: "QWEN_API_KEY" })),
   mockPreset("qwen-global", "Qwen Global API", "Alibaba DashScope international standard OpenAI-compatible endpoint.", "QWEN_API_KEY", mockProviderTemplate({ name: "qwen-global", kind: "openai", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", models: mockQwenAPIModels, visionModels: ["qwen3.7-plus", "qwen3.6-plus", "qwen3.5-plus", "kimi-k2.5"], default: "qwen3.7-plus", apiKeyEnv: "QWEN_API_KEY" })),
   mockPreset("qwen-coding-plan-cn", "Qwen Coding Plan CN", "Alibaba Cloud Qwen Coding Plan China endpoint.", "QWEN_CODING_API_KEY", mockProviderTemplate({ name: "qwen-coding-plan-cn", kind: "openai", baseUrl: "https://coding.dashscope.aliyuncs.com/v1", models: mockQwenPlanModels, visionModels: mockQwenPlanVisionModels, default: "qwen3.7-plus", apiKeyEnv: "QWEN_CODING_API_KEY" })),
@@ -1323,8 +1349,16 @@ function mockProviderPresetViews(): ProviderPresetView[] {
     label: template.label,
     description: template.description,
     keyEnv: template.keyEnv,
-    providerNames: [template.provider.name],
-    models: [...template.provider.models],
+    recommended: Boolean(template.recommended),
+    billingMode: template.billingMode,
+    displayGroup: template.displayGroup,
+    displaySection: template.displaySection,
+    displayTier: template.displayTier,
+    routeKind: template.routeKind,
+    optional: Boolean(template.optional),
+    displayOrder: template.displayOrder,
+    providerNames: [...(template.providers ?? [template.provider]).map((provider) => provider.name)],
+    models: [...(template.providers ?? [template.provider]).flatMap((provider) => provider.models)],
     added: false,
     status: "available",
     statusProviderNames: [],
@@ -1335,6 +1369,7 @@ function mockProviderPresetViews(): ProviderPresetView[] {
 }
 
 function mockProviderPresetDisplayRank(id: string): number {
+  if (id === "opencode-go-recommended") return -3;
   if (id === "deepseek-responses") return -2;
   if (id === "glm-cn" || id === "zai-global" || id.startsWith("glm-coding-plan-") || id.startsWith("zai-coding-plan-")) return 0;
   if (id.startsWith("longcat-")) return 1;
@@ -1344,13 +1379,13 @@ function mockProviderPresetDisplayRank(id: string): number {
   return 4;
 }
 
-function cloneMockProviderTemplate(id: string, key: string): ProviderView | undefined {
+function cloneMockProviderTemplates(id: string, key: string): ProviderView[] | undefined {
   const template = mockProviderPresetTemplates.find((candidate) => candidate.id === id);
   if (!template) return undefined;
-  return {
-    ...JSON.parse(JSON.stringify(template.provider)) as ProviderView,
+  return (template.providers ?? [template.provider]).map((provider) => ({
+    ...JSON.parse(JSON.stringify(provider)) as ProviderView,
     keySet: Boolean(key.trim()),
-  };
+  }));
 }
 
 const mockPreviewImageDataURL =
@@ -1868,6 +1903,7 @@ function makeMockApp(): AppBindings {
         { key: "topic_bench_small", kind: "topic", label: "bench:small-6t", root: "~/projects/reasonix", topicId: "topic_bench_small", projectColor: "green", turns: 6, lastActivityAt: mockNow - 180_000 },
         { key: "topic_bench_giant_turn", kind: "topic", label: "bench:giant-turn", root: "~/projects/reasonix", topicId: "topic_bench_giant_turn", projectColor: "amber", turns: 1, lastActivityAt: mockNow - 240_000 },
         { key: "topic_bench_reported_long_turn", kind: "topic", label: "bench:reported-long-turn", root: "~/projects/reasonix", topicId: "topic_bench_reported_long_turn", projectColor: "amber", turns: 1, lastActivityAt: mockNow - 300_000 },
+        { key: "topic_bench_geometry_contract", kind: "topic", label: "bench:geometry-229", root: "~/projects/reasonix", topicId: "topic_bench_geometry_contract", projectColor: "amber", turns: 1, lastActivityAt: mockNow - 330_000 },
         { key: "topic_bench_storm", kind: "topic", label: "bench:storm-40t", root: "~/projects/reasonix", topicId: "topic_bench_storm", projectColor: "red", turns: 40, lastActivityAt: mockNow - 360_000 },
       ],
     },
@@ -4537,11 +4573,13 @@ function makeMockApp(): AppBindings {
     async AddProviderPresetAccess(id: string, key: string) {
       const preset = settings.providerPresets.find((p) => p.id === id);
       if (!preset) throw new Error(`unknown provider preset ${id}`);
-      const next = cloneMockProviderTemplate(id, key);
+      const next = cloneMockProviderTemplates(id, key);
       if (!next) throw new Error(`unknown provider preset ${id}`);
-      const i = settings.providers.findIndex((x) => x.name === next.name);
-      if (i >= 0) settings.providers[i] = { ...settings.providers[i], ...next, keySet: next.keySet || settings.providers[i].keySet };
-      else settings.providers.push(next);
+      for (const provider of next) {
+        const i = settings.providers.findIndex((x) => x.name === provider.name);
+        if (i >= 0) settings.providers[i] = { ...settings.providers[i], ...provider, keySet: provider.keySet || settings.providers[i].keySet };
+        else settings.providers.push(provider);
+      }
       preset.added = true;
       preset.status = "installed";
       preset.statusProviderNames = [...preset.providerNames];
@@ -4552,20 +4590,22 @@ function makeMockApp(): AppBindings {
     async ResetProviderPresetAccess(id: string) {
       const preset = settings.providerPresets.find((p) => p.id === id);
       if (!preset) throw new Error(`unknown provider preset ${id}`);
-      const next = cloneMockProviderTemplate(id, "");
+      const next = cloneMockProviderTemplates(id, "");
       if (!next) throw new Error(`unknown provider preset ${id}`);
-      const i = settings.providers.findIndex((x) => x.name === next.name);
-      if (i < 0) throw new Error(`provider preset ${id} cannot be reset because no same-name provider exists`);
-      const existing = settings.providers[i];
-      settings.providers[i] = {
-        ...next,
-        added: true,
-        keySet: existing.apiKeyEnv === next.apiKeyEnv ? existing.keySet : next.keySet,
-      };
+      for (const provider of next) {
+        const i = settings.providers.findIndex((x) => x.name === provider.name);
+        if (i < 0) throw new Error(`provider preset ${id} cannot be reset because no same-name provider exists`);
+        const existing = settings.providers[i];
+        settings.providers[i] = {
+          ...provider,
+          added: true,
+          keySet: existing.apiKeyEnv === provider.apiKeyEnv ? existing.keySet : provider.keySet,
+        };
+      }
       preset.added = true;
       preset.status = "installed";
       preset.statusProviderNames = [...preset.providerNames];
-      preset.keySet = preset.keySet || settings.providers[i].keySet;
+      preset.keySet = preset.keySet || next.every((provider) => settings.providers.some((item) => item.name === provider.name && item.keySet));
       preset.configured = !preset.requiresKey || preset.keySet;
     },
     async FetchProviderModels(p: ProviderView) {

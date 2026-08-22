@@ -2,6 +2,497 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.31.2",
+      "date": "2026-08-21",
+      "channel": "stable",
+      "title": {
+        "en": "Desktop stability and provider setup improvements",
+        "zh": "桌面稳定性与提供商配置改进"
+      },
+      "summary": {
+        "en": "This release fixes transcript scrolling issues on Windows and simplifies OpenCode Go setup with a one-key configuration path.",
+        "zh": "此版本修复了 Windows 上会话滚动问题，并通过一键配置路径简化了 OpenCode Go 的设置。"
+      },
+      "surfaces": [
+        "desktop"
+      ],
+      "guides": [],
+      "highlights": [
+        {
+          "kind": "fixed",
+          "title": {
+            "en": "Stable transcript scrolling on Windows",
+            "zh": "Windows 上稳定的会话滚动"
+          },
+          "body": {
+            "en": "Fixed upward-scroll flashback in long sessions by unifying row geometry, measurement caching, and snapshot validation. Added frontend diagnostics for test builds and Settings → Diagnostics.",
+            "zh": "通过统一行几何、测量缓存和快照验证，修复了长会话中向上滚动闪回的问题。为测试构建和设置 → 诊断添加了前端诊断功能。"
+          },
+          "refs": [
+            9240
+          ]
+        },
+        {
+          "kind": "improved",
+          "title": {
+            "en": "Simplified OpenCode Go setup",
+            "zh": "简化 OpenCode Go 配置"
+          },
+          "body": {
+            "en": "OpenCode Go now shares the featured-provider level with DeepSeek, offering a one-key setup with safe base routes and route-aware output budgets.",
+            "zh": "OpenCode Go 现在与 DeepSeek 共享特色提供商级别，提供一键设置，包含安全基础路由和路由感知的输出预算。"
+          },
+          "refs": [
+            9245
+          ]
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [
+          {
+            "title": {
+              "en": "OpenCode Go setup flow",
+              "zh": "OpenCode Go 设置流程"
+            },
+            "body": {
+              "en": "Added a featured-provider setup flow for DeepSeek and OpenCode Go, with one API key and safe base routes. Legacy, Anthropic, Responses, and DeepSeek search routes remain available.",
+              "zh": "为 DeepSeek 和 OpenCode Go 添加了特色提供商设置流程，只需一个 API 密钥和安全基础路由。旧版、Anthropic、Responses 和 DeepSeek 搜索路由仍然可用。"
+            },
+            "refs": [
+              9245
+            ]
+          },
+          {
+            "title": {
+              "en": "Route-aware output budgets",
+              "zh": "路由感知的输出预算"
+            },
+            "body": {
+              "en": "Added route/model-aware output budgets with one safe retry when a provider reports a lower completion limit. Streaming requests do not retry after the first output event.",
+              "zh": "添加了路由/模型感知的输出预算，当提供商报告较低的完成限制时进行一次安全重试。流式请求在第一个输出事件后不会重试。"
+            },
+            "refs": [
+              9245
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "title": {
+              "en": "Transcript scroll flashback",
+              "zh": "会话滚动闪回"
+            },
+            "body": {
+              "en": "Fixed upward-scroll flashback by adding state-aware row geometry, session-scoped LRU measurement caching, snapshot validation, and disabling browser scroll anchoring during manual scrolling.",
+              "zh": "通过添加状态感知的行几何、会话范围的 LRU 测量缓存、快照验证以及在手动滚动期间禁用浏览器滚动锚定，修复了向上滚动闪回问题。"
+            },
+            "refs": [
+              9240
+            ]
+          },
+          {
+            "title": {
+              "en": "Frontend diagnostics",
+              "zh": "前端诊断"
+            },
+            "body": {
+              "en": "Added a sanitized frontend diagnostics recorder for test builds and Settings → Diagnostics, without exporting text, paths, stable IDs, or session identifiers.",
+              "zh": "为测试构建和设置 → 诊断添加了经过清理的前端诊断记录器，不导出文本、路径、稳定 ID 或会话标识符。"
+            },
+            "refs": [
+              9240
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "SivanCola"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.31.2",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.31.1...desktop-v1.31.2",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.31.2",
+      "baseVersion": "1.31.2",
+      "status": "reviewed",
+      "previousRelease": "1.31.1",
+      "builds": {
+        "cli": "v1.31.2",
+        "desktop": "v1.31.2",
+        "npm": "1.31.2"
+      }
+    },
+    {
+      "version": "1.31.1",
+      "date": "2026-08-21",
+      "channel": "stable",
+      "title": {
+        "en": "Desktop stability, session recovery, and provider routing fixes",
+        "zh": "桌面端稳定性、会话恢复与提供商路由修复"
+      },
+      "summary": {
+        "en": "This patch release improves desktop session recovery, scroll behavior, composer input, and provider routing. It also fixes QQ Bot gateway negotiation and web search result display.",
+        "zh": "此补丁版本改进了桌面端会话恢复、滚动行为、输入框和提供商路由，并修复了 QQ Bot 网关协商和 Web 搜索结果显示。"
+      },
+      "surfaces": [
+        "desktop"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "Configuration Paths",
+            "zh": "配置路径"
+          },
+          "body": {
+            "en": "Learn where Reasonix stores configuration and session data.",
+            "zh": "了解 Reasonix 存储配置和会话数据的位置。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/CONFIG_PATHS.md"
+        },
+        {
+          "title": {
+            "en": "Configuration Paths (Chinese)",
+            "zh": "配置路径（中文）"
+          },
+          "body": {
+            "en": "Chinese guide to configuration paths.",
+            "zh": "配置路径的中文指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/CONFIG_PATHS.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Goal Enforcement (Chinese)",
+            "zh": "目标执行（中文）"
+          },
+          "body": {
+            "en": "Chinese guide to goal enforcement.",
+            "zh": "目标执行的中文指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/GOAL_ENFORCEMENT.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Guide",
+            "zh": "指南"
+          },
+          "body": {
+            "en": "General usage guide.",
+            "zh": "通用使用指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/GUIDE.md"
+        },
+        {
+          "title": {
+            "en": "Guide (Chinese)",
+            "zh": "指南（中文）"
+          },
+          "body": {
+            "en": "Chinese usage guide.",
+            "zh": "中文使用指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/GUIDE.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Session Catalog",
+            "zh": "会话目录"
+          },
+          "body": {
+            "en": "Details on session catalog and recovery.",
+            "zh": "会话目录与恢复的详细信息。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/SESSION_CATALOG.md"
+        },
+        {
+          "title": {
+            "en": "Session Catalog (Chinese)",
+            "zh": "会话目录（中文）"
+          },
+          "body": {
+            "en": "Chinese details on session catalog and recovery.",
+            "zh": "会话目录与恢复的中文详细信息。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ca11dd05a08125e1ef5b72a736a76ec61a786454/docs/SESSION_CATALOG.zh-CN.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "fixed",
+          "title": {
+            "en": "Session sidebar no longer loses conversations after upgrade",
+            "zh": "升级后会话侧栏不再丢失对话"
+          },
+          "body": {
+            "en": "Rebuilds the session index from authoritative files and shows recovery-only sessions as a single row.",
+            "zh": "从权威文件重建会话索引，并将仅恢复会话显示为单行。"
+          },
+          "refs": [
+            9205
+          ]
+        },
+        {
+          "kind": "improved",
+          "title": {
+            "en": "Stable transcript scrolling and tail ownership",
+            "zh": "稳定的对话滚动与尾部归属"
+          },
+          "body": {
+            "en": "Separates tail-follow, recovery, and selection signals to prevent scroll jumps while reading.",
+            "zh": "分离尾部跟随、恢复和选择信号，防止阅读时滚动跳动。"
+          },
+          "refs": [
+            9201,
+            9202
+          ]
+        },
+        {
+          "kind": "fixed",
+          "title": {
+            "en": "IME composition and autosize overflow fixed",
+            "zh": "修复输入法组合与自适应高度溢出"
+          },
+          "body": {
+            "en": "Preserves IME composition text and shows scrollbar for long drafts.",
+            "zh": "保留输入法组合文本，并为长草稿显示滚动条。"
+          },
+          "refs": [
+            9199
+          ]
+        },
+        {
+          "kind": "new",
+          "title": {
+            "en": "OpenCode Go recommended preset with route-safe routing",
+            "zh": "OpenCode Go 推荐预设与路由安全"
+          },
+          "body": {
+            "en": "One-click preset installs Chat, Anthropic Messages, and Responses providers with protocol-safe model routing.",
+            "zh": "一键预设安装 Chat、Anthropic Messages 和 Responses 提供商，并实现协议安全的模型路由。"
+          },
+          "refs": [
+            9206
+          ]
+        },
+        {
+          "kind": "fixed",
+          "title": {
+            "en": "QQ Bot gateway intents auto-negotiated",
+            "zh": "QQ Bot 网关意图自动协商"
+          },
+          "body": {
+            "en": "Automatically switches between private and public guild intents to avoid connection failures.",
+            "zh": "自动在私域和公域意图之间切换，避免连接失败。"
+          },
+          "refs": [
+            9139
+          ]
+        },
+        {
+          "kind": "fixed",
+          "title": {
+            "en": "Web search result deltas now displayed",
+            "zh": "Web 搜索增量结果现已显示"
+          },
+          "body": {
+            "en": "Decodes and surfaces Anthropic web-search result delta events.",
+            "zh": "解码并显示 Anthropic Web 搜索增量结果事件。"
+          },
+          "refs": [
+            9197
+          ]
+        }
+      ],
+      "changes": {
+        "new": [
+          {
+            "title": {
+              "en": "OpenCode Go recommended preset",
+              "zh": "OpenCode Go 推荐预设"
+            },
+            "body": {
+              "en": "Adds a one-click preset for Chat, Anthropic Messages, and Responses providers with route-safe model catalogs.",
+              "zh": "为 Chat、Anthropic Messages 和 Responses 提供商添加一键预设，并具有路由安全的模型目录。"
+            },
+            "refs": [
+              9206
+            ]
+          },
+          {
+            "title": {
+              "en": "Bounded history search index",
+              "zh": "有界历史搜索索引"
+            },
+            "body": {
+              "en": "Adds configuration for history search index size limits and eviction.",
+              "zh": "添加历史搜索索引大小限制和淘汰的配置。"
+            },
+            "refs": [
+              9200
+            ]
+          }
+        ],
+        "improved": [
+          {
+            "title": {
+              "en": "Session loading performance",
+              "zh": "会话加载性能"
+            },
+            "body": {
+              "en": "Fuses session digest into decode path to reduce startup work.",
+              "zh": "将会话摘要融合到解码路径，减少启动工作。"
+            },
+            "refs": [
+              9196
+            ]
+          },
+          {
+            "title": {
+              "en": "Catalog-only topic UX",
+              "zh": "仅目录主题交互"
+            },
+            "body": {
+              "en": "Allows renaming catalog-only topics and reconciles stale activity indicators.",
+              "zh": "允许重命名仅目录主题，并协调过时的活动指示器。"
+            },
+            "refs": [
+              9203
+            ]
+          },
+          {
+            "title": {
+              "en": "Recovery copy cleanup",
+              "zh": "恢复副本清理"
+            },
+            "body": {
+              "en": "Folds redundant recovery copies and adds bounded sweeping to trash.",
+              "zh": "折叠冗余恢复副本，并添加有界清理到回收站。"
+            },
+            "refs": [
+              9204
+            ]
+          },
+          {
+            "title": {
+              "en": "Streaming and Mermaid rendering",
+              "zh": "流式与 Mermaid 渲染"
+            },
+            "body": {
+              "en": "Deterministic streaming fence styling and local Mermaid pan/zoom.",
+              "zh": "确定性的流式代码块样式和本地 Mermaid 平移/缩放。"
+            },
+            "refs": [
+              9198
+            ]
+          },
+          {
+            "title": {
+              "en": "Workspace preview panel layout",
+              "zh": "工作区预览面板布局"
+            },
+            "body": {
+              "en": "Removes leftover rail column and redundant breadcrumbs.",
+              "zh": "移除残留的轨道列和冗余面包屑。"
+            },
+            "refs": [
+              9193
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "title": {
+              "en": "Bounded continuation for Standard write tasks",
+              "zh": "Standard 写任务的有界自动续跑"
+            },
+            "body": {
+              "en": "Prevents infinite continuation and shows a recoverable card when bounded continuation stops.",
+              "zh": "防止无限续跑，并在有界续跑停止时显示可恢复卡片。"
+            },
+            "refs": [
+              9184
+            ]
+          },
+          {
+            "title": {
+              "en": "Session sidebar index loss",
+              "zh": "会话侧栏索引丢失"
+            },
+            "body": {
+              "en": "Rebuilds session index from authoritative files and shows recovery-only sessions.",
+              "zh": "从权威文件重建会话索引，并显示仅恢复会话。"
+            },
+            "refs": [
+              9205
+            ]
+          },
+          {
+            "title": {
+              "en": "Web search result deltas",
+              "zh": "Web 搜索增量结果"
+            },
+            "body": {
+              "en": "Decodes and surfaces result delta events.",
+              "zh": "解码并显示增量结果事件。"
+            },
+            "refs": [
+              9197
+            ]
+          },
+          {
+            "title": {
+              "en": "QQ Bot gateway intents",
+              "zh": "QQ Bot 网关意图"
+            },
+            "body": {
+              "en": "Auto-negotiates intents to support both private and public guild bots.",
+              "zh": "自动协商意图，支持私域和公域机器人。"
+            },
+            "refs": [
+              9139
+            ]
+          },
+          {
+            "title": {
+              "en": "IME composition and autosize overflow",
+              "zh": "输入法组合与自适应高度溢出"
+            },
+            "body": {
+              "en": "Preserves IME text and shows scrollbar for long drafts.",
+              "zh": "保留输入法文本，并为长草稿显示滚动条。"
+            },
+            "refs": [
+              9199
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "SivanCola",
+        "ttmouse"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.31.1",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.31.0...desktop-v1.31.1",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.31.1",
+      "baseVersion": "1.31.1",
+      "status": "reviewed",
+      "previousRelease": "1.31.0",
+      "builds": {
+        "cli": "v1.31.1",
+        "desktop": "v1.31.1",
+        "npm": "1.31.1"
+      }
+    },
+    {
       "version": "1.31.0",
       "date": "2026-08-20",
       "channel": "stable",

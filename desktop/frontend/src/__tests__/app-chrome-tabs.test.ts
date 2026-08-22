@@ -517,7 +517,7 @@ ok(
 );
 
 ok(
-  /if \(heroMode\) \{[\s\S]*?const maxHeight = 96;[\s\S]*?setTextareaAutoHeight/.test(composerSource) &&
+  /if \(heroMode\) \{[\s\S]*?const maxHeight = composerHeroInputMaxHeight\(\);[\s\S]*?setTextareaAutoHeight/.test(composerSource) &&
     !/if \(heroMode\) \{\s*setTextareaAutoHeight\(20\);/.test(composerSource),
   "Creation hero composer auto-grows multi-line drafts instead of clipping at 20px",
 );

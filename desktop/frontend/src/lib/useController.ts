@@ -19,6 +19,7 @@ import { foregroundRunningFromRuntimeMeta, type RuntimeMetaSnapshot } from "./ru
 import { aliasActivationRequest, noteActivationRequested, noteActivationSettled, noteActivationStarted } from "./sessionDiagnostics";
 import { applyLiveSegments, coalesceStreamDeltas, completeLiveReasoning, type StreamDeltaEntry, type StreamSegment } from "./streamDeltaBatch";
 import { getTranscriptStore } from "./transcriptStore";
+import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import { uiPerfTracker } from "./uiPerf";
 import { getLocale, t, type DictKey } from "./i18n";
 import { applyHydrateErrorState, hydratePlaceholderItems as resolveHydratePlaceholders } from "./hydrateErrorState";
@@ -258,7 +259,7 @@ export type Item =
       resolvedName?: string;
       capabilityId?: string;
       status: ToolStatus;
-      output?: string;
+      output?: string; searchSources?: SearchSource[]; // display-only provider search results; replay data stays in output/serverSearch
       error?: string;
       truncated?: boolean;
       dataArchived?: boolean; // args/output trimmed for memory; full data available via backend
@@ -1685,7 +1686,7 @@ function applyEvent(s: State, e: WireEvent): State {
       }
       // A nested result refreshes its sub-agent parent's recent activity.
       if (t.parentId) touchSubagentParent(next, t.parentId);
-      return attachWebSearchOutput({ ...s, items: compactArchivedToolItems(next) }, t.name, t.output, t.err);
+      return attachWebSearchOutput({ ...s, items: compactArchivedToolItems(next) }, t.name, t.output, t.err, idx >= 0 && next[idx]?.kind === "tool" ? next[idx].id : t.id);
     }
     case "tool_progress": {
       const t = e.tool;
@@ -2357,6 +2358,7 @@ const deliveryRequirementKeys: Record<string, DictKey> = {
   signoff: "notice.deliveryRequirementSignoff",
   action: "notice.deliveryRequirementAction",
   mutation: "notice.deliveryRequirementMutation",
+  task: "notice.deliveryRequirementTask",
   capability: "notice.deliveryRequirementCapability",
 };
 
@@ -2874,6 +2876,13 @@ export function useController() {
     const unsubscribe = getTranscriptStore().subscribe(tabId, (change) => {
       if (!statesRef.current.has(tabId)) return;
       dispatchTo(tabId, { type: "history_items_patch", patches: change.patches });
+      const patchCount = Object.keys(change.patches).length;
+      if (patchCount > 0) {
+        recordFrontendDiagnostic("history", "history.items-patch", {
+          patchCount,
+          contentRevision: statesRef.current.get(tabId)?.historyLayoutRevision,
+        });
+      }
     });
     transcriptSubscriptions.current.set(tabId, unsubscribe);
   }, [dispatchTo]);
@@ -4621,7 +4630,7 @@ export function useController() {
         }
         const tabs = await reconcileTabRuntime(tabId, { hydrateSessionData: false });
         if (!isNavigationIntentCurrent(navigationSeq)) return tabs;
-        void loadSessionDataForTab(tabId, false, "switch-tab", {
+        await loadSessionDataForTab(tabId, false, "switch-tab", {
           skipHistory: sameSession && hasCachedLiveTurn(statesRef.current.get(tabId)),
           placeholderItems,
           surfacePolicy: preserveTargetSurface ? "preserve-current" : "replace-surface",
@@ -4631,6 +4640,29 @@ export function useController() {
           sessionDigest: targetSessionDigest,
           sessionGeneration: targetSessionGeneration,
         });
+        // The navigation surface is committed by the caller only after the
+        // target history has been applied. This prevents the old surface from
+        // being replaced by an empty target state between SetActiveTab and
+        // the first history page.
+        if (!isNavigationIntentCurrent(navigationSeq)) return tabs;
+        const hydratedTargetState = statesRef.current.get(tabId);
+        if (hydratedTargetState?.hydrateError) {
+          noteActivationSettled(switchRequestId, "failed", hydratedTargetState.hydrateError);
+          // History loading errors are reported by loadSessionDataForTab as a
+          // state error rather than a rejected promise. Rebind the backend and
+          // visible tab to the previous session so the retained transcript can
+          // remain on screen while the user retries.
+          if (previousTabId && activeTabIdRef.current === tabId && isNavigationIntentCurrent(navigationSeq)) {
+            await app.SetActiveTab(previousTabId).catch(() => undefined);
+            // A newer click may arrive while the backend rebind is in flight.
+            // Do not let this stale failure restore the old frontend selection
+            // after that intent has already won.
+            if (!isNavigationIntentCurrent(navigationSeq) || activeTabIdRef.current !== tabId) return tabs;
+            setActiveTabId(previousTabId);
+            activeTabIdRef.current = previousTabId;
+          }
+          return tabs;
+        }
         noteActivationSettled(switchRequestId, "ready");
         return tabs;
       })

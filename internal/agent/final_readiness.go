@@ -18,6 +18,7 @@ type finalReadinessCheck struct {
 	reason                     string
 	continuationGeneric        bool
 	continuationHighConfidence bool
+	continuationTaskProgress   bool
 	continuationUnsafe         bool
 	missingProjectChecks       int
 	incompleteTodos            int
@@ -27,12 +28,20 @@ type finalReadinessCheck struct {
 	missingSignoff             int
 	missingActionEvidence      int
 	missingMutation            int
+	missingTaskProgress        int
 	missingCapabilities        int
+	incompleteTodoItems        []evidence.TodoStepMatch
 }
 
 func (c finalReadinessCheck) continuationClass() ReadinessContinuationClass {
 	if c.reason == "" || c.continuationUnsafe || c.missingActionEvidence > 0 ||
-		c.missingMutation > 0 || c.missingCapabilities > 0 {
+		c.missingCapabilities > 0 {
+		return ReadinessContinuationNone
+	}
+	if c.continuationTaskProgress && (c.missingMutation > 0 || c.incompleteTodos > 0 || c.missingTaskProgress > 0) {
+		return ReadinessContinuationTaskProgress
+	}
+	if c.missingMutation > 0 {
 		return ReadinessContinuationNone
 	}
 	if c.continuationHighConfidence {
@@ -88,7 +97,7 @@ func (c *finalReadinessCheck) observeObligation(o taskcontract.Obligation) {
 }
 
 func (c finalReadinessCheck) progressSignature() string {
-	return fmt.Sprintf("%d/%d/%d/%d/%d/%d/%d/%d/%d/%d\x00%s",
+	return fmt.Sprintf("%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d\x00%s",
 		c.missingProjectChecks,
 		c.incompleteTodos,
 		c.missingAcceptanceCriteria,
@@ -97,14 +106,86 @@ func (c finalReadinessCheck) progressSignature() string {
 		c.missingSignoff,
 		c.missingActionEvidence,
 		c.missingMutation,
+		c.missingTaskProgress,
 		c.missingCapabilities,
 		boolInt(c.applies),
 		c.reason,
 	)
 }
 
+func (c finalReadinessCheck) taskProgressReason() string {
+	var missing []string
+	if c.missingMutation > 0 {
+		missing = append(missing, "no successful state change was observed for the requested modification")
+	}
+	if c.incompleteTodos > 0 {
+		if len(c.incompleteTodoItems) > 0 {
+			missing = append(missing, finalReadinessIncompleteTodos(c.incompleteTodoItems))
+		} else {
+			missing = append(missing, "the current task list still has incomplete items")
+		}
+	}
+	if c.missingTaskProgress > 0 {
+		missing = append(missing, "the last response explicitly deferred remaining implementation work")
+	}
+	return strings.Join(missing, "; ")
+}
+
+// finalReadinessControlProjection separates everything the host observed from
+// the smaller set it is allowed to drive automatically. Closed-loop execution
+// keeps the complete readiness contract. Standard only owns mutation, current
+// todo completion, and explicit implementation deferrals for a controller-marked task.
+func (a *Agent) finalReadinessControlProjection(facts finalReadinessCheck, assistantText string) finalReadinessCheck {
+	if a == nil {
+		return facts
+	}
+	if a.loopGuardAllowsFinal() {
+		return finalReadinessCheck{applies: true}
+	}
+	if a.fullReadinessControlActive() {
+		return facts
+	}
+	if !a.turn.automaticReadinessContinuation {
+		return finalReadinessCheck{}
+	}
+	out := finalReadinessCheck{missingMutation: facts.missingMutation}
+	if a.task.ledger != nil {
+		incomplete, hasCurrentTodos := a.task.ledger.IncompleteLatestTodos()
+		_, hasMutation := a.task.ledger.LatestSuccessfulMutationIndex()
+		if hasMutation && hasCurrentTodos && len(incomplete) > 0 {
+			out.incompleteTodos = len(incomplete)
+			out.incompleteTodoItems = append([]evidence.TodoStepMatch(nil), incomplete...)
+		}
+		if a.standardMutationExpected() && hasMutation && !hasCurrentTodos && looksLikePendingAction(assistantText) {
+			out.missingTaskProgress = 1
+		}
+	}
+	out.reason = out.taskProgressReason()
+	if out.reason == "" {
+		return finalReadinessCheck{}
+	}
+	out.applies = true
+	out.continuationTaskProgress = true
+	return out
+}
+
+func (a *Agent) fullReadinessControlActive() bool {
+	if a == nil {
+		return false
+	}
+	return a.turn.constraints.PolicyFloor == taskcontract.PolicyFloorDelivery ||
+		a.turn.deliveryScopeActive || a.planContractSnapshot() != nil
+}
+
+func (a *Agent) finalReadinessProgressKey(check finalReadinessCheck) string {
+	if check.continuationClass() == ReadinessContinuationTaskProgress && a != nil && a.task.ledger != nil {
+		return a.task.ledger.SuccessfulProgressFingerprint()
+	}
+	return check.progressSignature()
+}
+
 func (c finalReadinessCheck) missingIDs() []string {
-	missing := make([]string, 0, 9)
+	missing := make([]string, 0, 10)
 	add := func(id string, count int) {
 		if count > 0 {
 			missing = append(missing, id)
@@ -118,6 +199,7 @@ func (c finalReadinessCheck) missingIDs() []string {
 	add("signoff", c.missingSignoff)
 	add("action", c.missingActionEvidence)
 	add("mutation", c.missingMutation)
+	add("task", c.missingTaskProgress)
 	add("capability", c.missingCapabilities)
 	return missing
 }
@@ -154,7 +236,8 @@ func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
 		return out
 	}
 	incomplete, hasTodos := a.task.ledger.IncompleteLatestTodos()
-	if !hasTodos && a.task.ledger.HasAnySuccessfulReceipt() {
+	currentTurnHasTodos := hasTodos
+	if a.closedLoopActive() && !hasTodos && a.task.ledger.HasAnySuccessfulReceipt() {
 		incomplete, hasTodos = a.incompleteCanonicalTodos()
 	}
 	if msg := a.capabilityGateFailure(); msg != "" {
@@ -167,12 +250,25 @@ func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
 	if mutation, ok := a.task.ledger.LatestSuccessfulMutationIndex(); ok {
 		writer, hasWriter = mutation, true
 	}
-	// Incomplete todos contradict closed-loop delivery only. In open turns they
-	// are cross-turn work plans and must not trigger the recovery ceremony.
-	if a.closedLoopActive() && hasWriter && hasTodos && len(incomplete) > 0 {
+	_, hasMutation := a.task.ledger.LatestSuccessfulMutationIndex()
+	mutationExpected := a.standardMutationExpected()
+	if mutationExpected && !hasMutation {
 		out.applies = true
-		out.continuationHighConfidence = true
+		out.missingMutation++
+		missing = append(missing, "no successful state change was observed for the requested modification")
+	}
+	// Incomplete todos contradict closed-loop delivery. In Standard they are
+	// task-progress gaps only when the current ledger proves both a mutation and
+	// a successful todo_write; historical canonical state remains display-only.
+	standardTaskTodo := !a.closedLoopActive() && a.turn.automaticReadinessContinuation &&
+		hasMutation && currentTurnHasTodos && len(incomplete) > 0
+	if (a.closedLoopActive() && hasWriter && hasTodos && len(incomplete) > 0) || standardTaskTodo {
+		out.applies = true
+		if a.closedLoopActive() {
+			out.continuationHighConfidence = true
+		}
 		out.incompleteTodos = len(incomplete)
+		out.incompleteTodoItems = append([]evidence.TodoStepMatch(nil), incomplete...)
 		missing = append(missing, finalReadinessIncompleteTodos(incomplete))
 	}
 	for _, check := range a.projectChecks {
@@ -259,6 +355,11 @@ func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
 	}
 	out.reason = strings.Join(missing, "; ")
 	return a.applyPartialCheckWaiver(out)
+}
+
+func (a *Agent) standardMutationExpected() bool {
+	return a != nil && a.turn.mutationExpected && a.turn.automaticReadinessContinuation &&
+		!a.readOnlyExecution && !a.turn.constraints.ForbidMutation && registryHasWriterTools(a.svc.tools)
 }
 
 func obligationGap(o taskcontract.Obligation) string {

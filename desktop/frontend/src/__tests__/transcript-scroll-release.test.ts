@@ -72,9 +72,56 @@ const returned = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
+  // The bottom must be held: two consecutive at-bottom deliveries inside the
+  // same reader-intent window re-engage tail-follow (#8709/#9099).
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
 ]);
-check(returned.state.mode === "tail-follow", "reaching the real bottom re-engages tail-follow");
+check(returned.state.mode === "tail-follow", "holding the real bottom across two deliveries re-engages tail-follow");
+
+const touchDownOnce = run([
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+]);
+check(touchDownOnce.state.mode === "manual", "a single touch-down at the bottom stays manual");
+
+const holdBrokenByUpwardGesture = run([
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  // An upward gesture inside the streak resets the hold; the next downward
+  // gesture starts again from zero.
+  { type: "USER_SCROLL_INTENT", canClaimTail: false },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+]);
+check(holdBrokenByUpwardGesture.state.mode === "manual", "an upward gesture breaks the bottom-hold streak");
+
+const holdEndsWithIntentWindow = run([
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "READER_INTENT_ENDED" },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+]);
+check(holdEndsWithIntentWindow.state.mode === "manual", "a closed intent window ends the bottom-hold streak");
+
+const steadyStateOffsetKeepsManual = run([
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "USER_SCROLL_INTENT", canClaimTail: false },
+  { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
+  { type: "READER_INTENT_ENDED" },
+  { type: "SCROLL_TO_OFFSET", owner: "anchor-compensation", top: 640 },
+  { type: "SCROLL_TO_OFFSET", owner: "block-window-prepend", top: 680 },
+]);
+check(steadyStateOffsetKeepsManual.state.mode === "manual", "steady-state offset corrections keep manual ownership");
+check(
+  steadyStateOffsetKeepsManual.commands.join(",") === "SCROLL_TO_OFFSET,SCROLL_TO_OFFSET",
+  "steady-state offset corrections emit only their own commands",
+);
 
 const browserClamp = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },

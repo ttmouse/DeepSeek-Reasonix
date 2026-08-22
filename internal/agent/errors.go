@@ -92,6 +92,10 @@ const (
 	// actionable readiness duties. Hosts may give it a second turn only after
 	// host-observable progress.
 	ReadinessContinuationHighConfidence ReadinessContinuationClass = "high_confidence"
+	// ReadinessContinuationTaskProgress covers an unfinished Standard write task:
+	// either no requested mutation has been observed yet, or the current turn's
+	// todo list still has unfinished items after a mutation.
+	ReadinessContinuationTaskProgress ReadinessContinuationClass = "task_progress"
 )
 
 // FinalReadinessError reports that the model exhausted its recovery attempts

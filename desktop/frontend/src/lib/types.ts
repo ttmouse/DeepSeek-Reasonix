@@ -524,6 +524,7 @@ export interface ProjectNode {
   recoveryBranchCount?: number;
   recoveryUnresolvedCount?: number;
   recoveryCleanupEligibleCount?: number;
+  recoveryCopyCount?: number; // folded recovery copies behind this row (badge only)
   isolatedWorktree?: boolean;
   runtimeOnly?: boolean;
   children?: ProjectNode[];
@@ -1835,11 +1836,20 @@ export interface ProviderPresetView {
   label: string;
   description: string;
   keyEnv: string;
+  recommended?: boolean;
+  billingMode?: string;
+  displayGroup?: string;
+  displaySection?: string;
+  displayTier?: "primary" | "advanced" | "compatibility" | string;
+  routeKind?: string;
+  optional?: boolean;
+  displayOrder?: number;
   providerNames: string[];
   models: string[];
   added: boolean;
-  status?: "available" | "installed" | "installed_modified" | "name_conflict" | "similar_existing";
+  status?: "available" | "installed" | "installed_modified" | "partial" | "name_conflict" | "similar_existing";
   statusProviderNames?: string[];
+  missingProviderNames?: string[];
   keySet: boolean;
   requiresKey?: boolean;
   configured?: boolean;

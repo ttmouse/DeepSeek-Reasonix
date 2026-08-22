@@ -1600,6 +1600,9 @@ func looksLikeExecutorHandoffDeferral(answer string) bool {
 	if lower == "" {
 		return true
 	}
+	if looksLikePendingAction(lower) {
+		return true
+	}
 	if containsAnySubstring(lower, executorHandoffDeferralPhrases) {
 		return true
 	}
