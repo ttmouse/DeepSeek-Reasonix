@@ -27,6 +27,7 @@ const terminalPanelSource = readFileSync(resolve(testDir, "../components/Termina
 const terminalViewSource = readFileSync(resolve(testDir, "../components/TerminalView.tsx"), "utf8");
 const terminalRailSource = readFileSync(resolve(testDir, "../components/TerminalSessionRail.tsx"), "utf8");
 const terminalLifecycleSource = readFileSync(resolve(testDir, "../lib/useWarmTerminalPanel.ts"), "utf8");
+const workspacePanelSource = readFileSync(resolve(testDir, "../components/WorkspacePanel.tsx"), "utf8");
 
 function eq(a: unknown, b: unknown, label: string) {
   if (a === b) {
@@ -413,6 +414,16 @@ eq(
   /const preferredWorkspacePanelWidth = rightDockDetailActive \? rightDockPreviewWidth : rightDockTreeWidth;/.test(appSource),
   false,
   "C3: no preview-width dual system that would resize the sidebar on tab switch",
+);
+
+// Opened files surface as a tab strip above the preview body: each tab shows
+// the file's base name, the active tab is highlighted, and closing a tab falls
+// back to the last remaining one.
+eq(
+  /\.workspace-file-tabs \{[\s\S]*?\.workspace-file-tabs__tab--active/.test(stylesSource)
+    && /className="workspace-file-tabs"[\s\S]*?basename\(path\)[\s\S]*?closePreviewTab\(path\)/.test(workspacePanelSource),
+  true,
+  "opened files render as named tabs with an active state and per-tab close",
 );
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);

@@ -177,6 +177,8 @@ const rawInitialBytes = [...initialJS, ...initialCSS, ...appShellCSS]
 // Preserving the notice across history replaces (merge helper) adds ~0.2 KiB.
 // local/dev merge (66 upstream commits + Browser Relay settings page) raises
 // the measured raw bundle to 2365.7 KiB; keep 0.9 KiB headroom.
-const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_370.9 : 2_366.6;
+// Heartbeat per-task model picker (dropdown + i18n, ~0.3 KiB) raises it again.
+// Workspace opened-file tab strip (multi-tab bar + close, ~0.4 KiB) raises it.
+const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_371.6 : 2_367.3;
 assertBudget("initial raw JavaScript and CSS", rawInitialBytes, rawInitialBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk raw", largestInitialJSRaw, 1_000 * 1024);
