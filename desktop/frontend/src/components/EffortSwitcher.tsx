@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, Gauge } from "lucide-react";
 import { asArray } from "../lib/array";
 import type { EffortInfo } from "../lib/types";
 import { ANCHORED_POPOVER_CLOSE_MS, AnchoredPopover } from "./AnchoredPopover";
+import { Tooltip } from "./Tooltip";
 
 export function EffortSwitcher({
   effort,
@@ -56,18 +57,20 @@ export function EffortSwitcher({
 
   return (
     <div className="modelsw effortsw">
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`modelsw__trigger effortsw__trigger ${current !== "auto" ? "effortsw__trigger--explicit" : ""}`}
-        disabled={disabled}
-        aria-expanded={open && !closing}
-        onClick={() => (open || closing ? closeMenu() : openMenu())}
-      >
-        <Gauge size={14} className="modelsw__kind" />
-        <span className="modelsw__label">{current}</span>
-        <ChevronsUpDown size={11} />
-      </button>
+      <Tooltip label={current === "auto" ? "Reasoning: auto" : `Reasoning: ${current}`}>
+        <button
+          ref={triggerRef}
+          type="button"
+          className={`modelsw__trigger effortsw__trigger ${current !== "auto" ? "effortsw__trigger--explicit" : ""}`}
+          disabled={disabled}
+          aria-expanded={open && !closing}
+          onClick={() => (open || closing ? closeMenu() : openMenu())}
+        >
+          <Gauge size={14} className="modelsw__kind" />
+          <span className="modelsw__label">{current}</span>
+          <ChevronsUpDown size={11} />
+        </button>
+      </Tooltip>
       <AnchoredPopover
         open={open && !disabled}
         closing={closing}
