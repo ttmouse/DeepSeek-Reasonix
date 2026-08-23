@@ -189,6 +189,7 @@ export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganiza
   HeartbeatSaveConfig(update: unknown): Promise<unknown>;
   HeartbeatTriggerNow(id: string): Promise<void>;
   HeartbeatGenerateID(): Promise<string>;
+  HeartbeatTestPrecheck(precheckCommand: string, workspaceRoot: string): Promise<{ status: string; summary: string }>;
   // ── Browser Relay ──
   BrowserRelayStatus(): Promise<{ running: boolean; state: string; addr: string; token_prefix: string; extension_info: string }>;
   BrowserRelayAddr(): Promise<string>;
@@ -4998,6 +4999,9 @@ function makeMockApp(): AppBindings {
     },
     async HeartbeatTriggerNow(_id: string) {},
     async HeartbeatGenerateID() { return "mock-" + Date.now().toString(36); },
+    async HeartbeatTestPrecheck(command: string, _workspaceRoot: string) {
+      return { status: command.includes("exit 2") ? "skipped" : command.includes("exit 1") ? "failed" : "passed", summary: "mock precheck result" };
+    },
     async BrowserRelayStatus() { return { running: false, state: 'disconnected', addr: '', token_prefix: '', extension_info: '' }; },
     async BrowserRelayAddr() { return ''; },
     async BrowserRelayToken() { return ''; },
