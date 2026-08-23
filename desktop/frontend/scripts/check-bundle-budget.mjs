@@ -142,7 +142,9 @@ for (const path of localeChunks) {
   // choices from the primary UI; keep that complete guidance with a bounded
   // 0.4–0.5 KiB locale-only ratchet. The Browser Relay settings page adds
   // connection/auth/manual-install copy (~25 keys per locale) on top.
-  const budget = name.startsWith("zh-TW-") ? 57.2 * 1024 : 56.5 * 1024;
+  // input-style-menu merge adds the menu/approval group labels (zh / zh-TW);
+  // measured zh gzip 56.6 KiB, zh-TW 57.3 KiB, keep 0.1 KiB headroom.
+  const budget = name.startsWith("zh-TW-") ? 57.4 * 1024 : 56.7 * 1024;
   assertBudget(`${name} gzip`, gzipBytes(path), budget);
 }
 
