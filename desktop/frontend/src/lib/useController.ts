@@ -586,6 +586,8 @@ export function metaFromTab(tab: TabMeta, existing?: Meta): Meta {
     sessionDigest: tab.sessionDigest !== undefined ? tab.sessionDigest : existing?.sessionDigest,
     sessionGeneration: tab.sessionGeneration !== undefined ? tab.sessionGeneration : existing?.sessionGeneration,
     gitBranch: tab.gitBranch || existing?.gitBranch,
+    imageInputEnabled: existing?.imageInputEnabled,
+    visionFallbackEnabled: existing?.visionFallbackEnabled,
     autoApproveTools,
     bypass: autoApproveTools,
     collaborationMode: tab.collaborationMode ?? existing?.collaborationMode ?? "normal",
@@ -628,6 +630,7 @@ export function sameMeta(a?: Meta, b?: Meta): boolean {
     a.sessionGeneration === b.sessionGeneration &&
     a.gitBranch === b.gitBranch &&
     a.imageInputEnabled === b.imageInputEnabled &&
+    a.visionFallbackEnabled === b.visionFallbackEnabled &&
     a.autoApproveTools === b.autoApproveTools &&
     a.bypass === b.bypass &&
     a.collaborationMode === b.collaborationMode &&

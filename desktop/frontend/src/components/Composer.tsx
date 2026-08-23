@@ -548,6 +548,7 @@ export function Composer({
   cwd,
   modelLabel,
   imageInputEnabled = true,
+  imageUnderstandingEnabled = false,
   tabId,
   effort,
   onSend,
@@ -618,6 +619,8 @@ export function Composer({
   cwd?: string;
   modelLabel: string;
   imageInputEnabled?: boolean;
+  /** True when text-only image turns are preprocessed by a configured vision model. */
+  imageUnderstandingEnabled?: boolean;
   tabId?: string;
   effort?: EffortInfo;
   onSend: (displayText: string, submitText?: string, tabId?: string, structured?: StructuredInvocationSubmit) => void | Promise<void>;
@@ -1954,8 +1957,9 @@ export function Composer({
   const planModeOn = collaborationMode === "plan";
   const activeGoal = (goal ?? "").trim();
   const goalModeOn = collaborationMode === "goal";
-  const warnImageInputFallback = useCallback((message = t("composer.imageInputUnsupported")) => {
-    showToast(message, "warn");
+  const warnImageInputFallback = useCallback((message?: string) => {
+    const text = message ?? t("composer.imageInputUnsupported");
+    showToast(text, "warn");
   }, [showToast, t]);
 
   const submit = async () => {
@@ -1971,7 +1975,7 @@ export function Composer({
     const trimmedDraft = typedGoalDraft ?? rawDraft;
     const trimmedText = trimmedDraft.text;
     if (draftHasPendingPaste(submitDraftKey)) return;
-    if (!imageInputEnabled && hasImageAttachments(attachmentsRef.current)) {
+    if (!imageInputEnabled && !imageUnderstandingEnabled && hasImageAttachments(attachmentsRef.current)) {
       warnImageInputFallback();
     }
     const currentAttachments = attachmentsRef.current;
