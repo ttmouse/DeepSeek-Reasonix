@@ -5989,6 +5989,11 @@ button.reasoning-summary:focus-visible {
   background: var(--bg-elev);
 }
 
+.mermaid-diagram--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .mermaid-diagram__toolbar {
   display: flex;
   align-items: center;
@@ -25838,6 +25843,25 @@ body > .mermaid-diagram--fullscreen {
 
 .workbench-dock__tab:hover {
   color: var(--fg-dim);
+}
+
+.workbench-dock__tab {
+  transition: transform 120ms ease;
+}
+
+.workbench-dock__tab--dragging {
+  position: relative;
+  z-index: var(--z-inline-sticky);
+  cursor: grabbing;
+  transition: none;
+  opacity: 0.92;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.workbench-dock__tab--shifted {
+  transition: transform 120ms ease;
 }
 
 .workbench-dock__tab--active {

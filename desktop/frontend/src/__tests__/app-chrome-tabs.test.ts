@@ -823,5 +823,45 @@ ok(
   "macOS workbench sidebar titlebar reuses the centralized zoom path",
 );
 
+// dock mode tabs reorder by pointer drag with live room-making shifts, and the
+// committed order persists to the layout store.
+ok(
+  /const \[dockTabDrag, setDockTabDrag\] = useState<RightDockMode \| null>\(null\);[\s\S]{0,3000}?setPointerCapture\(event\.pointerId\)/.test(appSource),
+  "dock tab drag starts with pointer capture on the grabbed tab",
+);
+ok(
+  /setDockTabDragOffset\(dx\)/.test(appSource) &&
+    /const endDockTabDrag = \(event[\s\S]{0,1900}?setRightDockTabOrder\(next\);[\s\S]{0,80}?saveRightDockTabOrder\(next\)/.test(appSource),
+  "dock tab drop commits the reordered tab list to the layout store",
+);
+ok(
+  /const dockTabShift = \(mode: RightDockMode\): number => \{[\s\S]{0,1200}?pointerCenter > thisMid[\s\S]{0,200}?pointerCenter < thisMid/.test(appSource),
+  "non-dragged dock tabs compute a live room-making shift from the pointer center",
+);
+ok(
+  /className: `workbench-dock__tab\$\{active \? " workbench-dock__tab--active" : ""\}\$\{dragging \? " workbench-dock__tab--dragging" : ""\}\$\{!dragging && shifted !== 0 \? " workbench-dock__tab--shifted" : ""\}`/.test(appSource),
+  "dock tab renders dragging and shifted state classes while reordering",
+);
+ok(
+  /\.workbench-dock__tab--dragging \{[\s\S]*?z-index: var\(--z-inline-sticky\);[\s\S]*?transition: none;/.test(stylesSource),
+  "the dragged dock tab follows the pointer without layout transition lag",
+);
+ok(
+  /\.workbench-dock__tab--shifted \{[\s\S]*?transition: transform 120ms ease;/.test(stylesSource),
+  "room-making dock tabs animate their shift smoothly",
+);
+ok(
+  /export function saveRightDockTabOrder\(order: RightDockMode\[\]\): void \{[\s\S]{0,200}?localStorage\.setItem\(RIGHT_DOCK_TAB_ORDER_KEY, JSON\.stringify\(sanitizeTabOrder\(order\)\)\)/.test(layoutStoreSource),
+  "right dock tab order persists through the layout store to localStorage",
+);
+ok(
+  /function sanitizeTabOrder\(raw: unknown\): RightDockMode\[\] \{[\s\S]{0,400}?for \(const mode of RIGHT_DOCK_DEFAULT_TAB_ORDER\)[\s\S]{0,120}?if \(!seen\.has\(mode\)\) order\.push\(mode\)/.test(layoutStoreSource),
+  "stored dock tab order is sanitized and missing modes are re-appended",
+);
+ok(
+  /visibleDockTabOrder = useMemo\(\(\) => \{[\s\S]{0,300}?mode === "context"[\s\S]{0,120}?mode === "remote"[\s\S]{0,120}?return true/.test(appSource),
+  "dock tab order filters conditionally hidden modes before rendering",
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

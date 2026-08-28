@@ -158,6 +158,7 @@ import {
   defaultRightDockTreeWidth,
   defaultSidebarWidth,
   saveRightDockTreeWidth,
+  saveRightDockTabOrder,
   saveSidebarCollapsed,
   saveSidebarWidth,
   saveTerminalHeight,
@@ -1285,6 +1286,8 @@ export default function App() {
   const setWorkspacePanelMaximized = useLayoutStore((s) => s.setWorkspacePanelMaximized);
   const rightDockMode = useLayoutStore((s) => s.rightDockMode);
   const setRightDockMode = useLayoutStore((s) => s.setRightDockMode);
+  const rightDockTabOrder = useLayoutStore((s) => s.rightDockTabOrder);
+  const setRightDockTabOrder = useLayoutStore((s) => s.setRightDockTabOrder);
   const terminalPanelOpen = useLayoutStore((s) => s.terminalPanelOpen);
   const setTerminalPanelOpen = useLayoutStore((s) => s.setTerminalPanelOpen);
   const { mounted: terminalContentVisible, fitEnabled: terminalFitEnabled, prefetch: prefetchTerminalPanel } = useWarmTerminalPanel(terminalPanelOpen, terminalResizing);
@@ -2998,6 +3001,134 @@ export default function App() {
     },
     [openWorkspacePanel],
   );
+
+  // Dock mode tabs are reorderable by dragging. The drag is pointer-based so
+  // the grabbed tab follows the cursor while the others make room in real time
+  // (a drag-over gap indicator), unlike HTML5 DnD's ghost that only moves on
+  // drop. state is App-local; the committed order goes to the layout store.
+  const [dockTabDrag, setDockTabDrag] = useState<RightDockMode | null>(null);
+  const [dockTabDragOffset, setDockTabDragOffset] = useState(0);
+  const dockTabsRef = useRef<HTMLDivElement>(null);
+  const dockTabElRefs = useRef(new Map<RightDockMode, HTMLButtonElement>());
+  // Layout positions captured at drag start (no transform applied), so the
+  // insertion math ignores the live room-making shifts.
+  const dockTabBaseLeftRef = useRef(new Map<RightDockMode, number>());
+  const dockTabDragStartXRef = useRef(0);
+  const dockTabDragIndexRef = useRef(-1);
+  const dockTabDragMovedRef = useRef(false);
+  const dockTabDragOffsetRef = useRef(0);
+  const dockTabSuppressClickRef = useRef(false);
+
+  const visibleDockTabOrder = useMemo(() => {
+    return rightDockTabOrder.filter((mode) => {
+      if (mode === "context") return SHOW_CONTEXT_DOCK && desktopLayoutStyle !== "creation";
+      if (mode === "remote") return remoteHosts.length > 0;
+      return true;
+    });
+  }, [desktopLayoutStyle, remoteHosts.length, rightDockTabOrder]);
+
+  const startDockTabDrag = (event: ReactPointerEvent<HTMLButtonElement>, mode: RightDockMode) => {
+    if (event.button !== 0 || event.pointerType === "touch") return;
+    const index = visibleDockTabOrder.indexOf(mode);
+    if (index < 0) return;
+    event.preventDefault();
+    dockTabDragStartXRef.current = event.clientX;
+    dockTabDragIndexRef.current = index;
+    dockTabDragMovedRef.current = false;
+    const containerRect = dockTabsRef.current?.getBoundingClientRect();
+    const baseLeft = new Map<RightDockMode, number>();
+    for (const otherMode of visibleDockTabOrder) {
+      const el = dockTabElRefs.current.get(otherMode);
+      if (el && containerRect) baseLeft.set(otherMode, el.getBoundingClientRect().left - containerRect.left);
+    }
+    dockTabBaseLeftRef.current = baseLeft;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDockTabDrag(mode);
+    setDockTabDragOffset(0);
+  };
+
+  const moveDockTabDrag = (event: ReactPointerEvent<HTMLButtonElement>, mode: RightDockMode) => {
+    if (dockTabDrag !== mode) return;
+    const dx = event.clientX - dockTabDragStartXRef.current;
+    if (Math.abs(dx) > 4) dockTabDragMovedRef.current = true;
+    dockTabDragOffsetRef.current = dx;
+    setDockTabDragOffset(dx);
+  };
+
+  const endDockTabDrag = (event: ReactPointerEvent<HTMLButtonElement> | null, mode: RightDockMode) => {
+    if (dockTabDrag !== mode) return;
+    const from = dockTabDragIndexRef.current;
+    const moved = dockTabDragMovedRef.current;
+    const dx = dockTabDragOffsetRef.current;
+    try {
+      event?.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* capture may already be gone */
+    }
+    setDockTabDrag(null);
+    setDockTabDragOffset(0);
+    dockTabDragOffsetRef.current = 0;
+    if (moved) dockTabSuppressClickRef.current = true;
+    if (!moved || from < 0) return;
+    const el = dockTabElRefs.current.get(mode);
+    if (!el) return;
+    const baseLeft = dockTabBaseLeftRef.current.get(mode) ?? 0;
+    const tabWidth = el.offsetWidth;
+    // The dragged tab's visual center decides the insertion point: walk the
+    // other tabs' base (unshifted) centers and drop where the pointer center
+    // falls, exactly like a browser tab strip.
+    const pointerCenter = baseLeft + dx + tabWidth / 2;
+    let to = visibleDockTabOrder.length - 1;
+    for (let i = 0; i < visibleDockTabOrder.length; i++) {
+      const otherMode = visibleDockTabOrder[i];
+      if (otherMode === mode) continue;
+      const otherLeft = dockTabBaseLeftRef.current.get(otherMode);
+      if (otherLeft === undefined) continue;
+      const otherEl = dockTabElRefs.current.get(otherMode);
+      if (!otherEl) continue;
+      const mid = otherLeft + otherEl.offsetWidth / 2;
+      if (pointerCenter < mid) {
+        to = i;
+        break;
+      }
+    }
+    if (to === from) return;
+    const next = [...visibleDockTabOrder];
+    const [dragged] = next.splice(from, 1);
+    next.splice(to, 0, dragged);
+    setRightDockTabOrder(next);
+    saveRightDockTabOrder(next);
+  };
+
+  // Room-making shift for a non-dragged tab while a drag is active: -1 (left),
+  // +1 (right), or 0. Based on base positions captured at drag start so the
+  // live layout stays stable for the whole gesture.
+  const dockTabShift = (mode: RightDockMode): number => {
+    if (dockTabDrag === null || mode === dockTabDrag) return 0;
+    const dragLeft = dockTabBaseLeftRef.current.get(dockTabDrag);
+    const thisLeft = dockTabBaseLeftRef.current.get(mode);
+    if (dragLeft === undefined || thisLeft === undefined) return 0;
+    const dragEl = dockTabElRefs.current.get(dockTabDrag);
+    const thisEl = dockTabElRefs.current.get(mode);
+    if (!dragEl || !thisEl) return 0;
+    const dragIndex = visibleDockTabOrder.indexOf(dockTabDrag);
+    const thisIndex = visibleDockTabOrder.indexOf(mode);
+    const pointerCenter = dragLeft + dockTabDragOffset + dragEl.offsetWidth / 2;
+    const thisMid = thisLeft + thisEl.offsetWidth / 2;
+    if (dragIndex < thisIndex && pointerCenter > thisMid) return -1;
+    if (dragIndex > thisIndex && pointerCenter < thisMid) return 1;
+    return 0;
+  };
+
+  // A drag ends on pointerup with a trailing click on the same tab; swallow it
+  // so dropping the tab in a new slot does not also switch to it.
+  const handleDockTabClick = (action: () => void) => {
+    if (dockTabSuppressClickRef.current) {
+      dockTabSuppressClickRef.current = false;
+      return;
+    }
+    action();
+  };
 
   const verificationRevealSequenceRef = useRef(0);
   const [verificationRevealRequest, setVerificationRevealRequest] = useState<WorkspaceVerificationRevealRequest | null>(null);
@@ -5228,61 +5359,89 @@ export default function App() {
             aria-label={t("rightDock.workbench")}
           >
             <div className="workbench-dock__tools">
-              <div className="workbench-dock__tabs" role="tablist" aria-label={t("rightDock.views")}>
-                {SHOW_CONTEXT_DOCK && desktopLayoutStyle !== "creation" && (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={rightDockMode === "context"}
-                    className={`workbench-dock__tab${rightDockMode === "context" ? " workbench-dock__tab--active" : ""}`}
-                    onClick={() => openRightDockMode("context")}
-                  >
-                    <Activity size={13} />
-                    <span className="workbench-dock__tab-label">{t("rightDock.overview")}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={rightDockMode === "files"}
-                  className={`workbench-dock__tab${rightDockMode === "files" ? " workbench-dock__tab--active" : ""}`}
-                  onClick={() => openRightDockMode("files")}
-                >
-                  <FileText size={13} />
-                  <span className="workbench-dock__tab-label">{t("workspace.filesTab")}</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={rightDockMode === "changed"}
-                  className={`workbench-dock__tab${rightDockMode === "changed" ? " workbench-dock__tab--active" : ""}`}
-                  onClick={() => openRightDockMode("changed")}
-                >
-                  <GitBranch size={13} />
-                  <span className="workbench-dock__tab-label">{t("workspace.changedTab")}</span>
-                </button>
-                {remoteHosts.length > 0 && (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={rightDockMode === "remote"}
-                    className={`workbench-dock__tab${rightDockMode === "remote" ? " workbench-dock__tab--active" : ""}`}
-                    onClick={openRemoteDock}
-                  >
-                    <Server size={13} />
-                    <span className="workbench-dock__tab-label">{t("rightDock.remote")}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={rightDockMode === "instructions"}
-                  className={`workbench-dock__tab${rightDockMode === "instructions" ? " workbench-dock__tab--active" : ""}`}
-                  onClick={() => openRightDockMode("instructions")}
-                >
-                  <BookOpen size={13} />
-                  <span className="workbench-dock__tab-label">{t("instruction.title")}</span>
-                </button>
+              <div className="workbench-dock__tabs" ref={dockTabsRef} role="tablist" aria-label={t("rightDock.views")}>
+                {visibleDockTabOrder.map((mode) => {
+                  const active = rightDockMode === mode;
+                  const dragging = dockTabDrag === mode;
+                  const shifted = dockTabShift(mode);
+                  const dockTabCommon = (mode: RightDockMode) => ({
+                    ref: (node: HTMLButtonElement | null) => {
+                      if (node) dockTabElRefs.current.set(mode, node);
+                      else dockTabElRefs.current.delete(mode);
+                    },
+                    type: "button" as const,
+                    role: "tab",
+                    "aria-selected": active,
+                    className: `workbench-dock__tab${active ? " workbench-dock__tab--active" : ""}${dragging ? " workbench-dock__tab--dragging" : ""}${!dragging && shifted !== 0 ? " workbench-dock__tab--shifted" : ""}`,
+                    style: dragging
+                      ? { transform: `translateX(${dockTabDragOffset}px)` }
+                      : shifted !== 0
+                        ? { transform: `translateX(${shifted * (dockTabElRefs.current.get(mode)?.offsetWidth ?? 0)}px)` }
+                        : undefined,
+                    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => startDockTabDrag(event, mode),
+                    onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => moveDockTabDrag(event, mode),
+                    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => endDockTabDrag(event, mode),
+                    onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => endDockTabDrag(event, mode),
+                  });
+                  if (mode === "context") {
+                    return (
+                      <button
+                        key={mode}
+                        {...dockTabCommon(mode)}
+                        onClick={() => handleDockTabClick(() => openRightDockMode("context"))}
+                      >
+                        <Activity size={13} />
+                        <span className="workbench-dock__tab-label">{t("rightDock.overview")}</span>
+                      </button>
+                    );
+                  }
+                  if (mode === "files") {
+                    return (
+                      <button
+                        key={mode}
+                        {...dockTabCommon(mode)}
+                        onClick={() => handleDockTabClick(() => openRightDockMode("files"))}
+                      >
+                        <FileText size={13} />
+                        <span className="workbench-dock__tab-label">{t("workspace.filesTab")}</span>
+                      </button>
+                    );
+                  }
+                  if (mode === "changed") {
+                    return (
+                      <button
+                        key={mode}
+                        {...dockTabCommon(mode)}
+                        onClick={() => handleDockTabClick(() => openRightDockMode("changed"))}
+                      >
+                        <GitBranch size={13} />
+                        <span className="workbench-dock__tab-label">{t("workspace.changedTab")}</span>
+                      </button>
+                    );
+                  }
+                  if (mode === "remote") {
+                    return (
+                      <button
+                        key={mode}
+                        {...dockTabCommon(mode)}
+                        onClick={() => handleDockTabClick(openRemoteDock)}
+                      >
+                        <Server size={13} />
+                        <span className="workbench-dock__tab-label">{t("rightDock.remote")}</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={mode}
+                      {...dockTabCommon(mode)}
+                      onClick={() => handleDockTabClick(() => openRightDockMode("instructions"))}
+                    >
+                      <BookOpen size={13} />
+                      <span className="workbench-dock__tab-label">{t("instruction.title")}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="workbench-dock__body">

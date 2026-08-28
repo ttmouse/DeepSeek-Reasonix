@@ -96,7 +96,9 @@ console.log("\nbundle budgets");
 // retained-transcript navigation owner, and local Browser Relay settings page,
 // then merges the heartbeat detail-cache feature; the measured build is
 // 432.6 KiB gzip. Keep a narrow 0.4 KiB headroom.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 433.0 : 433.0;
+// Right-dock mode tab drag-to-reorder (pointer capture + room-making shift)
+// adds ~0.8 KiB gzip on the startup path; measured 433.8 KiB.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 434.0 : 434.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 // Render-blocking CSS is intentionally absent: styles.css loads deferred via

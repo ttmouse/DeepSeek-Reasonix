@@ -145,6 +145,47 @@ export function saveRightDockPreviewWidth(width: number): void {
 // flags, measured footer height, and viewport width stay as useState in App.tsx.)
 export type RightDockMode = "context" | "files" | "changed" | "remote" | "instructions";
 
+// rightDockTabOrder lets the user reorder the dock's mode tabs by dragging.
+// The order is a full permutation of RightDockMode persisted to localStorage;
+// conditionally hidden modes (context in creation, remote with no hosts) keep
+// their slot and are filtered at render time.
+export const RIGHT_DOCK_DEFAULT_TAB_ORDER: RightDockMode[] = ["context", "files", "changed", "remote", "instructions"];
+const RIGHT_DOCK_TAB_ORDER_KEY = "reasonix.rightDock.tabOrder";
+
+function sanitizeTabOrder(raw: unknown): RightDockMode[] {
+  if (!Array.isArray(raw)) return RIGHT_DOCK_DEFAULT_TAB_ORDER;
+  const seen = new Set<RightDockMode>();
+  const order: RightDockMode[] = [];
+  for (const item of raw) {
+    if (RIGHT_DOCK_DEFAULT_TAB_ORDER.includes(item as RightDockMode) && !seen.has(item as RightDockMode)) {
+      seen.add(item as RightDockMode);
+      order.push(item as RightDockMode);
+    }
+  }
+  for (const mode of RIGHT_DOCK_DEFAULT_TAB_ORDER) {
+    if (!seen.has(mode)) order.push(mode);
+  }
+  return order;
+}
+
+function loadRightDockTabOrder(): RightDockMode[] {
+  if (typeof window === "undefined") return RIGHT_DOCK_DEFAULT_TAB_ORDER;
+  try {
+    return sanitizeTabOrder(JSON.parse(window.localStorage.getItem(RIGHT_DOCK_TAB_ORDER_KEY) ?? "null"));
+  } catch {
+    return RIGHT_DOCK_DEFAULT_TAB_ORDER;
+  }
+}
+
+export function saveRightDockTabOrder(order: RightDockMode[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(RIGHT_DOCK_TAB_ORDER_KEY, JSON.stringify(sanitizeTabOrder(order)));
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
 // terminalPanelOpen is independent from rightDockMode — the terminal is a
 // bottom drawer that coexists with the workspace panel, not a mode of it.
 // Persisted to localStorage so it survives restart.
@@ -246,6 +287,7 @@ export type LayoutState = {
   workspacePanelMaximized: boolean;
   workspacePreviewActive: boolean;
   rightDockMode: RightDockMode;
+  rightDockTabOrder: RightDockMode[];
   terminalPanelOpen: boolean;
   terminalHeight: number;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -256,6 +298,7 @@ export type LayoutState = {
   setWorkspacePanelMaximized: Dispatch<SetStateAction<boolean>>;
   setWorkspacePreviewActive: Dispatch<SetStateAction<boolean>>;
   setRightDockMode: Dispatch<SetStateAction<RightDockMode>>;
+  setRightDockTabOrder: (order: RightDockMode[]) => void;
   setTerminalPanelOpen: Dispatch<SetStateAction<boolean>>;
   setTerminalHeight: (height: number) => void;
 };
@@ -269,6 +312,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   workspacePanelMaximized: false,
   workspacePreviewActive: false,
   rightDockMode: "context",
+  rightDockTabOrder: loadRightDockTabOrder(),
   terminalPanelOpen: loadTerminalPanelOpen(),
   terminalHeight: loadTerminalHeight(),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -279,6 +323,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   setWorkspacePanelMaximized: (update) => set((s) => ({ workspacePanelMaximized: applySetState(s.workspacePanelMaximized, update) })),
   setWorkspacePreviewActive: (update) => set((s) => ({ workspacePreviewActive: applySetState(s.workspacePreviewActive, update) })),
   setRightDockMode: (update) => set((s) => ({ rightDockMode: applySetState(s.rightDockMode, update) })),
+  setRightDockTabOrder: (order) => set({ rightDockTabOrder: sanitizeTabOrder(order) }),
   setTerminalPanelOpen: (update) => set((s) => ({ terminalPanelOpen: applySetState(s.terminalPanelOpen, update) })),
   setTerminalHeight: (height) => set({ terminalHeight: height }),
 }));
