@@ -10654,6 +10654,14 @@ body > .mermaid-diagram--fullscreen {
   padding: 0;
   border-radius: 0;
 }
+/* Line-numbered rows: wrap long lines by default so the preview never grows
+   a horizontal scrollbar. The global .code-line-text keeps white-space:pre
+   (chat and other surfaces); only the workspace preview opts into wrapping. */
+.workspace-preview__body--code .code-line-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .workspace-preview__body--code .code-block__wrap {
   display: flex;
   flex-direction: column;
