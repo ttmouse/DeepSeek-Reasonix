@@ -10656,8 +10656,11 @@ body > .mermaid-diagram--fullscreen {
 }
 /* Line-numbered rows: wrap long lines by default so the preview never grows
    a horizontal scrollbar. The global .code-line-text keeps white-space:pre
-   (chat and other surfaces); only the workspace preview opts into wrapping. */
+   (chat and other surfaces); only the workspace preview opts into wrapping.
+   min-width:0 lets the flex item shrink below its min-content width, which
+   white-space:pre-wrap alone cannot do on a flex row. */
 .workspace-preview__body--code .code-line-text {
+  min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
