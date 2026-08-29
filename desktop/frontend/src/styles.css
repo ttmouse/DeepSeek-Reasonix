@@ -10688,6 +10688,17 @@ body > .mermaid-diagram--fullscreen {
 .workspace-preview__body .code {
   min-width: 0;
 }
+/* Markdown documents rendered in the file-detail preview: wrap their code
+   blocks by default (same behavior as the code-mode viewer) and break long
+   words so wide documents never grow a horizontal scrollbar. */
+.workspace-preview__body .md {
+  overflow-wrap: anywhere;
+}
+.workspace-preview__body .md .code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 .workspace-media {
   box-sizing: border-box;
   width: 100%;
