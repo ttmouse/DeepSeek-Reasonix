@@ -447,7 +447,7 @@ ok(
   /const controllerReady =\s*state\.meta\?\.ready === true &&\s*\(!state\.meta\.runtime \|\| state\.meta\.runtime\.phase === "ready"\) &&\s*!state\.meta\.startupErr &&\s*!state\.backendActivationPending &&\s*!runtimeTransitioning;/.test(appSource) &&
     /if \(!activeTabId \|\| !controllerReady\) return;\s*void commitThenSend\(activeTabId, text\)\.catch/.test(appSource) &&
     /onPrompt=\{handleTranscriptPrompt\}/.test(appSource) &&
-    /submitDisabled=\{!controllerReady\}/.test(appSource),
+    /submitDisabled=\{remoteSurfaceActive \? !remoteComposerReady \|\| !remoteComposerProfileReady : !controllerReady\}/.test(appSource),
   "welcome prompts and composer submit share the controller readiness gate",
 );
 
@@ -500,10 +500,10 @@ ok(
   "rewind previews warn on incomplete coverage and only authorize file overwrite after a conflict confirmation",
 );
 
-ok(
-  /const transcriptHydrating = state\.hydrating && !state\.hydrateHistoryLoaded;/.test(appSource) &&
-    /hydrating=\{runtimeTransitioning \|\| transcriptHydrating\}/.test(appSource),
-  "Welcome is suppressed only until transcript history has loaded",
+ok(/const transcriptHydrating = state\.hydrating && !state\.hydrateHistoryLoaded;/.test(appSource) &&
+    /hydrating=\{transcriptHydrating \|\| \(runtimeTransitioning && !navigationTargetDataReady\)\}/.test(appSource) &&
+    /surfaceCommitToken=\{surfaceCommitToken\}/.test(appSource) && /onSurfacePaintReady=\{handleSurfacePaintReady\}/.test(appSource),
+  "Welcome stays suppressed through target data commit and navigation settles only after paint readiness",
 );
 
 ok(
@@ -679,8 +679,12 @@ ok(
 );
 
 ok(
-  finalDeclaration(".app--darwin .layout--workbench-chrome-hidden.layout--workspace-maximized .workbench-dock__tools", "padding-left") === "96px",
-  "macOS maximized workbench dock leaves safe space for inset window controls",
+  finalDeclaration(".app--darwin .layout--workbench-chrome-hidden.layout--sidebar-collapsed.layout--workspace-maximized .workbench-dock__tools", "padding-left") === "96px",
+  "macOS maximized workbench dock reserves traffic-light space when the sidebar is collapsed",
+);
+ok(
+  !/^\.app--darwin \.layout--workbench-chrome-hidden\.layout--workspace-maximized \.workbench-dock__tools\s*\{[\s\S]*?padding-left:\s*96px;/m.test(stylesSource),
+  "macOS maximized workbench dock does not reserve traffic-light space when the sidebar is expanded",
 );
 
 ok(

@@ -61,23 +61,18 @@ type BranchMeta struct {
 	Revision                int64  `json:"revision,omitempty"`
 	ContentDigest           string `json:"content_digest,omitempty"`
 	WriterID                string `json:"writer_id,omitempty"`
-	// SchemaVersion records the BranchMeta version that last wrote the listing
-	// fields (Turns/Preview) FROM the session's content. It is stamped only by the
-	// writers that actually derive those counts — Controller.snapshot's
-	// UpdateSessionMeta and Fork/Branch — never by EnsureBranchMeta / TouchBranchMeta
-	// / rename / set-model, which don't know the turn count. ListSessions trusts
-	// positive v1 counts, but revalidates a v1 zero once because old preview errors
-	// could be cached as empty. Current-version zero counts are authoritative.
+	// SchemaVersion identifies which BranchMeta version last wrote content-derived
+	// listing fields (Turns/Preview). Only snapshot/Fork/Branch stamp it; readers
+	// use it to distinguish authoritative current counts from legacy zeros.
 	SchemaVersion int `json:"schema_version,omitempty"`
-	// Turns and Preview are listing-only fields the desktop sidebar and CLI
-	// pickers show ("5 turns · 'help me debug…'") without decoding the whole
-	// .jsonl. The autosave path (Controller.snapshot) keeps them fresh from the
-	// in-memory conversation, so ListSessions stays O(1) per session instead of
-	// O(file size). SchemaVersion distinguishes a current, validated zero from an
-	// old zero that may have swallowed a decode error.
-	Turns        int               `json:"turns,omitempty"`
-	Preview      string            `json:"preview,omitempty"`
-	InFlightTurn *InFlightTurnMeta `json:"in_flight_turn,omitempty"`
+	// Turns/Preview accelerate listings; the listing identity binds them to the
+	// transcript generation they describe, so a failed projection write makes
+	// old counts visibly stale instead of silently reusable.
+	Turns                int               `json:"turns,omitempty"`
+	Preview              string            `json:"preview,omitempty"`
+	ListingRevision      int64             `json:"listing_revision,omitempty"`
+	ListingContentDigest string            `json:"listing_content_digest,omitempty"`
+	InFlightTurn         *InFlightTurnMeta `json:"in_flight_turn,omitempty"`
 	// Closed completed todo shelves; desktop remounts hide the same fingerprint.
 	DismissedTodoBatches []string `json:"dismissed_todo_batches,omitempty"`
 }
@@ -159,6 +154,11 @@ func LoadBranchMeta(sessionPath string) (BranchMeta, bool, error) {
 	}
 	var m BranchMeta
 	if err := json.Unmarshal(b, &m); err != nil {
+		// Treat an all-NUL/JSON-whitespace sidecar as a torn write so callers
+		// rebuild it; retain errors for partial JSON to avoid swallowing corruption.
+		if metaIsUnparseableAsAbsent(b) {
+			return BranchMeta{}, false, nil
+		}
 		return BranchMeta{}, false, fmt.Errorf("decode branch meta %s: %w", metaPath, err)
 	}
 	if m.ID == "" {
@@ -166,6 +166,20 @@ func LoadBranchMeta(sessionPath string) (BranchMeta, bool, error) {
 	}
 	m.sanitizeDisplayFields()
 	return m, true, nil
+}
+
+// metaIsUnparseableAsAbsent recognizes an empty or all-NUL/JSON-whitespace torn
+// write that is safe to rebuild; other bytes indicate genuine corruption.
+func metaIsUnparseableAsAbsent(b []byte) bool {
+	if len(b) == 0 {
+		return true
+	}
+	for _, c := range b {
+		if c != 0x00 && c != ' ' && c != '\t' && c != '\r' && c != '\n' {
+			return false
+		}
+	}
+	return true
 }
 
 // sanitizeDisplayFields cleans persisted display strings that older builds
@@ -310,6 +324,7 @@ func preserveBranchMetaPersistence(next *BranchMeta, existing BranchMeta) {
 		next.Revision = existing.Revision
 		next.ContentDigest = existing.ContentDigest
 		next.WriterID = existing.WriterID
+		preserveBranchMetaListingProjection(next, existing)
 		return
 	}
 	if existing.Revision == next.Revision {
@@ -319,7 +334,19 @@ func preserveBranchMetaPersistence(next *BranchMeta, existing BranchMeta) {
 		if strings.TrimSpace(next.WriterID) == "" {
 			next.WriterID = existing.WriterID
 		}
+		if next.ListingRevision == 0 && existing.ListingRevision != 0 ||
+			strings.TrimSpace(next.ListingContentDigest) == "" && strings.TrimSpace(existing.ListingContentDigest) != "" {
+			preserveBranchMetaListingProjection(next, existing)
+		}
 	}
+}
+
+func preserveBranchMetaListingProjection(next *BranchMeta, existing BranchMeta) {
+	next.SchemaVersion = existing.SchemaVersion
+	next.Turns = existing.Turns
+	next.Preview = existing.Preview
+	next.ListingRevision = existing.ListingRevision
+	next.ListingContentDigest = existing.ListingContentDigest
 }
 
 func EnsureBranchMeta(sessionPath string) (BranchMeta, error) {
@@ -658,5 +685,6 @@ func UpdateSessionMeta(sessionPath, model, preview string, turns int, markActivi
 	// These counts were derived from the current content, so mark them
 	// authoritative — listing can then trust Turns (even 0) without re-decoding.
 	m.SchemaVersion = BranchMetaCountsVersion
+	stampSessionListingProjection(&m)
 	return saveBranchMeta(sessionPath, m, markActivity)
 }

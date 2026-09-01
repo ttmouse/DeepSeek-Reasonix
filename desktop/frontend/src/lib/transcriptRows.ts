@@ -11,6 +11,7 @@
 // "expanded"), and preference switches applying to folds already on screen.
 
 import { isHostRecoveryGuidance } from "./hostRecoverySteer";
+import { stableStringHash } from "./stableStringHash";
 import { isBatchedReadOnlyTool, isSteerNoticeText, type ExtensionItem, type Item } from "./useController";
 import { appendTurnActionCopyText } from "./turnActionCopy";
 import { isCreationGroupableTool, toolGroupKind, type ToolGroupKind } from "../components/ToolGroup";
@@ -155,6 +156,8 @@ export interface SegmentModel {
   displayItems: Item[];
   /** Turn-level: the turn renders anything outside its folds. */
   hasOutsideContent: boolean;
+  /** Disclosure ownership: every untouched segment stays open until its turn settles. */
+  foldActive: boolean;
   hasRunningWork: boolean;
   durationMs: number;
   /** "full" carries the work-duration label; earlier segments only list counts. */
@@ -172,6 +175,15 @@ export interface TurnModel {
   segments: SegmentModel[];
   /** Combined assistant answer text for the turn action row ("" → no row). */
   actionText: string;
+}
+
+function turnStableIdentity(model: TurnModel): string {
+  if (model.user) {
+    const user = model.user;
+    return JSON.stringify([user.id, user.submissionId ?? "", user.createdAt ?? null, user.text, user.submitText ?? "", user.historyTurn ?? null, user.checkpointTurn ?? null]);
+  }
+  const first = model.turnItems[0];
+  return JSON.stringify(["prelude", first?.kind ?? "", first?.id ?? ""]);
 }
 
 // Keep only items the fold body will actually render — an expandable fold over
@@ -242,17 +254,30 @@ export function buildTurnModels(
     model.isActive = running && index === turns.length - 1;
     const segments = partitionTurnItems(model.turnItems, live);
     const turnHasOutsideContent = segments.some((segment) => segment.outsideItems.length > 0);
+    const turnIdentity = turnStableIdentity(model);
     model.segments = segments.map((segment, segmentIndex) => {
       const isLastSegment = segmentIndex === segments.length - 1;
       const displayItems = foldDisplayItems(segment.processItems, live, hideReasoning);
       const turnActive = model.isActive && isLastSegment;
+      const hasRunningWork = segmentHasRunningWork(displayItems, turnActive, live);
       return {
-        key: segment.processItems[0]?.id ?? "",
+        // Duplicate raw ids occur in imported/merged histories. Derive the
+        // disambiguator from stable turn/item identity rather than occurrence
+        // order, so prepending older history never renames an already mounted row.
+        key: `${segment.processItems[0]?.id || "seg"}@${stableStringHash(
+          JSON.stringify([
+            turnIdentity,
+            segmentIndex,
+            segment.processItems[0]?.kind ?? "",
+            segment.processItems[0]?.id ?? "",
+          ]),
+        )}`,
         processItems: segment.processItems,
         outsideItems: segment.outsideItems,
         displayItems,
         hasOutsideContent: turnHasOutsideContent,
-        hasRunningWork: segmentHasRunningWork(displayItems, turnActive, live),
+        foldActive: model.isActive || hasRunningWork,
+        hasRunningWork,
         durationMs: isLastSegment ? turnWorkDurationMs(model.turnItems) : 0,
         labelStyle: isLastSegment ? "full" : "counts",
         turnActive,
@@ -282,10 +307,10 @@ export type FoldMap = ReadonlyMap<string, FoldEntry>;
 export const EMPTY_FOLDS: FoldMap = new Map();
 
 export function defaultFoldOpen(
-  segment: { hasOutsideContent: boolean; hasRunningWork: boolean; keepReasoningExpanded?: boolean },
+  segment: { hasOutsideContent: boolean; hasRunningWork: boolean; foldActive?: boolean; keepReasoningExpanded?: boolean },
   preference: ProcessFoldPreference,
 ): boolean {
-  return preference === "expanded" || segment.keepReasoningExpanded === true || !segment.hasOutsideContent || segment.hasRunningWork;
+  return preference === "expanded" || segment.keepReasoningExpanded === true || !segment.hasOutsideContent || segment.foldActive === true || segment.hasRunningWork;
 }
 
 export interface FoldSegmentState {
@@ -303,7 +328,7 @@ export function foldSegmentStates(models: readonly TurnModel[], keepReasoningExp
       out.push({
         key: segment.key,
         hasOutsideContent: segment.hasOutsideContent,
-        hasRunningWork: segment.hasRunningWork,
+        hasRunningWork: segment.foldActive,
         keepReasoningExpanded: keepReasoningExpanded && segment.displayItems.some((item) => item.kind === "assistant"),
       });
     }
@@ -421,7 +446,7 @@ type TranscriptRowContent =
   | { kind: "older-history"; key: string }
   | { kind: "user"; key: string; item: UserItem; turn: number | undefined }
   | { kind: "process-header"; key: string; segment: SegmentModel; open: boolean }
-  | { kind: "reasoning"; key: string; item: AssistantItem; segmentKey: string }
+  | { kind: "reasoning"; key: string; item: AssistantItem; segmentKey: string; autoFollowActive?: boolean }
   | { kind: "tool"; key: string; item: ToolItem }
   | { kind: "tool-batch"; key: string; items: ToolItem[] }
   | { kind: "tool-group"; key: string; items: ToolItem[]; groupKind: ToolGroupKind }
@@ -534,6 +559,18 @@ function processBodyRows(
   let roBatch: ToolItem[] = [];
   let toolBatch: ToolItem[] = [];
   let toolBatchKind: ToolGroupKind | null = null;
+  const pushToolRow = (item: ToolItem) => {
+    rows.push({
+      kind: "tool",
+      key: `t:${item.id}`,
+      item,
+      layoutVariant: resolveToolCardDefaultOpen(
+        item,
+        subcallsByParent.get(item.id)?.length ?? 0,
+        reasoningDisplayMode,
+      ) ? "tool-expanded" : "tool-collapsed",
+    });
+  };
   const flushRO = () => {
     if (roBatch.length === 0) return;
     rows.push({ kind: "tool-batch", key: `tb:${roBatch[0].id}`, items: [...roBatch], layoutVariant: "tool-batch-collapsed" });
@@ -541,7 +578,11 @@ function processBodyRows(
   };
   const flushToolBatch = () => {
     if (!toolBatchKind || toolBatch.length === 0) return;
-    rows.push({ kind: "tool-group", key: `tg:${toolBatch[0].id}`, items: [...toolBatch], groupKind: toolBatchKind, layoutVariant: "tool-group-collapsed" });
+    if (creationMode || toolBatch.length >= 2) {
+      rows.push({ kind: "tool-group", key: `tg:${toolBatch[0].id}`, items: [...toolBatch], groupKind: toolBatchKind, layoutVariant: "tool-group-collapsed" });
+    } else {
+      pushToolRow(toolBatch[0]);
+    }
     toolBatch = [];
     toolBatchKind = null;
   };
@@ -559,6 +600,19 @@ function processBodyRows(
       flushToolBatch();
       flushRO();
     }
+    if (
+      !creationMode
+      && it.kind === "tool"
+      && it.status === "done"
+      && !it.fileDiff
+      && toolGroupKind(it as ToolItem) === "shell"
+    ) {
+      flushRO();
+      toolBatchKind = "shell";
+      toolBatch.push(it as ToolItem);
+      continue;
+    }
+    if (it.kind === "tool") flushToolBatch();
     if (!creationMode && it.kind === "tool" && it.status !== "running" && isBatchedReadOnlyTool(it.name, it.readOnly)) {
       roBatch.push(it as ToolItem);
       continue;
@@ -569,16 +623,7 @@ function processBodyRows(
     }
     switch (it.kind) {
       case "tool":
-        rows.push({
-          kind: "tool",
-          key: `t:${it.id}`,
-          item: it as ToolItem,
-          layoutVariant: resolveToolCardDefaultOpen(
-            it as ToolItem,
-            subcallsByParent.get(it.id)?.length ?? 0,
-            reasoningDisplayMode,
-          ) ? "tool-expanded" : "tool-collapsed",
-        });
+        pushToolRow(it as ToolItem);
         break;
       case "phase":
         rows.push({ kind: "phase", key: `p:${it.id}`, item: it as PhaseItem, layoutVariant: "static" });
@@ -602,9 +647,10 @@ function processBodyRows(
           key: `r:${it.id}`,
           item: it as AssistantItem,
           segmentKey: segment.key,
+          autoFollowActive: segment.foldActive,
           layoutVariant: resolveReasoningLayoutVariant(
             reasoningDisplayMode,
-            Boolean((it as AssistantItem).streaming && !(it as AssistantItem).reasoningComplete),
+            segment.foldActive,
           ) ?? "reasoning-summary",
         });
         break;
@@ -630,18 +676,19 @@ export interface BuildRowsOptions {
 
 export function buildTranscriptRows(models: readonly TurnModel[], options: BuildRowsOptions): TranscriptRowWithLayout[] {
   const rows: TranscriptRowWithLayout[] = [];
+  const rowGroups: TranscriptRowWithLayout[][] = [];
+  const usedKeys = new Set<string>();
   const reasoningDisplayMode = options.reasoningDisplayMode ?? "auto";
   const subcallsByParent = options.subcallsByParent ?? new Map<string, readonly ToolItem[]>();
-  if (options.hasOlderHistory) {
-    rows.push({ kind: "older-history", key: OLDER_HISTORY_ROW_KEY, layoutVariant: "static" });
-  }
-  for (const model of models) {
+  for (let modelIndex = models.length - 1; modelIndex >= 0; modelIndex -= 1) {
+    const model = models[modelIndex];
+    const modelRows: TranscriptRowWithLayout[] = [];
     const user = model.user;
     // Turn numbers come from the checkpoint-aware map, not the raw question
     // index, so rewind targets survive history paging.
     const turn = user ? options.turnForUser(user) : undefined;
     if (user) {
-      rows.push({ kind: "user", key: userRowKey(user.id), item: user, turn, layoutVariant: "text-flow" });
+      modelRows.push({ kind: "user", key: userRowKey(user.id), item: user, turn, layoutVariant: "text-flow" });
     }
     // Model-switch notices render right after their user message: they confirm
     // an accepted switch, and keeping that position in the settled rows (not
@@ -657,17 +704,17 @@ export function buildTranscriptRows(models: readonly TurnModel[], options: Build
     for (const segment of model.segments) {
       if (segment.displayItems.length > 0) {
         const open = options.folds.get(segment.key)?.open ?? defaultFoldOpen(segment, options.foldPreference);
-        rows.push({ kind: "process-header", key: `ph:${segment.key}`, segment, open, layoutVariant: "static" });
-        if (open) rows.push(...processBodyRows(segment, options.creationMode, reasoningDisplayMode, subcallsByParent));
+        modelRows.push({ kind: "process-header", key: `ph:${segment.key}`, segment, open, layoutVariant: "static" });
+        if (open) modelRows.push(...processBodyRows(segment, options.creationMode, reasoningDisplayMode, subcallsByParent));
       }
       for (const item of segment.outsideItems) {
         if (item.kind === "extension") {
-          rows.push({ kind: "extension", key: `x:${item.id}`, item, layoutVariant: "text-flow" });
+          modelRows.push({ kind: "extension", key: `x:${item.id}`, item, layoutVariant: "text-flow" });
         } else if (item.kind === "notice") {
           if (item.variant === "model-switch") continue; // already rendered after the user row
-          rows.push({ kind: "notice", key: `n:${item.id}`, item, layoutVariant: "text-flow" });
+          modelRows.push({ kind: "notice", key: `n:${item.id}`, item, layoutVariant: "text-flow" });
         } else {
-          rows.push({ kind: "answer", key: `a:${item.id}`, item, layoutVariant: "text-flow" });
+          modelRows.push({ kind: "answer", key: `a:${item.id}`, item, layoutVariant: "text-flow" });
         }
       }
     }
@@ -680,9 +727,17 @@ export function buildTranscriptRows(models: readonly TurnModel[], options: Build
       (model.actionText.trim() || options.hasCheckpointForTurn?.(turn)) &&
       user
     ) {
-      rows.push({ kind: "turn-actions", key: `ta:${user.id}`, turn, text: model.actionText, layoutVariant: "static" });
+      modelRows.push({ kind: "turn-actions", key: `ta:${user.id}`, turn, text: model.actionText, layoutVariant: "static" });
     }
+    for (let index = modelRows.length - 1; index >= 0; index -= 1) {
+      const row = modelRows[index];
+      if (usedKeys.has(row.key)) modelRows[index] = { ...row, key: `${row.key}@${stableStringHash(`${turnStableIdentity(model)}|${row.kind}|${row.key}`)}` };
+      usedKeys.add(modelRows[index].key);
+    }
+    rowGroups.push(modelRows);
   }
+  for (let index = rowGroups.length - 1; index >= 0; index -= 1) rows.push(...rowGroups[index]);
+  if (options.hasOlderHistory) rows.unshift({ kind: "older-history", key: OLDER_HISTORY_ROW_KEY, layoutVariant: "static" });
   return rows;
 }
 

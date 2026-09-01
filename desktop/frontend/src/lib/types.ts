@@ -4,6 +4,8 @@ import type { HistoryServerSearch } from "./searchSources";
 import type { Todo } from "./tools";
 import type { ContextBudgetInfo, ContextMaintenanceInfo, WireContextMaintenance } from "./contextMaintenanceTypes";
 import type { WireApproval } from "./approvalTypes";
+import type { RemoteProjectNodeFields, RemoteSessionMetaFields, RemoteTabMetaFields } from "./remoteTypes";
+export * from "./remoteTypes";
 export type { ContextBudgetInfo, ContextMaintenanceInfo, ContextMaintenanceReceipt, WireContextMaintenance } from "./contextMaintenanceTypes";
 export type { ProjectGroupsSnapshot, ProjectRuntimeTopic, ProjectTopicKey, ProjectTopicPage, ProjectTopicPageRequest, ProjectTreeChangedV2, ProjectTreeOrganizationBindings, ProjectTreeRuntimeSnapshot, ProjectTreeSnapshot, SessionCatalogBindings, SessionCatalogStatus, SessionGroup, SessionReference } from "./sessionCatalogTypes";
 export type EventKind =
@@ -14,6 +16,9 @@ export type EventKind =
   | "tool_dispatch"
   | "tool_result"
   | "tool_result_preview"
+  | "turn_status"
+  | "prompt_answered" | "session_changed"
+  | "mcp_interaction"
   | "tool_progress"
   | "usage"
   | "notice"
@@ -33,8 +38,31 @@ export type EventKind =
   | "context_maintenance"
   | "workspace_changed"
   | "turn_phase"
-  | "completion_summary";
+  | "completion_summary"
+  | "provider_unreachable";
 export type StreamAttemptAction = "begin" | "discard" | "commit";
+export type TurnStatus = "queued" | "in_progress" | "waiting_user" | "cancelling" | "completed" | "interrupted" | "failed" | "protocol_failed";
+export interface TurnEventEnvelope {
+  turnId: string;
+  seq: number;
+  status: TurnStatus | string;
+  runtimeEpoch?: string;
+  submissionId?: string;
+  transcriptRevision?: number;
+  transcriptDigest?: string;
+  event: WireEvent;
+}
+export interface TurnEventReplayView {
+  events: TurnEventEnvelope[];
+  floorSeq: number;
+  latestSeq: number;
+  nextAfterSeq: number;
+  hasMore: boolean;
+  resetRequired: boolean;
+  transcriptRevision?: number;
+  transcriptDigest?: string;
+  runtimeEpoch?: string;
+}
 export interface WireStreamAttempt {
   id: string;
   action: StreamAttemptAction;
@@ -230,6 +258,20 @@ export interface WireAsk {
   questions: WireAskQuestion[];
 }
 
+export type { MCPAppInstanceView, MCPAppPresentation } from "./mcpAppProtocol";
+
+// One server-initiated MCP elicitation awaiting accept/decline/cancel. Form
+// mode carries a flat primitive JSON schema; url mode a credential-free target.
+export interface WireMCPInteraction {
+  id: string;
+  server: string;
+  mode: "form" | "url";
+  message: string;
+  requestedSchema?: unknown;
+  url?: string;
+  elicitationId?: string;
+}
+
 // Extension UI surfaces (stage 8a) — structured-only documents published by
 // extension sidecars through the host UI hub. Exactly one sub-struct is set,
 // selected by `kind`.
@@ -319,6 +361,9 @@ export interface MemoryCitation {
 
 export interface WireEvent {
   kind: EventKind;
+  turnId?: string;
+  seq?: number;
+  status?: TurnStatus;
   text?: string;
   detail?: string;
   // Stable notice id for localization; empty/absent = localize by text match.
@@ -330,6 +375,7 @@ export interface WireEvent {
   usage?: WireUsage;
   approval?: WireApproval;
   ask?: WireAsk;
+  mcpInteraction?: WireMCPInteraction;
   compaction?: WireCompaction;
   maintenance?: WireContextMaintenance;
   guardian?: WireGuardian;
@@ -338,15 +384,16 @@ export interface WireEvent {
   err?: string;
   checkpointTurn?: number; // Authoritative TurnDone rewind target; zero is valid.
   submissionId?: string; // Opaque correlation for the exact optimistic user submission.
-  outcome?: "final_readiness" | "recovery_paused";
+  outcome?: "completed" | "partial" | "blocked" | "final_readiness" | "recovery_paused";
   readiness?: WireFinalReadiness;
   retryAttempt?: number;
   retryMax?: number;
   /** Optional: "headers" | "stream". Older clients ignore unknown fields. */
-  retryScope?: "headers" | "stream";
+  retryScope?: "headers" | "stream" | "protocol";
   streamAttempt?: WireStreamAttempt;
   /** Durable session-inbox item id for steer / TurnDone correlation. */
   itemId?: string;
+  sessionPath?: string; // Serve multi-session routing tag; absent locally.
   workspace?: WireWorkspaceChanged;
   /** turn_phase: working | checking | verifying | reviewing */
   phase?: string;
@@ -428,7 +475,7 @@ export interface WireFinalReadiness {
 }
 
 // Tab management types (desktop/tabs.go).
-export interface TabMeta {
+export interface TabMeta extends RemoteTabMetaFields {
   id: string;
   tabType?: "session" | "file";
   scope: string;
@@ -456,6 +503,10 @@ export interface TabMeta {
   backgroundJobs?: number;
   cancelRequested?: boolean;
   cancellable?: boolean;
+  turnId?: string;
+  turnStatus?: TurnStatus;
+  turnEventSeq?: number;
+  turnReplayAfterSeq?: number;
   mode: Mode;
   collaborationMode?: CollaborationMode;
   toolApprovalMode?: ToolApprovalMode;
@@ -497,7 +548,7 @@ export interface TerminalWorkspaceView {
   shells: TerminalShellView[];
 }
 
-export interface ProjectNode {
+export interface ProjectNode extends RemoteProjectNodeFields {
   key: string;
   kind: "project" | "topic" | "session" | "global_folder" | "global_topic" | "global_session";
   label: string;
@@ -911,7 +962,7 @@ export interface ContextInfo {
   contextBudget?: ContextBudgetInfo;
 }
 
-export interface Meta {
+export interface Meta extends RemoteSessionMetaFields {
   label: string;
   ready: boolean;
   runtime?: SessionRuntimeView;
@@ -1140,6 +1191,10 @@ export interface ServerView {
   /** @deprecated derived from enabled */
   startIntent?: "off" | "automatic" | string;
   runtimeState?: "idle" | "connecting" | "ready" | "issue" | string;
+  protocolVersion?: string;
+  sessionState?: "connecting" | "listening" | "ready" | "reconnecting" | "failed" | "closed" | string;
+  reconnectAttempts?: number;
+  errorKind?: "auth_required" | "session_missing" | "stream_closed" | "timeout" | "protocol" | "transport" | string;
   /** Product availability: available_on_demand | starting | connected | auth_required | project_auth_changed | start_failed | disabled */
   availability?: string;
   enabled?: boolean;
@@ -1519,161 +1574,6 @@ export type RelayTabInfo = {
   active: boolean;
 };
 
-// ── Remote SSH module (mirrors desktop/remote_app.go view structs) ──
-
-export type RemoteConnState =
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "degraded"
-  | "pending_hostkey"
-  | "pending_secret"
-  | "stopped";
-
-export type RemoteServerState =
-  | "starting"
-  | "detect"
-  | "install"
-  | "waiting_lock"
-  | "launch"
-  | "health_check"
-  | "ready"
-  | "error"
-  | "stopped"
-  | "reuse";
-
-export interface RemoteHostView {
-  id: string;
-  label: string;
-  host: string;
-  port: number;
-  user: string;
-  identityFile: string;
-  proxyJump: string;
-  defaultWorkspace: string;
-  serveInstall: string;
-  useSSHConfig: boolean;
-  passwordSet?: boolean;
-  keyPassphraseSet?: boolean;
-}
-
-export interface RemoteHostInput {
-  label: string;
-  host: string;
-  port: number;
-  user: string;
-  identityFile: string;
-  proxyJump: string;
-  defaultWorkspace: string;
-  serveInstall: string;
-  useSSHConfig: boolean;
-  password?: string;
-  keyPassphrase?: string;
-  clearPassword?: boolean;
-  clearPassphrase?: boolean;
-  preserveExistingSettings?: boolean;
-}
-
-export interface RemoteFingerprintView {
-  hostId: string;
-  address: string;
-  keyType: string;
-  sha256: string;
-}
-
-export interface RemoteSecretPromptView {
-  promptId: string;
-  hostId: string;
-  host: string;
-  kind: "password" | "passphrase";
-  identity?: string;
-}
-
-export interface RemoteKnownHostLocation {
-  path: string;
-  line: number;
-}
-
-export interface RemoteConnectionErrorDetails {
-  code: "connection_failed" | "auth_failed" | "host_key_rejected" | "host_key_mismatch";
-  presentedSha256?: string;
-  knownHostRecords?: RemoteKnownHostLocation[];
-}
-
-export interface RemoteConnectionStatus {
-  hostId: string;
-  state: RemoteConnState;
-  error?: string;
-  errorDetails?: RemoteConnectionErrorDetails;
-  fingerprint?: RemoteFingerprintView;
-  secretPrompt?: RemoteSecretPromptView;
-  attempt?: number;
-}
-
-export interface RemoteDirEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-  size: number;
-  mtimeUnix: number;
-  symlink: boolean;
-}
-
-export interface RemoteFilePreview {
-  path: string;
-  body: string;
-  size: number;
-  mtimeUnix: number;
-  truncated: boolean;
-  binary: boolean;
-  err?: string;
-}
-
-export interface RemoteWriteResult {
-  ok: boolean;
-  conflict: boolean;
-  newMtimeUnix: number;
-}
-
-export interface RemoteForwardInput {
-  localPort: number;
-  remoteHost: string;
-  remotePort: number;
-  label: string;
-}
-
-export interface RemoteForwardView {
-  id: string;
-  hostId: string;
-  localPort: number;
-  remoteHost: string;
-  remotePort: number;
-  label: string;
-  state: string;
-  error?: string;
-}
-
-export interface RemoteServerView {
-  hostId: string;
-  workspace: string;
-  state: RemoteServerState;
-  message?: string;
-  localUrl?: string;
-  error?: string;
-}
-
-/** Path-free summary of files left behind by the removed Remote Workbench. */
-export interface RemoteLegacyWorkbenchData {
-  mirrorCount: number;
-  mirrorBytes: number;
-  trustFile: boolean;
-}
-
-export interface RemoteForwardsEvent {
-  hostId: string;
-  forwards: RemoteForwardView[];
-}
-
 /** Extension runtime doctor report from App.RuntimeDoctor. */
 export interface RuntimeDoctorReport {
   text: string;
@@ -1806,6 +1706,7 @@ export interface ProviderView {
   headers?: Record<string, string> | null; // optional extra request headers for compatible gateways
   extraBody?: Record<string, unknown> | null; // optional extra top-level request body fields for compatible gateways
   authHeader?: boolean; // Anthropic-compatible: send Authorization: Bearer instead of x-api-key
+  noProxy?: boolean; // reach this provider's endpoint directly, bypassing the configured/system proxy
   keySet: boolean; // the env var currently resolves to a value
   requiresKey?: boolean; // false for explicit no-auth providers
   configured?: boolean; // selectable: key is set or no key is required
@@ -1998,7 +1899,37 @@ export interface SandboxView {
   effectiveWorkspaceRoot: string;
   effectiveWriteRoots: string[];
   shell: string; // "auto" | "bash" | "powershell" | "pwsh"
-  effectiveShell?: string; // "bash" | "git-bash" | "powershell" | "pwsh"
+  effectiveShell?: string; // bound shell: "bash" | "zsh" | "sh" | "git-bash" | "powershell" | "pwsh"
+  resolvedShell?: string; // shell a reload would pick now
+  shellReloadRequired?: boolean;
+  shellCapabilities: ShellCapabilityView[];
+  gitCapability?: ShellCapabilityView | null;
+  shellInstallAction?: ShellInstallActionView | null;
+  shellRepairGuidance?: { manager: string; command?: string } | null;
+  gitRepairGuidance?: { manager: string; command?: string } | null;
+}
+// One discovered interpreter: usable on this host, where, and why not.
+export interface ShellCapabilityView {
+  id: string; // "bash" | "zsh" | "sh" | "git-bash" | "powershell" | "pwsh"
+  variant?: string;
+  available: boolean;
+  path?: string;
+  source?: string;
+  reason?: string;
+}
+// Optional manual repair action the sandbox section may offer (Windows only).
+export interface ShellInstallActionView {
+  id: string; // "git-for-windows"
+  mode: string; // "manual"
+  available: boolean;
+  manualUrl?: string;
+}
+// Structured outcome of InstallShellSupport.
+export interface ShellInstallResult {
+  status: string; // "manual_required" | "unsupported_platform"
+  path?: string;
+  reason?: string;
+  manualUrl?: string;
 }
 
 export interface NetworkProxyView {

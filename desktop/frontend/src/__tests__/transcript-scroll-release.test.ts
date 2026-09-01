@@ -8,7 +8,18 @@ import {
   type TranscriptScrollEvent,
   type TranscriptScrollState,
 } from "../lib/transcriptScrollArbiter";
-import { pinTranscriptScrollerToNativeTail, pinTranscriptTailAfterViewportShrink } from "../lib/transcriptScrollGeometry";
+import {
+  nativeTranscriptBottomTop,
+  nativeTranscriptDistanceFromBottom,
+  observeNativeTranscriptTailClamp,
+  pinTranscriptTailAfterViewportShrink,
+} from "../lib/transcriptScrollGeometry";
+import {
+  TRANSCRIPT_TAIL_REARM_MIN_HEIGHT_PX,
+  transcriptTailIsStranded,
+  transcriptTailSettleBudgetExhausted,
+  transcriptTailShouldReaim,
+} from "../lib/transcriptTailSettle";
 
 let passed = 0;
 let failed = 0;
@@ -44,8 +55,8 @@ const streaming = run([
 ]);
 check(streaming.state.mode === "tail-follow", "dynamic atBottom=false does not steal tail ownership");
 check(
-  streaming.commands.join(",") === "AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM",
-  "tail growth and delivered displacement emit only Virtuoso autoscroll commands",
+  streaming.commands.join(",") === "AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM",
+  "only geometry events emit tail autoscroll commands",
 );
 
 const manual = run([
@@ -72,18 +83,32 @@ const returned = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
-  // The bottom must be held: two consecutive at-bottom deliveries inside the
-  // same reader-intent window re-engage tail-follow (#8709/#9099).
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
-  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "READER_IDLE_DEADLINE" },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: true },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: true },
+  { type: "READER_TAIL_HANDOFF" },
 ]);
-check(returned.state.mode === "tail-follow", "holding the real bottom across two deliveries re-engages tail-follow");
+check(returned.state.mode === "tail-follow", "two stable geometry frames explicitly hand reader ownership to the tail");
+
+const stableAwayFromTail = run([
+  { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "USER_SCROLL_INTENT", canClaimTail: true },
+  { type: "READER_IDLE_DEADLINE" },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: false },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: false },
+  { type: "READER_TAIL_HANDOFF" },
+]);
+check(stableAwayFromTail.state.mode === "manual", "stable geometry away from the real tail cannot enter handoff-pending");
+check(stableAwayFromTail.state.readerPhase === "settling", "an ineligible reader transaction remains observationally settling");
 
 const touchDownOnce = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "READER_IDLE_DEADLINE" },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: true },
 ]);
 check(touchDownOnce.state.mode === "manual", "a single touch-down at the bottom stays manual");
 
@@ -96,24 +121,26 @@ const holdBrokenByUpwardGesture = run([
   { type: "USER_SCROLL_INTENT", canClaimTail: false },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
+  { type: "READER_IDLE_DEADLINE" },
+  { type: "READER_STABILITY_SAMPLE", stable: true, tailEligible: true },
 ]);
-check(holdBrokenByUpwardGesture.state.mode === "manual", "an upward gesture breaks the bottom-hold streak");
+check(holdBrokenByUpwardGesture.state.mode === "manual", "an upward gesture starts a new reader stability transaction");
 
 const holdEndsWithIntentWindow = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
-  { type: "READER_INTENT_ENDED" },
+  { type: "READER_TRANSACTION_END" },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
 ]);
-check(holdEndsWithIntentWindow.state.mode === "manual", "a closed intent window ends the bottom-hold streak");
+check(holdEndsWithIntentWindow.state.mode === "manual", "a closed transaction discards prior stability samples");
 
 const steadyStateOffsetKeepsManual = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: false },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
-  { type: "READER_INTENT_ENDED" },
+  { type: "READER_TRANSACTION_END" },
   { type: "SCROLL_TO_OFFSET", owner: "anchor-compensation", top: 640 },
   { type: "SCROLL_TO_OFFSET", owner: "block-window-prepend", top: 680 },
 ]);
@@ -127,7 +154,7 @@ const browserClamp = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: true },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
-  { type: "READER_INTENT_ENDED" },
+  { type: "READER_TRANSACTION_END" },
   { type: "CONTENT_SHRANK" },
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
 ]);
@@ -137,7 +164,7 @@ const manualResize = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
   { type: "USER_SCROLL_INTENT", canClaimTail: false },
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true },
-  { type: "READER_INTENT_ENDED" },
+  { type: "READER_TRANSACTION_END" },
   { type: "USER_RESIZE_BEGIN" },
   { type: "LAYOUT_HEIGHT_CHANGED" },
   { type: "USER_RESIZE_END" },
@@ -217,9 +244,24 @@ const shrinkOffBottom = run([
 ]);
 check(shrinkOffBottom.state.mode === "tail-follow", "a shrink does not steal tail ownership");
 check(
-  shrinkOffBottom.commands.join(",") === "AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM",
-  "delivered displacement and later growth both reconverge while tail-follow owns the viewport",
+  shrinkOffBottom.commands.join(",") === "AUTOSCROLL_TO_BOTTOM",
+  "only the later geometry revision reconverges while tail-follow owns the viewport",
 );
+
+check(transcriptTailSettleBudgetExhausted(0) === false, "tail settle may re-aim before its bounded budget is spent");
+check(transcriptTailSettleBudgetExhausted(8) === true, "tail settle stops at its bounded re-aim budget");
+check(transcriptTailShouldReaim(null, 1_000) === true, "a fresh tail settle always re-aims");
+check(transcriptTailShouldReaim(1_000, 1_000 + TRANSCRIPT_TAIL_REARM_MIN_HEIGHT_PX - 1) === false, "sub-threshold tail measurement jitter does not re-aim");
+check(transcriptTailShouldReaim(1_000, 1_000 + TRANSCRIPT_TAIL_REARM_MIN_HEIGHT_PX) === true, "real tail growth re-arms the settle writer");
+check(transcriptTailIsStranded("tail-follow", 37, true), "an exhausted off-bottom tail-follow is recoverable");
+check(!transcriptTailIsStranded("tail-follow", 37, false), "an active tail settle retains automatic ownership");
+check(!transcriptTailIsStranded("manual", 37, true), "manual reading never triggers tail exhaustion recovery");
+
+const strandedTail = run([
+  { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true, substantial: true },
+  { type: "TAIL_SETTLE_EXHAUSTED" },
+]);
+check(strandedTail.state.mode === "tail-follow" && !strandedTail.state.atBottom, "exhausted tail repair exposes recovery without revoking ownership");
 
 const repeatedDisplacement = run([
   { type: "SCROLL_DELIVERED", atBottom: true, scrollable: true },
@@ -229,8 +271,8 @@ const repeatedDisplacement = run([
   { type: "LAYOUT_HEIGHT_CHANGED" },
 ]);
 check(
-  repeatedDisplacement.commands.join(",") === "AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM",
-  "repeated non-bottom deliveries do not loop tail writes, while a layout change can reconverge",
+  repeatedDisplacement.commands.join(",") === "AUTOSCROLL_TO_BOTTOM",
+  "scroll deliveries remain observational while a layout change can reconverge",
 );
 
 check(isTranscriptContentShrink(-48), "a fold-sized height drop is a shrink");
@@ -239,6 +281,24 @@ check(!isTranscriptContentShrink(80), "content growth is not a shrink");
 
 check(isSubstantialTranscriptDisplacement(1200), "a thumb-drop-sized gap is a substantial displacement");
 check(!isSubstantialTranscriptDisplacement(4), "bottom-adjacent jitter is not substantial");
+
+const webView2Scroller = { scrollHeight: 21_442, scrollTop: 20_827, clientHeight: 578 };
+check(nativeTranscriptBottomTop(webView2Scroller) === 20_864, "unobserved WebView2 geometry retains the theoretical tail");
+check(
+  observeNativeTranscriptTailClamp(webView2Scroller, 20_827),
+  "a small no-op WebView2 tail write records the reachable native clamp",
+);
+check(nativeTranscriptBottomTop(webView2Scroller) === 20_827, "the observed WebView2 tail target stays physically reachable");
+check(nativeTranscriptDistanceFromBottom(webView2Scroller) === 0, "the observed reachable tail is classified at bottom");
+webView2Scroller.scrollHeight += 40;
+check(nativeTranscriptBottomTop(webView2Scroller) === 20_867, "content growth preserves the observed terminal residual");
+check(nativeTranscriptDistanceFromBottom(webView2Scroller) === 40, "content growth still re-arms tail convergence");
+const staleWebView2Range = { scrollHeight: 3_000, scrollTop: 1_000, clientHeight: 500 };
+check(
+  !observeNativeTranscriptTailClamp(staleWebView2Range, 1_000),
+  "a large unmounted WebView2 range is not mistaken for a terminal clamp",
+);
+check(nativeTranscriptBottomTop(staleWebView2Range) === 2_500, "large gaps retain the LAST-item recovery target");
 
 // A misread shrink (native-thumb release remeasure seen as a height drop)
 // leaves layout convergence inert; a later substantial displacement delivery
@@ -251,14 +311,14 @@ const strandedAfterMisreadShrink = run([
   { type: "SCROLL_DELIVERED", atBottom: false, scrollable: true, substantial: true },
 ]);
 check(
-  strandedAfterMisreadShrink.commands.join(",") === "AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM,AUTOSCROLL_TO_BOTTOM",
-  "substantial displacements keep reconverging after a misread shrink",
+  strandedAfterMisreadShrink.commands.length === 0,
+  "substantial scroll deliveries cannot restart a tail feedback loop",
 );
 
 const wrapScroller = { scrollHeight: 500, scrollTop: 400, clientHeight: 80 };
-check(pinTranscriptScrollerToNativeTail(wrapScroller) === true, "a composer-wrap viewport shrink is off-bottom and gets pinned");
-check(wrapScroller.scrollTop === 420, "pin writes the native tail top");
-check(pinTranscriptScrollerToNativeTail(wrapScroller) === false, "an already-pinned scroller is left alone");
+check(pinTranscriptTailAfterViewportShrink(wrapScroller, { contentExtent: 500, viewportExtent: 100 }, true) === 420, "a composer-wrap shrink returns the native tail target");
+check(wrapScroller.scrollTop === 400, "geometry helper does not write the native scroll position");
+check(pinTranscriptTailAfterViewportShrink(wrapScroller, { contentExtent: 500, viewportExtent: 80 }, true) === null, "the same shrink revision does not schedule a second tail write");
 
 const foldScroller = { scrollHeight: 500, scrollTop: 400, clientHeight: 80 };
 check(

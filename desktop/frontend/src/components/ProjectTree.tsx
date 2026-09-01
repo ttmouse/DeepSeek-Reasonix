@@ -1,16 +1,13 @@
-// ProjectTree is the sidebar replacement for the flat recent-sessions list.
-// It shows a tree of projects (each with expandable topics) plus a Global
-// section. Clicking a topic opens its tab; "+" next to a project creates a
-// new topic.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties, DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, Check, ListCollapse, ListRestart, MessageSquare, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch, Sparkles } from "lucide-react";
+import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, Check, ListCollapse, ListRestart, MessageSquare, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch, Sparkles, Cloud } from "lucide-react";
 import { asArray } from "../lib/array";
 import { useToast } from "../lib/toast";
 import { app } from "../lib/bridge";
 import { onProjectTreeChangedV2 } from "../lib/sessionCatalogBridge";
-import { isRuntimeSessionNode, isTopicNode, loadWorkbenchOrganizeMode, loadWorkbenchSortMode, mergeIncompleteProjectTopicPage, mergeProjectTopicPage, projectTreeDedupedExactTime, projectTreeEventAffectsFolder, projectTreeFolderDisclosure, projectTreeReadActivityKey, projectTreeRevisionIsFresh, projectTreeShellChildren, projectTreeShellSignature, projectTreeShouldApplyShellSnapshot, projectTreeShouldRenderTopicActions, projectTreeShouldSuppressOpenForRename, projectTreeTopicArchiveBlocked, projectTreeTopicHasUnreadActivity, projectTreeTopicHoverCardModel, projectTreeTopicMenuOffersPin, projectTreeTopicMetaLine, projectTreeTopicOpenRequest, projectTreeTopicPageIsFresh, projectTreeTopicPageSignature, projectTreeTopicRecoveryCopyCount, projectTreeWithoutTopic, projectTreeWithTopicTitle, topicActivityAt, topicActivityDateLabel, topicActivityLabel, topicIsActive, topicStatus, topicStatusLabel, topicUnknownTimeLabel, WORKBENCH_ORGANIZE_KEY, WORKBENCH_SORT_KEY, type ProjectTreePendingTopicOpen, type ProjectTreeReadActivity, type ProjectTreeTopicHoverCard, type ProjectTreeVariant, type WorkbenchOrganizeMode, type WorkbenchSortMode } from "../lib/projectTreeTopic";
+import { sessionCatalogNotice } from "../lib/sessionCatalogPresentation";
+import { isRuntimeSessionNode, isTopicNode, loadWorkbenchOrganizeMode, loadWorkbenchSortMode, mergeIncompleteProjectTopicPage, mergeProjectTopicPage, projectTreeDedupedExactTime, projectTreeEventAffectsFolder, projectTreeFolderDisclosure, projectTreeReadActivityKey, projectTreeRevisionIsFresh, projectTreeShellChildren, projectTreeShellSignature, projectTreeShouldApplyShellSnapshot, projectTreeShouldRenderTopicActions, projectTreeShouldSuppressOpenForRename, projectTreeTopicArchiveBlocked, projectTreeTopicHasUnreadActivity, projectTreeTopicHoverCardModel, projectTreeTopicMenuOffersPin, projectTreeTopicMetaLine, projectTreeTopicOpenRequest, projectTreeTopicPageIsFresh, projectTreeTopicPageSignature, projectTreeTopicRecoveryCopyCount, projectTreeWithoutTopic, projectTreeWithTopicTitle, topicActivityAt, topicActivityDateLabel, topicActivityLabel, topicIsActive, topicStatus, topicStatusLabel, topicUnknownTimeLabel, WORKBENCH_ORGANIZE_KEY, WORKBENCH_SORT_KEY, type ProjectTreePendingTopicOpen, type ProjectTreeReadActivity, type ProjectTreeTopicHoverCard, type WorkbenchOrganizeMode, type WorkbenchSortMode } from "../lib/projectTreeTopic";
 export * from "../lib/projectTreeTopic";
 import { arrangeClassicProjectTree, arrangeWorkbenchTree, classicTopicWindow, CLASSIC_TOPIC_PREVIEW_LIMIT, splitPinnedProjectTree, type PinnedTreeSections } from "../lib/projectTreePresentation";
 export * from "../lib/projectTreePresentation";
@@ -18,9 +15,8 @@ import type { ProjectNode, SessionCatalogStatus } from "../lib/types";
 import { topicActivityTime } from "../lib/session";
 import { useT, type Translator } from "../lib/i18n";
 import { PROJECT_COLOR_OPTIONS, projectColorValue } from "../lib/projectColors";
-import { projectTreeWithoutTopics, reloadProjectTreeTopics, useProjectTreeArchiveController, type ProjectTreeRefresh, type ProjectTreeRefreshOptions } from "../lib/projectTreeArchive";
+import { projectTreeSessionArchiveTargetKey, projectTreeTopicArchiveTargetKey, projectTreeWithoutTopics, reloadProjectTreeTopics, useProjectTreeArchiveController, type ProjectTreeRefresh, type ProjectTreeRefreshOptions } from "../lib/projectTreeArchive";
 import { topicShortcutLabel, type TopicShortcutEntry } from "../lib/topicShortcuts";
-import type { ShortcutPlatform } from "../lib/keyboardShortcuts";
 import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type ContextMenuPoint } from "./ContextMenu";
 import { Tooltip } from "./Tooltip";
 import { WorktreeBadge } from "./WorktreeBadge";
@@ -29,39 +25,13 @@ import { useProjectTreeRuntimeProjection } from "../lib/useProjectTreeRuntimePro
 import { useProjectTreeFrontendDiagnostics, type ProjectTreeDiagnosticSnapshot } from "../lib/useProjectTreeFrontendDiagnostics";
 import { summarizeProjectTreeSessions } from "../lib/projectTreeDiagnostics";
 import { GLOBAL_PROJECT_ORDER_KEY, ProjectTreeFolderActivity, ProjectTreeGroupRows, applyProjectOrder, projectTreeProjectRoots, reorderedProjectRoots, useProjectTreeOrganization, type ProjectDropPosition } from "./ProjectTreeOrganization";
-
-interface ProjectTreeProps {
-  activeScope?: string;
-  activeWorkspaceRoot?: string;
-  activeTopicId?: string;
-  activeSessionPath?: string;
-  imTopicSources?: Record<string, ProjectTreeImTopicSource>;
-  variant?: ProjectTreeVariant;
-  onOpenTopic: (scope: string, workspaceRoot: string, topicId: string, sessionPath?: string) => Promise<void> | void;
-  onAddProject: (path?: string) => Promise<void>;
-  onCreateTopic?: (scope: string, workspaceRoot: string) => Promise<void> | void;
-  onCreateIsolatedWorktree?: (workspaceRoot: string) => Promise<void> | void;
-  onRenameTopic?: (topicId: string, title: string) => Promise<void> | void;
-  onTopicsChanged?: () => Promise<void> | void;
-  refreshSignal?: number;
-  timeFilter: "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d";
-  onTimeFilterChange: (filter: "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d") => void;
-  searchExpanded?: boolean;
-  searchFocusSignal?: number;
-  showShortcutBadges?: boolean;
-  shortcutPlatform?: ShortcutPlatform;
-  onVisibleTopicsChange?: (topics: TopicShortcutEntry[]) => void;
-}
-
-type ProjectTreeImTopicSource = {
-  platform?: string;
-  label: string;
-  title?: string;
-  remoteId?: string;
-};
+import { ProjectTreeSessionArchiveMenu } from "./ProjectTreeSessionArchiveMenu";
+import { ProjectTreeHeaderAddControl, ProjectTreeRemoteAction, projectTreeHeaderAddItems } from "./ProjectTreeAddControls";
+import { activeRemoteProjectAncestorKeys, buildRemoteProjectMenuItems, mergeRemoteSessionsIntoTree, openRemoteSessionNode, remoteProjectKey, remoteServeBadgeState, renameRemoteProjectTitle, RemoteProjectEmptyState, useRemoteProjectGroups, useRemoteSessionActions } from "./ProjectTreeRemoteGroups";
+import type { ProjectTreeProps } from "./ProjectTreeProps";
 
 function projectNodeKey(node: ProjectNode, depth: number): string {
-  return node.key || `${node.kind}-${node.root ?? ""}-${node.topicId ?? ""}-${depth}`;
+  return node.key || `${node.kind}-${node.root ?? ""}-${node.topicId ?? ""}-${node.sessionPath ?? ""}-${depth}`;
 }
 
 type WorkbenchHeaderMenu = "more" | "add" | null;
@@ -229,6 +199,7 @@ export function ProjectTree({
   activeWorkspaceRoot,
   activeTopicId,
   activeSessionPath,
+  activeRemote,
   imTopicSources = {},
   variant = "classic",
   onOpenTopic,
@@ -259,7 +230,7 @@ export function ProjectTree({
   const [catalogStatus, setCatalogStatus] = useState<SessionCatalogStatus>({
     state: "opening", revision: 0, indexed: 0, total: 0, repairPending: 0,
   });
-  const rebuildingCatalogRef = useRef(false);
+  const catalogStatusGenerationRef = useRef(0), rebuildingCatalogRef = useRef(false), catalogRebuildFailedRef = useRef(false);
   const [topicPageState, setTopicPageState] = useState<Record<string, { nextCursor?: string; loading: boolean }>>({});
   const topicPageStateRef = useRef(topicPageState);
   const updateTopicPageState = useCallback((key: string, next: { nextCursor?: string; loading: boolean }) => {
@@ -275,14 +246,14 @@ export function ProjectTree({
   const [query, setQuery] = useState("");
   const [editingTopic, setEditingTopic] = useState<string | null>(null);
   const [topicDraft, setTopicDraft] = useState("");
-  const [menuTopic, setMenuTopic] = useState<string | null>(null);
+  const [menuNodeKey, setMenuNodeKey] = useState<string | null>(null);
   const [menuProject, setMenuProject] = useState<{ key: string; root: string; path: string; scope: "global" | "project"; label: string } | null>(null);
   const [menuPoint, setMenuPoint] = useState<ContextMenuPoint | null>(null);
   const [editingProject, setEditingProject] = useState<{ key: string; root: string } | null>(null);
   const [projectDraft, setProjectDraft] = useState("");
   const [isolatingProject, setIsolatingProject] = useState<string | null>(null);
   const [worktreeAvailability, setWorktreeAvailability] = useState<Record<string, { available: boolean; reason?: string }>>({});
-  const [confirmAction, setConfirmAction] = useState<{ topicId: string; action: "trash" } | null>(null);
+  const [confirmArchiveTarget, setConfirmArchiveTarget] = useState<string | null>(null);
   const [confirmRemoveProject, setConfirmRemoveProject] = useState<string | null>(null);
   const [dragProjectRoot, setDragProjectRoot] = useState<string | null>(null);
   const [dropProject, setDropProject] = useState<{ root: string; position: ProjectDropPosition } | null>(null);
@@ -306,16 +277,17 @@ export function ProjectTree({
   const hoverCardTimerRef = useRef<number | null>(null);
   const creatingRef = useRef(false);
   const closeMenu = useCallback(() => {
-    setMenuTopic(null);
+    setMenuNodeKey(null);
     setMenuProject(null);
     setMenuPoint(null);
-    setConfirmAction(null);
+    setConfirmArchiveTarget(null);
     setConfirmRemoveProject(null);
     setWorkbenchHeaderMenu(null);
   }, []);
   const topicLoadSeqRef = useRef<Record<string, number>>({});
+  const topicLoadErrorRef = useRef<Record<string, string>>({});
   const refreshRef = useRef<ProjectTreeRefresh>(async () => {});
-  const { trashingTopics, currentArchiveTombstones, trashTopic } = useProjectTreeArchiveController({
+  const { trashingTopics, trashingSessions, currentArchiveTombstones, trashTopic, trashSession } = useProjectTreeArchiveController({
     treeRef, topicLoadSeqRef, topicPageStateRef, updateTopicPageState, refreshRef,
     optimisticallyRemoveTopic: (topicId) => setTree((current) => projectTreeWithoutTopic(current, topicId)),
     closeMenu, onTopicsChanged, showToast,
@@ -358,7 +330,7 @@ export function ProjectTree({
   const loadProjectTopicsRef = useRef<(project: ProjectNode, append?: boolean) => Promise<void>>(async () => {});
 
   const loadProjectTopics = useCallback(async (project: ProjectNode, append = false) => {
-    if (project.kind !== "project" && project.kind !== "global_folder") return;
+    if ((project.kind !== "project" && project.kind !== "global_folder") || project.remote) return;
     const key = project.key;
     const pageState = topicPageStateRef.current[key];
     const cursor = append ? pageState?.nextCursor ?? "" : "";
@@ -381,6 +353,7 @@ export function ProjectTree({
         sortMode,
       });
       if (topicLoadSeqRef.current[key] !== seq) return;
+      delete topicLoadErrorRef.current[key];
       if (!projectTreeTopicPageIsFresh(topicRevisionRef.current, key, page.revision)) {
         updateTopicPageState(key, { ...topicPageStateRef.current[key], loading: false });
         return;
@@ -402,11 +375,16 @@ export function ProjectTree({
       updateTopicPageState(key, preserveCompletePage
         ? { ...topicPageStateRef.current[key], loading: false }
         : { nextCursor: page.nextCursor, loading: false });
-    } catch {
+    } catch (error) {
       if (topicLoadSeqRef.current[key] !== seq) return;
       updateTopicPageState(key, { ...topicPageStateRef.current[key], loading: false });
+      const message = error instanceof Error ? error.message : String(error);
+      if (topicLoadErrorRef.current[key] !== message) {
+        topicLoadErrorRef.current[key] = message;
+        showToast(message, "error", { durationMs: 6000 });
+      }
     }
-  }, [applyRuntimeProjection, creationTopics, currentArchiveTombstones, query, timeFilter, updateTopicPageState]);
+  }, [applyRuntimeProjection, creationTopics, currentArchiveTombstones, query, showToast, timeFilter, updateTopicPageState]);
   loadProjectTopicsRef.current = loadProjectTopics;
 
   const selectWorkbenchSortMode = useCallback((sortMode: WorkbenchSortMode) => {
@@ -436,7 +414,7 @@ export function ProjectTree({
   // Preserve already loaded pages by project key while reconciling pins, so a
   // metadata refresh does not collapse or blank the sidebar.
   const refresh = useCallback(async (options?: ProjectTreeRefreshOptions) => {
-    const reloadRequestedProjects = (projects: ProjectNode[]) => reloadProjectTreeTopics(projects, options, loadProjectTopicsRef.current);
+    const reloadRequestedProjects = (projects: ProjectNode[]) => reloadProjectTreeTopics(projects, options, loadProjectTopicsRef.current), catalogStatusGeneration = catalogStatusGenerationRef.current;
     try {
       const snapshot = await app.GetProjectTreeSnapshot();
       const rev = snapshot.revision ?? 0, empty = treeRef.current.length === 0;
@@ -446,7 +424,7 @@ export function ProjectTree({
       }
       if (projectTreeRevisionIsFresh(latestRevisionRef.current, rev)) latestRevisionRef.current = Math.max(latestRevisionRef.current, rev);
       const projects = asArray(snapshot.projects);
-      setCatalogStatus(snapshot.catalog);
+      if (!catalogRebuildFailedRef.current && catalogStatusGeneration === catalogStatusGenerationRef.current) setCatalogStatus(snapshot.catalog);
       setTree((current) => applyRuntimeProjection(projects.map((project) => {
         const previous = current.find((node) => node.key === project.key);
         // Topic pages reload asynchronously. Keep the last painted children
@@ -462,26 +440,28 @@ export function ProjectTree({
     }
   }, [applyRuntimeProjection]);
   refreshRef.current = refresh;
-
-  const { addingProject, handleAddProject, openBlankProjectFlow, blankProjectFlow } = useProjectCreation({
+  const { openRemoteProject, openRemoteWindow, remoteSessions, setRemoteSessions, remoteServers, remoteGroupBusy, remoteGroupError, ensureRemoteGroupSessions, refreshRemoteSessions } = useRemoteProjectGroups(tree, showToast, expanded, query);
+  const treeWithRemoteSessions = useMemo(() => mergeRemoteSessionsIntoTree(tree, remoteSessions, t), [remoteSessions, t, tree]);
+  const remoteSessionActions = useRemoteSessionActions(remoteSessions, refreshRemoteSessions, (error) => showToast(error instanceof Error ? error.message : String(error), "error"));
+  const { addingProject, handleAddProject, openBlankProjectFlow, blankProjectFlow, openRemoteConnectFlow, remoteConnectFlow } = useProjectCreation({
     onAddProject,
     onRefresh: refresh,
     showToast,
   });
 
   const rebuildSessionCatalog = useCallback(async () => {
-    if (rebuildingCatalogRef.current || catalogStatus.canRebuild === false) return;
-    rebuildingCatalogRef.current = true;
+    if (rebuildingCatalogRef.current || catalogStatus.canRebuild !== true) return;
+    rebuildingCatalogRef.current = true; catalogRebuildFailedRef.current = false; catalogStatusGenerationRef.current += 1;
+    setCatalogStatus({ ...catalogStatus, state: "rebuilding", canRebuild: false });
     try {
-      await app.RebuildSessionCatalog();
-      showToast(t("projectTree.rebuildCatalog"), "info");
-      void refresh();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : String(error), "error", { durationMs: 6000 });
+      await app.RebuildSessionCatalog(); catalogStatusGenerationRef.current += 1;
+      await refresh();
+    } catch {
+      catalogRebuildFailedRef.current = true; catalogStatusGenerationRef.current += 1; setCatalogStatus(catalogStatus);
     } finally {
       rebuildingCatalogRef.current = false;
     }
-  }, [catalogStatus.canRebuild, refresh, showToast, t]);
+  }, [catalogStatus, refresh]);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -511,7 +491,8 @@ export function ProjectTree({
     }
     latestRevisionRef.current = Math.max(latestRevisionRef.current, event.revision);
     if (event.reason === "metadata") setOrganizationRevision((current) => Math.max(current, event.revision));
-    void app.GetSessionCatalogStatus().then(setCatalogStatus).catch(() => {});
+    const catalogStatusGeneration = catalogStatusGenerationRef.current;
+    void app.GetSessionCatalogStatus().then((status) => { if (!catalogRebuildFailedRef.current && catalogStatusGeneration === catalogStatusGenerationRef.current) setCatalogStatus(status); }).catch(() => {});
     if (treeRef.current.length === 0) { void refresh(); return; } // race: event before shell
     const affected = asArray(event.roots);
     for (const project of treeRef.current) {
@@ -520,7 +501,6 @@ export function ProjectTree({
       if (projectTreeEventAffectsFolder(project, affected)) void loadProjectTopics(project);
     }
   }), [expanded, loadProjectTopics, refresh]);
-
   // Debounce query/timeFilter reloads so typing does not stampede the catalog.
   // Dependency is the project-shell signature, not tree: topic page loads
   // rewrite children and would otherwise re-arm this effect in a loop.
@@ -539,11 +519,21 @@ export function ProjectTree({
   // Following the active topic is a view concern over the tree already held.
   useEffect(() => {
     const collapsed = manuallyCollapsedRef.current;
-    const keys = defaultExpandedProjectTreeKeys(tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath).filter((key) => !collapsed.has(key));
+    const keys = (activeRemote
+      ? activeRemoteProjectAncestorKeys(treeWithRemoteSessions, activeRemote, projectNodeKey)
+      : defaultExpandedProjectTreeKeys(treeWithRemoteSessions, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath))
+      .filter((key) => !collapsed.has(key));
     // Returning prev unchanged keeps a switch that expands nothing new from
     // re-rendering the tree at all.
     setExpanded((prev) => (keys.every((key) => prev.has(key)) ? prev : new Set([...prev, ...keys])));
-  }, [tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath]);
+    // Active remote groups get the same explicit cold start as a click.
+    for (const node of treeWithRemoteSessions) {
+      if (!node.remote) continue;
+      if (!keys.includes(projectNodeKey(node, 0))) continue;
+      if (!remoteSessions[remoteProjectKey(node.remote)]?.length) void ensureRemoteGroupSessions(node.remote.hostId, node.remote.workspace);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, activeRemote]);
 
   const markNodeRead = useCallback((node: ProjectNode) => {
     const key = projectTreeReadActivityKey(node);
@@ -565,8 +555,8 @@ export function ProjectTree({
         markActive(asArray(node.children));
       }
     };
-    markActive(tree);
-  }, [activeScope, activeSessionPath, activeTopicId, activeWorkspaceRoot, markNodeRead, tree]);
+    markActive(treeWithRemoteSessions);
+  }, [activeScope, activeSessionPath, activeTopicId, activeWorkspaceRoot, markNodeRead, treeWithRemoteSessions]);
 
   useEffect(() => {
     try {
@@ -709,9 +699,9 @@ export function ProjectTree({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    setMenuTopic(null);
+    setMenuNodeKey(null);
     setMenuProject(null);
-    setConfirmAction(null);
+    setConfirmArchiveTarget(null);
     setConfirmRemoveProject(null);
     setFilterMenuOpen(false);
     setMenuPoint(contextMenuPointFromEvent(event));
@@ -766,19 +756,19 @@ export function ProjectTree({
       setIsolatingProject(null);
     }
   };
-
+  const trashTopicAny = (topicId: string) => remoteSessionActions.remove(topicId, () => trashTopic(topicId));
   const startRenameTopic = (node: ProjectNode, label: string) => {
-    setMenuTopic(null);
+    setMenuNodeKey(null);
     setMenuProject(null);
     setMenuPoint(null);
-    setConfirmAction(null);
+    setConfirmArchiveTarget(null);
     setEditingTopic(node.topicId ?? null);
     setTopicDraft(label);
   };
 
   const startRenameProject = (key: string, root: string, label: string) => {
     setMenuProject(null);
-    setMenuTopic(null);
+    setMenuNodeKey(null);
     setMenuPoint(null);
     setConfirmRemoveProject(null);
     setEditingProject({ key, root });
@@ -790,6 +780,7 @@ export function ProjectTree({
     setEditingTopic(null);
     if (!title) return;
     try {
+      if (await remoteSessionActions.mutate(topicId, (remote) => app.RenameRemoteProjectSession(remote.hostId, remote.workspace, remote.name, title))) return;
       if (onRenameTopic) await onRenameTopic(topicId, title);
       else await app.RenameTopic(topicId, title);
       // Paint the new label immediately; the catalog event round-trip can lag.
@@ -820,7 +811,7 @@ export function ProjectTree({
     setEditingProject(null);
     if (!title) return;
     try {
-      await app.RenameProject(root, title);
+      if (!await renameRemoteProjectTitle(root, title)) await app.RenameProject(root, title);
       await refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), "error");
@@ -828,10 +819,11 @@ export function ProjectTree({
   };
 
   const setTopicPinned = async (topicId: string, pinned: boolean) => {
+    setMenuNodeKey(null);
+    setMenuPoint(null);
     try {
+      if (await remoteSessionActions.mutate(topicId, (remote) => app.SetRemoteSessionPinned(remote.hostId, remote.workspace, remote.name, pinned))) return;
       await app.SetTopicPinned(topicId, pinned);
-      setMenuTopic(null);
-      setMenuPoint(null);
       await refresh();
       await onTopicsChanged?.();
     } catch (err) {
@@ -902,7 +894,7 @@ export function ProjectTree({
           collect(asArray(node.children));
         }
       };
-      collect(tree);
+      collect(treeWithRemoteSessions);
       const sorted = [...times].sort((a, b) => b - a);
       return sorted.length === 0 ? null : sorted[Math.min(n, sorted.length) - 1];
     };
@@ -935,13 +927,13 @@ export function ProjectTree({
       if (q && !matchesQuery(node)) return null;
       return node;
     };
-    const filtered = tree
+    const filtered = treeWithRemoteSessions
       .map(filterNode)
       .filter((node): node is ProjectNode => node !== null);
     if (compactTopics) return arrangeWorkbenchTree(filtered, workbenchOrganizeMode, workbenchSortMode);
     if (creationTopics) return arrangeWorkbenchTree(filtered, "project", "updated");
     return arrangeClassicProjectTree(filtered, workbenchSortMode);
-  }, [compactTopics, creationTopics, query, tree, timeFilter, workbenchOrganizeMode, workbenchSortMode]);
+  }, [compactTopics, creationTopics, query, timeFilter, treeWithRemoteSessions, workbenchOrganizeMode, workbenchSortMode]);
 
   const pinnedTreeSections = useMemo<PinnedTreeSections>(() => {
     if (creationTopics) return { pinned: [], projects: visibleTree };
@@ -966,7 +958,7 @@ export function ProjectTree({
     hoverCardTimerRef.current = window.setTimeout(() => {
       hoverCardTimerRef.current = null;
       if (!element.isConnected) return;
-      if (menuTopic || menuProject || editingTopic || editingProject || dragProjectRoot) return;
+      if (menuNodeKey || menuProject || editingTopic || editingProject || dragProjectRoot) return;
       const rect = element.getBoundingClientRect();
       const globalScope = node.kind === "global_topic" || node.kind === "global_session";
       const projectLabel = globalScope
@@ -979,7 +971,7 @@ export function ProjectTree({
         top: Math.max(8, Math.min(rect.top, window.innerHeight - 150)),
       });
     }, 350);
-  }, [menuTopic, menuProject, editingTopic, editingProject, dragProjectRoot, projectLabelByRoot, t]);
+  }, [menuNodeKey, menuProject, editingTopic, editingProject, dragProjectRoot, projectLabelByRoot, t]);
 
   // Opening an old session from history can land on a topic hidden behind the
   // classic show-more window; reveal that folder so the active row stays visible.
@@ -1039,10 +1031,9 @@ export function ProjectTree({
   }, [clearProjectDrag, dragProjectRoot]);
 
   const activeAncestorKeys = useMemo(
-    () => activeSessionAncestorKeys(tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath),
-    [activeScope, activeSessionPath, activeTopicId, activeWorkspaceRoot, tree],
+    () => activeRemote ? activeRemoteProjectAncestorKeys(treeWithRemoteSessions, activeRemote, projectNodeKey) : activeSessionAncestorKeys(treeWithRemoteSessions, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath),
+    [activeRemote, activeScope, activeSessionPath, activeTopicId, activeWorkspaceRoot, treeWithRemoteSessions],
   );
-
   useEffect(() => {
     if (activeAncestorKeys.length === 0) return;
     setExpanded((prev) => {
@@ -1137,6 +1128,9 @@ export function ProjectTree({
       const unread = projectTreeTopicHasUnreadActivity(node, readActivity, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, readBaselineAt);
       const topicId = node.topicId ?? "";
       const topicTrashing = trashingTopics.has(topicId);
+      const sessionPath = node.sessionPath?.trim() ?? "";
+      const sessionTrashing = Boolean(sessionPath) && trashingSessions.has(sessionPath);
+      const archiveTargetKey = isSessionNode ? projectTreeSessionArchiveTargetKey(sessionPath) : projectTreeTopicArchiveTargetKey(scope, node.root ?? "", topicId);
       const imSource = scope === "global" && topicId ? imTopicSources[topicId] : undefined;
       const imSourceLabel = imSource?.label || "";
       const imSourceTitle = imSourceLabel ? t("msg.fromIm", { source: imSourceLabel }) : "";
@@ -1147,18 +1141,17 @@ export function ProjectTree({
           ? t("projectTree.recovered")
           : "";
       const title = [node.preview || "", label, recoveryLabel, imSourceTitle, statusLabel, metaFull, projectTreeDedupedExactTime(metaFull, exactTimeLabel)].filter(Boolean).join(" · ");
-      const topicMenuOpen = !isSessionNode && menuTopic === topicId;
+      const topicMenuOpen = menuNodeKey === key;
       const pinned = Boolean(node.pinned);
       const pinLabel = t(pinned ? "projectTree.unpinTopic" : "projectTree.pinTopic");
       const openTopicMenu = (event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
-        if (isSessionNode) return;
         event.preventDefault();
         event.stopPropagation();
         setMenuProject(null);
         setConfirmRemoveProject(null);
         setMenuPoint(contextMenuPointFromEvent(event));
-        setMenuTopic(topicId);
-        setConfirmAction(null);
+        setMenuNodeKey(key);
+        setConfirmArchiveTarget(null);
       };
       const topicMenuItems: ContextMenuItem[] = [
         ...organization.topicMenuItems(node, t),
@@ -1182,18 +1175,18 @@ export function ProjectTree({
           key: "aiRename",
           icon: <Sparkles size={13} />,
           label: aiRenamingTopic === topicId ? t("projectTree.aiRenamingTopic") : t("projectTree.aiRenameTopic"),
-          disabled: aiRenamingTopic !== null,
+          disabled: aiRenamingTopic !== null || Boolean(node.remoteSession),
           onSelect: () => void aiRenameSession(topicId),
         },
         {
           key: "trash",
           icon: <Archive className={topicTrashing ? "project-tree__archive-spinner" : undefined} size={13} />,
-          label: confirmAction?.topicId === topicId && confirmAction.action === "trash" ? t("history.confirmMoveToTrash") : t("history.moveToTrash"),
+          label: confirmArchiveTarget === archiveTargetKey ? t("history.confirmMoveToTrash") : t("history.moveToTrash"),
           disabled: archiveBlocked || topicTrashing,
           danger: true,
           onSelect: () => {
-            if (confirmAction?.topicId === topicId && confirmAction.action === "trash") void trashTopic(topicId);
-            else setConfirmAction({ topicId, action: "trash" });
+            if (confirmArchiveTarget === archiveTargetKey) void trashTopicAny(topicId);
+            else setConfirmArchiveTarget(archiveTargetKey);
           },
         },
       ];
@@ -1230,13 +1223,13 @@ export function ProjectTree({
           sessionPath: openRequest.sessionPath,
         });
       }
-      const topicDrag = organization.topicRow(node, section === "pinned" || isSessionNode || Boolean(query || menuTopic || editingTopic || dragProjectRoot || creatingProject));
+      const topicDrag = organization.topicRow(node, section === "pinned" || isSessionNode || Boolean(query || menuNodeKey || editingTopic || dragProjectRoot || creatingProject));
       const row = (
         <div
           className={`project-tree__topic${scopeClass}${isSessionNode ? " project-tree__topic--session" : ""}${active ? " project-tree__topic--active" : ""}${node.running ? " project-tree__topic--running" : ""}${status ? ` project-tree__topic--status-${status}` : ""}${unread ? " project-tree__topic--unread" : ""}${!isSessionNode && pinned ? " project-tree__topic--pinned" : ""}${topicMenuOpen ? " project-tree__topic--menu-open" : ""}${topicDrag.className}${sideTimeVisible && (timeLabel || showStatusInSide || showWaitingPill) ? " project-tree__topic--with-side" : metaFull ? " project-tree__topic--has-meta" : ""}${imSource ? " project-tree__topic--im-source" : ""}${shortcutIndex > 0 ? " project-tree__topic--show-shortcut" : ""}`}
           style={accentStyle}
           {...topicDrag.props}
-          onContextMenu={isSessionNode ? undefined : openTopicMenu}
+          onContextMenu={openTopicMenu}
           onMouseEnter={classicTopics ? (event) => scheduleHoverCard(event.currentTarget, key, node) : undefined}
           onMouseLeave={classicTopics ? cancelHoverCard : undefined}
           onMouseDown={classicTopics ? cancelHoverCard : undefined}
@@ -1248,7 +1241,8 @@ export function ProjectTree({
             aria-label={classicTopics ? title : undefined}
             style={{ paddingLeft: 14 + depth * 16 }}
             onClick={() => {
-              if (!openRequest) return;
+              const remote = node.remoteSession ?? remoteSessionActions.resolve(topicId);
+              if (!openRequest && !remote) return;
               const nextClick = { rowKey: key, canRename: !isSessionNode };
               const pending = clickTimerRef.current;
               if (pending !== null) {
@@ -1259,7 +1253,9 @@ export function ProjectTree({
               const timer = setTimeout(() => {
                 if (clickTimerRef.current?.timer === timer) clickTimerRef.current = null;
                 markNodeRead(node);
-                onOpenTopic(openRequest.scope, openRequest.workspaceRoot, openRequest.topicId, openRequest.sessionPath);
+                if (!openRemoteSessionNode(remote, openRemoteProject) && openRequest) {
+                  onOpenTopic(openRequest.scope, openRequest.workspaceRoot, openRequest.topicId, openRequest.sessionPath);
+                }
               }, 200);
               clickTimerRef.current = { ...nextClick, timer };
             }}
@@ -1342,7 +1338,7 @@ export function ProjectTree({
             )}
           </button>
           {unread && <span className="project-tree__topic-unread-dot" aria-hidden="true" />}
-          {projectTreeShouldRenderTopicActions(isSessionNode, variant, unread) && (
+          {projectTreeShouldRenderTopicActions(isSessionNode, variant, unread) && !(node.remoteSession && !node.remoteSession.name) && (
             <span
               className="project-tree__topic-actions"
               aria-label={t("projectTree.topicActions")}
@@ -1373,7 +1369,7 @@ export function ProjectTree({
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    void trashTopic(topicId);
+                    void trashTopicAny(topicId);
                   }}
                 >
                   <Archive className={topicTrashing ? "project-tree__archive-spinner" : undefined} size={15} aria-hidden="true" />
@@ -1381,16 +1377,11 @@ export function ProjectTree({
               </Tooltip>
             </span>
           )}
-          {!isSessionNode && (
-            <ContextMenu
-              open={topicMenuOpen}
-              point={menuPoint}
-              items={topicMenuItems}
-              minWidth={178}
-              ariaLabel={t("projectTree.topicActions")}
-              onClose={closeMenu}
-            />
-          )}
+          {isSessionNode ? (
+            <ProjectTreeSessionArchiveMenu
+              open={topicMenuOpen} point={menuPoint} sessionPath={sessionPath} blocked={archiveBlocked || topicTrashing} busy={sessionTrashing} confirmed={confirmArchiveTarget === archiveTargetKey}
+              onConfirm={() => setConfirmArchiveTarget(archiveTargetKey)} onTrash={() => { setConfirmArchiveTarget(null); void trashSession(sessionPath); }} onClose={closeMenu} />
+          ) : <ContextMenu open={topicMenuOpen} point={menuPoint} items={topicMenuItems} minWidth={178} ariaLabel={t("projectTree.topicActions")} onClose={closeMenu} />}
           {shortcutIndex > 0 && (
             <span className="project-tree__topic-shortcut" aria-hidden="true">
               {topicShortcutLabel(shortcutIndex, shortcutPlatform)}
@@ -1422,7 +1413,7 @@ export function ProjectTree({
     const colorTargetRoot = scope === "global" ? "" : projectPath;
     const projectLabel = node.label || (scope === "global" ? "Global" : "Untitled");
     const projectPinned = Boolean(node.pinned);
-    const projectActive = activeScope === scope && (scope === "global" || activeWorkspaceRoot === node.root);
+    const projectActive = node.remote ? Boolean(activeRemote && remoteProjectKey(activeRemote) === remoteProjectKey(node.remote)) : activeScope === scope && (scope === "global" || activeWorkspaceRoot === node.root);
     const projectMenuOpen = menuProject?.key === key;
     const activeTopicInProject = Boolean(activeTopicId) && activeScope === scope && (scope === "global" || activeWorkspaceRoot === projectRoot);
     const sourceProjectNode = tree.find((candidate) => scope === "global"
@@ -1466,8 +1457,8 @@ export function ProjectTree({
     const openProjectMenu = (event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
       event.preventDefault();
       event.stopPropagation();
-      setMenuTopic(null);
-      setConfirmAction(null);
+      setMenuNodeKey(null);
+      setConfirmArchiveTarget(null);
       setMenuPoint(contextMenuPointFromEvent(event));
       setMenuProject({ key, root: projectRoot, path: projectPath, scope, label: projectLabel });
       setConfirmRemoveProject(null);
@@ -1481,6 +1472,7 @@ export function ProjectTree({
       }
     };
     const isolationAvailability = worktreeAvailability[projectRoot];
+    const activeTopicArchiveTarget = activeTopicId ? projectTreeTopicArchiveTargetKey(scope, projectRoot, activeTopicId) : "";
     const isolatedWorkspaceItems: ContextMenuItem[] = scope === "project"
       ? [{
           key: "isolated-delivery-workspace",
@@ -1494,6 +1486,7 @@ export function ProjectTree({
           onSelect: () => { void handleCreateIsolatedWorktree(projectRoot); },
         }]
       : [];
+    const remoteProjectMenuItems = node.remote ? buildRemoteProjectMenuItems({ ref: node.remote, t, closeMenu, openRemoteProject, openRemoteWindow, setRemoteSessions, refresh, showToast }) : [];
     const projectMenuItems: ContextMenuItem[] = [
       {
         key: "new-group",
@@ -1594,15 +1587,15 @@ export function ProjectTree({
       {
         key: "archive-active-topic",
         icon: <Archive className={activeTopicId && trashingTopics.has(activeTopicId) ? "project-tree__archive-spinner" : undefined} size={13} />,
-        label: activeTopicId && confirmAction?.topicId === activeTopicId && confirmAction.action === "trash"
+        label: activeTopicArchiveTarget && confirmArchiveTarget === activeTopicArchiveTarget
           ? t("history.confirmMoveToTrash")
           : t("projectTree.archiveConversation"),
         disabled: !activeTopicInProject || !activeTopicId || activeTopicArchiveBlocked || Boolean(activeTopicId && trashingTopics.has(activeTopicId)),
         danger: true,
         onSelect: () => {
           if (!activeTopicId) return;
-          if (confirmAction?.topicId === activeTopicId && confirmAction.action === "trash") void trashTopic(activeTopicId);
-          else setConfirmAction({ topicId: activeTopicId, action: "trash" });
+          if (confirmArchiveTarget === activeTopicArchiveTarget) void trashTopic(activeTopicId);
+          else setConfirmArchiveTarget(activeTopicArchiveTarget);
         },
       },
       ...(scope === "project"
@@ -1630,6 +1623,13 @@ export function ProjectTree({
     const backendPage = topicPageState[key];
     const renderFolderChildren = () => {
       if (!hasChildren) {
+        const remoteGroupKey = node.remote ? remoteProjectKey(node.remote) : "";
+        const remoteBusy = Boolean(remoteGroupBusy[remoteGroupKey]);
+        const remoteError = remoteGroupError[remoteGroupKey] || "";
+        if (node.remote) return <RemoteProjectEmptyState
+          busy={remoteBusy} error={remoteError} ready={remoteServers[node.remote.hostId]?.[node.remote.workspace]?.state === "ready"}
+          isExpanded={isExpanded} depth={depth} classicTopics={classicTopics} t={t} onEnsure={() => ensureRemoteGroupSessions(node.remote!.hostId, node.remote!.workspace)}
+        />;
         // While the first topic page is still loading (cold start, catalog
         // reconcile in flight), show a skeleton instead of a blank folder or
         // a premature "no topics" placeholder.
@@ -1733,7 +1733,12 @@ export function ProjectTree({
             className="project-tree__folder-main"
             style={{ paddingLeft: 8 + depth * 16 }}
             onClick={() => {
-              if (folderDisclosure.canExpand) toggleExpand(key, node);
+              if (node.remote && !folderDisclosure.canExpand) return void openRemoteProject(node.remote, { focus: true });
+              if (folderDisclosure.canExpand) {
+                const willExpand = !expanded.has(key);
+                toggleExpand(key, node);
+                if (node.remote && willExpand) { void ensureRemoteGroupSessions(node.remote.hostId, node.remote.workspace); }
+              }
             }}
             onKeyDown={(event) => {
               if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
@@ -1743,12 +1748,13 @@ export function ProjectTree({
             aria-expanded={folderDisclosure.ariaExpanded}
           >
             <span className={folderDisclosure.iconStackClassName}>
-              {folderDisclosure.isOpen ? <FolderOpen size={14} className="project-tree__folder-icon" /> : <Folder size={14} className="project-tree__folder-icon" />}
+              {node.remote ? <Cloud size={14} className="project-tree__folder-icon" /> : folderDisclosure.isOpen ? <FolderOpen size={14} className="project-tree__folder-icon" /> : <Folder size={14} className="project-tree__folder-icon" />}
             </span>
             <span className="project-tree__folder-color" aria-hidden="true" />
             <span className={`project-tree__folder-label${!hasChildren ? " project-tree__folder-label--empty" : ""}`}>
               {projectLabel}
               {node.isolatedWorktree && <WorktreeBadge size={11} />}
+              {node.remote ? <span className={`project-tree__remote-badge project-tree__remote-badge--${remoteServeBadgeState(remoteServers[node.remote.hostId]?.[node.remote.workspace], remoteGroupBusy[remoteProjectKey(node.remote)])}`} aria-hidden="true" /> : null}
             </span>
             <ProjectTreeFolderActivity folder={node} />
           </button>
@@ -1768,7 +1774,7 @@ export function ProjectTree({
               </button>
             </Tooltip>
           )}
-          <Tooltip label={t("projectTree.newTopicTooltip")} className={compactTopics ? "project-tree__folder-action-slot" : "project-tree__action-slot"}>
+          {!node.remote && <Tooltip label={t("projectTree.newTopicTooltip")} className={compactTopics ? "project-tree__folder-action-slot" : "project-tree__action-slot"}>
             <button
               type="button"
               className={compactTopics
@@ -1783,11 +1789,11 @@ export function ProjectTree({
             >
               {compactTopics ? <Plus size={15} aria-hidden="true" /> : <Plus size={12} aria-hidden="true" />}
             </button>
-          </Tooltip>
+          </Tooltip>}
           <ContextMenu
             open={projectMenuOpen}
             point={menuPoint}
-            items={compactTopics ? workbenchProjectMenuItems : projectMenuItems}
+            items={node.remote ? remoteProjectMenuItems : compactTopics ? workbenchProjectMenuItems : projectMenuItems}
             minWidth={compactTopics ? 206 : 212}
             ariaLabel={t("projectTree.projectActions")}
             onClose={closeMenu}
@@ -1876,25 +1882,17 @@ export function ProjectTree({
     },
   ];
 
-  const workbenchHeaderAddItems: ContextMenuItem[] = [
-    {
-      key: "blank-project",
-      icon: <FolderPlus size={13} />,
-      label: t("projectTree.createBlankProject"),
-      disabled: addingProject,
-      onSelect: () => { closeMenu(); openBlankProjectFlow(); },
-    },
-    {
-      key: "existing-folder",
-      icon: <FolderPlus size={13} />,
-      label: t("projectTree.useExistingFolder"),
-      disabled: addingProject,
-      onSelect: () => {
-        closeMenu();
-        void handleAddProject();
-      },
-    },
-  ];
+  const addItemCallbacks = {
+    onBlank: () => { closeMenu(); openBlankProjectFlow(); },
+    onLocal: () => { closeMenu(); void handleAddProject(); },
+    onRemote: () => { closeMenu(); openRemoteConnectFlow(); },
+  };
+  const classicHeaderAddItems = projectTreeHeaderAddItems({
+    localLabel: t("projectTree.addProjectTooltip"), remoteLabel: t("projectTree.remoteConnection"), disabled: addingProject, ...addItemCallbacks,
+  });
+  const workbenchHeaderAddItems = projectTreeHeaderAddItems({
+    blankLabel: t("projectTree.createBlankProject"), localLabel: t("projectTree.useExistingFolder"), remoteLabel: t("projectTree.remoteConnection"), disabled: addingProject, ...addItemCallbacks,
+  });
 
   const timeFilterBadge = timeFilter !== "all" ? (timeFilter === "1d" ? "24h" : timeFilter) : "";
   const timeFilterDisplayLabel = timeFilter === "all" ? t("projectTree.timeFilterAll")
@@ -2115,17 +2113,11 @@ export function ProjectTree({
                 {canRestoreCollapsedView ? <ListRestart size={14} /> : <ListCollapse size={14} />}
               </button>
             </Tooltip>
-            <Tooltip label={t("projectTree.addProjectTooltip")} className="project-tree__action-slot project-tree__header-action-slot project-tree__action-slot--add">
-              <button
-                type="button"
-                className="project-tree__add-project"
-                aria-label={t("projectTree.addProjectTooltip")}
-                disabled={addingProject}
-                onClick={() => void handleAddProject()}
-              >
-                <FolderPlus size={14} />
-              </button>
-            </Tooltip>
+            <ProjectTreeHeaderAddControl
+              open={workbenchHeaderMenu === "add"} point={menuPoint} items={classicHeaderAddItems}
+              label={t("projectTree.addProjectTooltip")} disabled={addingProject}
+              onOpen={(event) => openWorkbenchHeaderMenu(event, "add")} onClose={closeMenu}
+            />
           </>
         )}
       </span>
@@ -2159,6 +2151,7 @@ export function ProjectTree({
           <FolderPlus size={14} />
           <span>{t("projectTree.addProjectTooltip")}</span>
         </button>
+        <ProjectTreeRemoteAction label={t("projectTree.remoteConnection")} disabled={addingProject} onClick={openRemoteConnectFlow} />
       </div>
     );
   };
@@ -2174,6 +2167,7 @@ export function ProjectTree({
   // Reset topic index counter and visible topics collector before each render.
   topicIndexRef.current = 0;
   visibleTopicsCollectorRef.current = [];
+  const catalogNotice = sessionCatalogNotice(catalogStatus);
 
   return (
     <div className="project-tree">
@@ -2188,12 +2182,11 @@ export function ProjectTree({
           />
         </label>
       )}
-      {(catalogStatus.state === "opening" || catalogStatus.state === "rebuilding" || catalogStatus.repairPending > 0 || (catalogStatus.unindexedTargetCount ?? 0) > 0 || Boolean(catalogStatus.lastError)) && (
+      {catalogNotice && (
         <div className="project-tree__catalog-progress" role="status">
-          <span>{catalogStatus.lastError
-            ? t("projectTree.rebuildCatalog")
-            : t("projectTree.indexingProgress", { done: catalogStatus.indexed, total: catalogStatus.total || "?" })}</span>
-          {catalogStatus.canRebuild !== false && catalogStatus.state !== "rebuilding" && (
+          <span>{catalogNotice !== "working" ? `${t("projectTree.indexing")} — ${t("task.state.failed")}` : catalogStatus.total <= 0 ? t("projectTree.indexing")
+              : t("projectTree.indexingProgress", { done: catalogStatus.indexed, total: catalogStatus.total })}</span>
+          {catalogNotice === "rebuild" && (
             <button type="button" className="project-tree__catalog-rebuild" onClick={() => void rebuildSessionCatalog()}>
               {t("projectTree.rebuildCatalog")}
             </button>
@@ -2269,6 +2262,7 @@ export function ProjectTree({
         document.body,
       )}
       {blankProjectFlow}
+      {remoteConnectFlow}
     </div>
   );
 }

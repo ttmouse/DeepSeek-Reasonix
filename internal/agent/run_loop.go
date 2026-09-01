@@ -129,8 +129,6 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 	// values are computed below. Cross-turn state (checkpoint, scope, failure
 	// budgets) lives in taskRuntime and is reconciled there.
 	a.turn = turnRuntime{}
-	a.turn.automaticReadinessContinuation = automaticReadinessContinuationFromContext(ctx)
-	a.turn.mutationExpected = mutationExpectedFromContext(ctx)
 	a.resetStructuralRunGuards()
 	scope, scoped := DeliveryExecutionScopeFromContext(ctx)
 	preserveEvidence, readinessRecovered := a.beginFinalReadinessRecovery()
@@ -242,7 +240,12 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 
 // runToolLoop owns the main tool-round budget and dispatches each streamed
 // assistant turn into final-response or tool-round handling.
-func (a *Agent) runToolLoop(ctx context.Context, state *turnRuntime) error {
+func (a *Agent) runToolLoop(ctx context.Context, state *turnRuntime) (runErr error) {
+	releaseMCPListObserver := a.activateMCPListObserver()
+	defer func() {
+		a.recordReadonlySoftBudgetSample(state, runErr)
+		releaseMCPListObserver()
+	}()
 	ctx = a.withAgentContext(ctx)
 	for step := 0; state.runMaxSteps <= 0 || step < state.runMaxSteps || state.graceRound || state.recoveryGraceRound; step++ {
 		// Consume a queued steer and persist it to the session so it
@@ -257,7 +260,7 @@ func (a *Agent) runToolLoop(ctx context.Context, state *turnRuntime) error {
 			// (unapplied path marks uncertain + pause via the notice sink).
 			a.RecordUnappliedSteer("(body load failed)", itemID)
 		}
-		schemas := a.svc.tools.Schemas()
+		schemas := a.providerToolSchemas()
 		prefixShape := a.capturePrefixShape(schemas)
 		prevPrefixShape := a.sess.lastPrefixShape
 		if !a.sess.haveLastPrefixShape {
@@ -288,6 +291,11 @@ func (a *Agent) runToolLoop(ctx context.Context, state *turnRuntime) error {
 			// bounded LocalOnly recovery record for the next real user message.
 			// Intermediate failed attempts never wrote session state.
 			a.recordInterruptedDisplay(text, reasoning, partialCalls, true, state.workDurationMs())
+			// A broken provider stream can otherwise look like a silent hang
+			// followed only by the generic interrupted-turn notice (#9560).
+			if code, msg := streamInterruptNotice(err); msg != "" {
+				a.svc.sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Code: code, Text: msg})
+			}
 			return err
 		}
 		a.sess.lastPrefixShape = prefixShape
@@ -517,9 +525,9 @@ func sleepStreamRetryBackoff(ctx context.Context, attempt int) bool {
 }
 
 // handleFinalResponse processes a no-tool assistant turn: recovery pause,
-// readiness retry, empty final retry, executor handoff nudge, steer drain, and
-// final compaction. cont=true continues the tool loop; cont=false returns err
-// from Run (err may be nil for a clean final answer).
+// readiness boundary, empty-final retry, executor handoff nudge, steer drain,
+// and final compaction. cont=true continues the tool loop; cont=false returns
+// err from Run (err may be nil for a clean final answer).
 func (a *Agent) handleFinalResponse(ctx context.Context, state *turnRuntime, text, reasoning string, usage *provider.Usage) (cont bool, err error) {
 	// Recovery finalization produced a summary. Keep it in the session,
 	// but still pause so Goal auto-continue cannot open another Run with
@@ -536,8 +544,7 @@ func (a *Agent) handleFinalResponse(ctx context.Context, state *turnRuntime, tex
 		}
 	}
 	readiness := a.finalReadinessCheckFor()
-	controlReadiness := a.finalReadinessControlProjection(readiness, text)
-	if state.graceRound && (controlReadiness.reason != "" || !hasVisibleFinalAnswer(text)) {
+	if state.graceRound && (readiness.reason != "" || !hasVisibleFinalAnswer(text)) {
 		a.contextManager().ObserveUsage(usage)
 		return false, a.gracePause(state)
 	}
@@ -548,22 +555,20 @@ func (a *Agent) handleFinalResponse(ctx context.Context, state *turnRuntime, tex
 		a.contextManager().ObserveUsage(usage)
 		return false, a.gracePause(state)
 	}
-	if readiness.reason != "" || controlReadiness.reason != "" {
-		// The host owns the concrete missing requirements. Return them to the
-		// controller when automatic continuation is armed (or for the existing
-		// strict/Goal path). Standard receives only the task-progress control
-		// projection; the complete observed facts still feed its readiness audit.
-		if controlReadiness.reason != "" && a.readinessPauseActive(controlReadiness) &&
-			(a.turn.automaticReadinessContinuation || a.closedLoopActive() || controlReadiness.missingSignoff > 0 || controlReadiness.missingActionEvidence > 0) {
+	if readiness.reason != "" {
+		// Standard ends with its answer/quality summary. Delivery and Goal hand
+		// the structured gap to the controller, which exposes an explicit recovery
+		// action or lets the Goal FSM decide whether to continue.
+		if a.readinessPauseActive(readiness) {
 			event.RecordReadinessAudit(a.svc.sink, readiness.audit(evidence.ReadinessErrored, false))
 			a.pending.finalReadinessRecovery = true
-			a.persistFinalReadinessRecovery(controlReadiness.missingIDs())
+			a.persistFinalReadinessRecovery(readiness.missingIDs())
 			return false, &FinalReadinessError{
 				Attempts:          1,
-				Reason:            controlReadiness.reason,
-				Missing:           controlReadiness.missingIDs(),
-				ContinuationClass: controlReadiness.continuationClass(),
-				ProgressKey:       a.finalReadinessProgressKey(controlReadiness),
+				Reason:            readiness.reason,
+				Missing:           readiness.missingIDs(),
+				ContinuationClass: readiness.continuationClass(),
+				ProgressKey:       readiness.progressSignature(),
 			}
 		}
 		event.RecordReadinessAudit(a.svc.sink, readiness.audit(evidence.ReadinessAllowed, a.turn.readinessRecovered))
@@ -592,6 +597,10 @@ func (a *Agent) handleFinalResponse(ctx context.Context, state *turnRuntime, tex
 		state.handoffNudges++
 		a.svc.sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelInfo, Code: event.NoticeCodeExecutorHandoff, Text: executorHandoffNoticeText(), Detail: "executor answered without taking any action; nudging it to use its tools"})
 		a.sess.conversation.Add(provider.Message{Role: provider.RoleUser, Content: a.withTurnPreferences(executorHandoffRetryMessage())})
+		a.contextManager().ObserveUsage(usage)
+		return true, nil
+	}
+	if a.continueStandardTodo(ctx, state) {
 		a.contextManager().ObserveUsage(usage)
 		return true, nil
 	}
@@ -641,6 +650,11 @@ func (a *Agent) handleToolRound(ctx context.Context, state *turnRuntime, step in
 		receiptMark = a.task.ledger.Len()
 	}
 	batch := a.executeBatch(ctx, state, calls)
+	if batch.err != nil {
+		// No call from the batch has executed: executeBatch commits every full
+		// dispatch before entering its execution scheduler.
+		return false, batch.err
+	}
 	results, images := batch.results, batch.images
 	for i, call := range calls {
 		msg := provider.Message{

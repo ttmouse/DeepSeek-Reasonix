@@ -139,11 +139,14 @@ func (a *Agent) buildSamplingRequest(ctx context.Context, trigger string) (sampl
 	}
 	req := provider.Request{
 		Messages:       requestMessages,
-		Tools:          a.svc.tools.Schemas(),
+		Tools:          a.providerToolSchemas(),
 		MaxTokens:      a.maxOutputTokens,
 		Temperature:    provider.OptionalTemperature(a.temperature),
 		ResponseFormat: responseFormatFromRequest(ctx),
 		EffortOverride: a.governorOverride(),
+	}
+	if provider.NativeToolSearchEnabled(a.svc.prov) {
+		req.ToolSearch = &provider.ToolSearch{Enabled: true}
 	}
 	// provider.request: the fully assembled request gets one last ruling
 	// (revalidated by the payload registry) before it goes on the wire.

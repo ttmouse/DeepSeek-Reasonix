@@ -98,6 +98,11 @@ var English = Messages{
 	AskSubmitTitle:                         "Submit answers",
 	AskUnanswered:                          "(unanswered)",
 	AskSubmitHint:                          "Enter submits · ← returns to edit",
+	ElicitURLHint:                          "o opens the link · Enter accepts · d declines · Esc cancels",
+	ElicitConfirmOnly:                      "Confirm with Enter; d declines; Esc cancels.",
+	ElicitUnanswered:                       "(unanswered)",
+	ElicitSubmit:                           "Submit",
+	ElicitSubmitHint:                       "Enter edits the field · tab advances · on Submit: Enter accepts, d declines, Esc cancels",
 	ToolApprovalPromptFmt:                  "Permission required\n\nWill call tool %s%s.\n%s\n%s",
 	ToolApprovalChoices:                    "1. Allow once\n2. Allow %s for this session\n3. Always allow %s (save to config)\n4. Deny\nChoose [1/2/3/4] (y/a/p/n also work)",
 	BashPrefixChoices:                      "1. Allow once\n2. Allow %s for this session\n3. Always allow %s (save to config)\n4. Deny\nChoose [1/2/3/4] (y/a/p/n also work)",
@@ -566,7 +571,7 @@ Usage:
   reasonix acp [--model NAME]                           serve Agent Client Protocol over stdio (also: reasonix --acp)
   reasonix setup [path]                                 interactive config wizard; writes reasonix.toml (+ .env)
   reasonix config reasoning-language [auto|zh|en]        configure visible reasoning language
-  reasonix config compact-ratio [--local] [65..85]       configure automatic compaction threshold
+  reasonix config compact-ratio [--local] [30..85]       configure automatic compaction threshold
   reasonix config telemetry [auto|on|off]                configure content-free CLI usage metrics
   reasonix report [list|show|send|delete] [ID]           review and explicitly send local CLI crash reports
   reasonix mcp <add|remove|list|import>                 manage MCP servers in reasonix.toml

@@ -22,7 +22,7 @@ export type TranscriptRowLayoutVariant =
   | "static"
   | "text-flow";
 
-export type TranscriptEstimateSource = "exact" | "compact-median" | "calibrated" | "static";
+export type TranscriptEstimateSource = "exact" | "calibrated" | "static";
 
 export type TranscriptGeometryEnvironment = {
   /** Actual readable transcript column, not the native window width. */
@@ -73,6 +73,7 @@ export function resolveToolCardDefaultOpen(
   const liveFollow = reasoningDisplayMode === "auto" || reasoningDisplayMode === "expanded";
   const keepSubagentReasoningExpanded = reasoningDisplayMode === "expanded" && Boolean(item.subagentProgress?.reasoning);
   return (nestedCount > 0 && item.status === "running")
+    || (liveFollow && Boolean(item.subagentProgress) && item.status === "running")
     || (liveFollow && subagentReasoningRunning)
     || keepSubagentReasoningExpanded;
 }

@@ -2,6 +2,1748 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.34.0",
+      "date": "2026-08-30",
+      "channel": "stable",
+      "targetingVersion": 1,
+      "title": {
+        "en": "Reasonix 1.34.0",
+        "zh": "Reasonix 1.34.0"
+      },
+      "summary": {
+        "en": "Security hardening for serve and git operations, MCP 2026 interactions and Apps, cache-stable capability controls, and multiple desktop stability fixes.",
+        "zh": "serve 与 git 操作的安全加固、MCP 2026 交互与 Apps、缓存稳定的能力控制，以及多项桌面稳定性修复。"
+      },
+      "surfaces": [
+        "desktop",
+        "cli"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "Subagent Profiles",
+            "zh": "子代理配置文件"
+          },
+          "body": {
+            "en": "Documentation for subagent profiles.",
+            "zh": "子代理配置文件文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/SUBAGENT_PROFILES.md"
+        },
+        {
+          "title": {
+            "en": "Subagent Profiles (Chinese)",
+            "zh": "子代理配置文件（中文）"
+          },
+          "body": {
+            "en": "Chinese documentation for subagent profiles.",
+            "zh": "子代理配置文件中文文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/SUBAGENT_PROFILES.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Task Contract",
+            "zh": "任务契约"
+          },
+          "body": {
+            "en": "Documentation for the task contract.",
+            "zh": "任务契约文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/TASK_CONTRACT.md"
+        },
+        {
+          "title": {
+            "en": "Task Contract (Chinese)",
+            "zh": "任务契约（中文）"
+          },
+          "body": {
+            "en": "Chinese documentation for the task contract.",
+            "zh": "任务契约中文文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/TASK_CONTRACT.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Tool Contract",
+            "zh": "工具契约"
+          },
+          "body": {
+            "en": "Documentation for the tool contract.",
+            "zh": "工具契约文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/TOOL_CONTRACT.md"
+        },
+        {
+          "title": {
+            "en": "Tool Contract (Chinese)",
+            "zh": "工具契约（中文）"
+          },
+          "body": {
+            "en": "Chinese documentation for the tool contract.",
+            "zh": "工具契约中文文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/TOOL_CONTRACT.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "Capability Replay",
+            "zh": "能力使用回放"
+          },
+          "body": {
+            "en": "Documentation for capability replay evaluation.",
+            "zh": "能力使用回放评估文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/eval/use-capability-replay.md"
+        },
+        {
+          "title": {
+            "en": "Capability Replay (Chinese)",
+            "zh": "能力使用回放（中文）"
+          },
+          "body": {
+            "en": "Chinese documentation for capability replay evaluation.",
+            "zh": "能力使用回放评估中文文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/eval/use-capability-replay.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "MCP 2026 Apps",
+            "zh": "MCP 2026 Apps"
+          },
+          "body": {
+            "en": "Documentation for MCP 2026 Apps support.",
+            "zh": "MCP 2026 Apps 支持文档。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/ef25a7fe36367c057fc775af63036a45fee2554e/docs/mcp-2026-apps.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "new",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "MCP 2026 interactions and Apps",
+            "zh": "MCP 2026 交互与 Apps"
+          },
+          "body": {
+            "en": "Added support for MCP 2026 multi-round interactions and Desktop Apps with sandboxed rendering.",
+            "zh": "新增对 MCP 2026 多轮交互和桌面 Apps 的支持，并采用沙箱渲染。"
+          },
+          "refs": [
+            9547
+          ]
+        },
+        {
+          "kind": "new",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Cache-stable capability controls",
+            "zh": "缓存稳定的能力控制"
+          },
+          "body": {
+            "en": "Landed use_capability speed and quality controls, including parallel scheduling, review budgets, and metrics.",
+            "zh": "落地 use_capability 的速度与质量控制，包括并行调度、审查预算和指标。"
+          },
+          "refs": [
+            9569
+          ]
+        },
+        {
+          "kind": "security",
+          "targets": [
+            "cli"
+          ],
+          "title": {
+            "en": "Serve and git security hardening",
+            "zh": "serve 与 git 操作安全加固"
+          },
+          "body": {
+            "en": "Closed six security-boundary gaps including DNS rebinding, preview confinement, and git clean-filter neutralization.",
+            "zh": "封堵六个安全边界缺口，包括 DNS 重绑定、预览越界读与 git clean 过滤器执行。"
+          },
+          "refs": [
+            9599
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Stabilized transcript scrolling",
+            "zh": "稳定对话滚动"
+          },
+          "body": {
+            "en": "Fixed transcript reader transactions to prevent reverse jumps and blank frames during high-speed reasoning.",
+            "zh": "修复对话阅读滚动事务，防止高速推理时的反向跳跃和空白帧。"
+          },
+          "refs": [
+            9513
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Preserved multi-round reasoning timeline",
+            "zh": "修复多轮思考时间线"
+          },
+          "body": {
+            "en": "Fixed multi-round reasoning overwrites and tool timeline misalignment in the same turn.",
+            "zh": "修复同一 turn 内多次模型采样导致的多轮思考覆盖和工具时间线错位。"
+          },
+          "refs": [
+            9565
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Stabilized composer autosize scrolling",
+            "zh": "修复输入框自动高度抖动"
+          },
+          "body": {
+            "en": "Fixed composer autosize causing session viewport bounce by using an off-flow textarea mirror.",
+            "zh": "通过使用离流 textarea 镜像修复输入框自动高度导致的会话视口抖动。"
+          },
+          "refs": [
+            9568
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Aligned model discovery with chat proxy policy",
+            "zh": "修复自定义供应商刷新正常但对话无响应"
+          },
+          "body": {
+            "en": "Fixed custom provider model discovery using a different network policy than chat, and made stream failures visible.",
+            "zh": "修复自定义供应商模型发现与聊天使用不同网络策略的问题，并使流失败可见。"
+          },
+          "refs": [
+            9563
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Kept remote project roots out of local topic state",
+            "zh": "远端项目根不再触碰本地 Topic 元数据"
+          },
+          "body": {
+            "en": "Fixed a user-visible toast error when opening remote projects on Windows due to invalid path components.",
+            "zh": "修复在 Windows 上打开远端项目时因无效路径组件导致的用户可见 toast 错误。"
+          },
+          "refs": [
+            9594
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Kept new-session blank row visible in remote groups",
+            "zh": "远端项目组新会话行稳定显示"
+          },
+          "body": {
+            "en": "Fixed the new-session blank row flashing and disappearing in remote workspace sidebars.",
+            "zh": "修复远端工作区侧边栏中新会话行闪烁后消失的问题。"
+          },
+          "refs": [
+            9595
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Kept write path alive across in-place resume",
+            "zh": "修复 /resume 之后 /new 报写授权缺失"
+          },
+          "body": {
+            "en": "Fixed a 500 error when creating a new session after an in-place resume due to missing write authority.",
+            "zh": "修复原地 /resume 后创建新会话时因写授权缺失导致的 500 错误。"
+          },
+          "refs": [
+            9596
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Hardened Streamable HTTP compatibility",
+            "zh": "修复 Streamable HTTP 兼容性"
+          },
+          "body": {
+            "en": "Fixed MCP Streamable HTTP compatibility issues with stateless bridges and pinned the Go MCP SDK.",
+            "zh": "修复 MCP Streamable HTTP 与无状态桥接的兼容性问题，并固定 Go MCP SDK。"
+          },
+          "refs": [
+            9602
+          ]
+        }
+      ],
+      "changes": {
+        "new": [
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "MCP 2026 interactions and Apps",
+              "zh": "MCP 2026 交互与 Apps"
+            },
+            "body": {
+              "en": "Added support for MCP 2026 multi-round interactions and Desktop Apps with sandboxed rendering.",
+              "zh": "新增对 MCP 2026 多轮交互和桌面 Apps 的支持，并采用沙箱渲染。"
+            },
+            "refs": [
+              9547
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Cache-stable capability controls",
+              "zh": "缓存稳定的能力控制"
+            },
+            "body": {
+              "en": "Landed use_capability speed and quality controls, including parallel scheduling, review budgets, and metrics.",
+              "zh": "落地 use_capability 的速度与质量控制，包括并行调度、审查预算和指标。"
+            },
+            "refs": [
+              9569
+            ]
+          }
+        ],
+        "improved": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Stabilized transcript scrolling",
+              "zh": "稳定对话滚动"
+            },
+            "body": {
+              "en": "Improved transcript reader transactions to prevent reverse jumps and blank frames during high-speed reasoning.",
+              "zh": "改进对话阅读滚动事务，防止高速推理时的反向跳跃和空白帧。"
+            },
+            "refs": [
+              9513
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Preserved multi-round reasoning timeline",
+              "zh": "修复多轮思考时间线"
+            },
+            "body": {
+              "en": "Improved multi-round reasoning timeline rendering and tool timeline alignment.",
+              "zh": "改进多轮思考时间线渲染和工具时间线对齐。"
+            },
+            "refs": [
+              9565
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Stabilized composer autosize scrolling",
+              "zh": "修复输入框自动高度抖动"
+            },
+            "body": {
+              "en": "Improved composer autosize to prevent session viewport bounce.",
+              "zh": "改进输入框自动高度，防止会话视口抖动。"
+            },
+            "refs": [
+              9568
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Aligned model discovery with chat proxy policy",
+              "zh": "修复自定义供应商刷新正常但对话无响应"
+            },
+            "body": {
+              "en": "Improved custom provider model discovery to use the same network policy as chat, and made stream failures visible.",
+              "zh": "改进自定义供应商模型发现以使用与聊天相同的网络策略，并使流失败可见。"
+            },
+            "refs": [
+              9563
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Hardened Streamable HTTP compatibility",
+              "zh": "修复 Streamable HTTP 兼容性"
+            },
+            "body": {
+              "en": "Improved MCP Streamable HTTP compatibility with stateless bridges and pinned the Go MCP SDK.",
+              "zh": "改进 MCP Streamable HTTP 与无状态桥接的兼容性，并固定 Go MCP SDK。"
+            },
+            "refs": [
+              9602
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "targets": [
+              "cli"
+            ],
+            "title": {
+              "en": "Serve and git security hardening",
+              "zh": "serve 与 git 操作安全加固"
+            },
+            "body": {
+              "en": "Fixed six security-boundary gaps including DNS rebinding, preview confinement, and git clean-filter neutralization.",
+              "zh": "修复六个安全边界缺口，包括 DNS 重绑定、预览越界读与 git clean 过滤器执行。"
+            },
+            "refs": [
+              9599
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Kept remote project roots out of local topic state",
+              "zh": "远端项目根不再触碰本地 Topic 元数据"
+            },
+            "body": {
+              "en": "Fixed a user-visible toast error when opening remote projects on Windows due to invalid path components.",
+              "zh": "修复在 Windows 上打开远端项目时因无效路径组件导致的用户可见 toast 错误。"
+            },
+            "refs": [
+              9594
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Kept new-session blank row visible in remote groups",
+              "zh": "远端项目组新会话行稳定显示"
+            },
+            "body": {
+              "en": "Fixed the new-session blank row flashing and disappearing in remote workspace sidebars.",
+              "zh": "修复远端工作区侧边栏中新会话行闪烁后消失的问题。"
+            },
+            "refs": [
+              9595
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Kept write path alive across in-place resume",
+              "zh": "修复 /resume 之后 /new 报写授权缺失"
+            },
+            "body": {
+              "en": "Fixed a 500 error when creating a new session after an in-place resume due to missing write authority.",
+              "zh": "修复原地 /resume 后创建新会话时因写授权缺失导致的 500 错误。"
+            },
+            "refs": [
+              9596
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "SivanCola",
+        "XTLine"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.34.0",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.33.0...desktop-v1.34.0",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.34.0",
+      "baseVersion": "1.34.0",
+      "status": "reviewed",
+      "previousRelease": "1.33.0",
+      "builds": {
+        "cli": "v1.34.0",
+        "desktop": "v1.34.0",
+        "npm": "1.34.0"
+      }
+    },
+    {
+      "version": "1.33.0",
+      "date": "2026-08-28",
+      "channel": "stable",
+      "targetingVersion": 1,
+      "title": {
+        "en": "Reasonix v1.33.0",
+        "zh": "Reasonix v1.33.0"
+      },
+      "summary": {
+        "en": "This release adds MCP 2026 elicitation and stable MCP Apps, improves shell configuration, remote credential security, interface stability, and notification volume control.",
+        "zh": "此版本新增 MCP 2026 交互与稳定版 MCP Apps，并改进 Shell 配置、远程凭据安全性、界面稳定性和通知音量控制。"
+      },
+      "surfaces": [
+        "desktop",
+        "cli"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "MCP 2026 capability surface",
+            "zh": "MCP 2026 能力面"
+          },
+          "body": {
+            "en": "Host capability profiles, capability negotiation, elicitation, Apps sandboxing, and the cross-version cache contract.",
+            "zh": "宿主能力分层、能力协商、交互流程、Apps 沙箱与跨版本缓存契约。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/main-v2/docs/mcp-2026-apps.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "new",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "MCP 2026 elicitation and stable Apps",
+            "zh": "MCP 2026 交互与稳定版 Apps"
+          },
+          "body": {
+            "en": "Added MCP 2026-07-28 multi-round-trip form and URL elicitation plus stable MCP Apps 2026-01-26 on Desktop, with explicit capability negotiation and safe cross-version fallbacks.",
+            "zh": "新增 MCP 2026-07-28 多轮表单及 URL 交互，并在桌面端支持稳定版 MCP Apps 2026-01-26，同时提供显式能力协商与安全的跨版本回退。"
+          },
+          "refs": [
+            9547
+          ]
+        },
+        {
+          "kind": "new",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Safe cross-platform shell support",
+            "zh": "安全的跨平台 Shell 支持"
+          },
+          "body": {
+            "en": "Added a process-level cached shell inventory with deterministic Git for Windows discovery. macOS resolves Bash, native zsh, and POSIX sh; Linux execution remains Bash-only. Git is modeled as an independent capability. Windows repair is manual-only, and macOS/Linux repair guidance provides copy-only commands.",
+            "zh": "新增进程级缓存的 Shell 清单，并支持确定性的 Git for Windows 发现。macOS 可解析 Bash、原生 zsh 和 POSIX sh；Linux 执行仍仅限 Bash。Git 被建模为独立能力。Windows 修复仅支持手动操作，macOS/Linux 修复指导仅提供复制命令。"
+          },
+          "refs": [
+            9519
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Stable running turn transitions",
+            "zh": "稳定的运行任务切换"
+          },
+          "body": {
+            "en": "Fixed interface jitter during task execution by keeping reasoning and process disclosures open throughout the active turn lifecycle and using a monotonic height floor to stabilize live footer commits.",
+            "zh": "修复了任务执行期间的界面抽动问题，通过在整个活动轮次生命周期内保持推理和进程披露展开，并使用单调高度下限稳定实时页脚提交。"
+          },
+          "refs": [
+            9540
+          ]
+        },
+        {
+          "kind": "security",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Secure remote credential proxy routing",
+            "zh": "安全的远程凭据代理路由"
+          },
+          "body": {
+            "en": "Remote local proxy routes now keep stable scoped virtual tokens while the desktop holds real provider credentials. Saving, clearing, or deleting credentials synchronously rebuilds or revokes only affected routes, and revoked tokens return HTTP 401.",
+            "zh": "远程本地代理路由现在保持稳定的作用域虚拟令牌，而桌面端持有真实提供商凭据。保存、清除或删除凭据会同步重建或撤销仅受影响的路由，被撤销的令牌返回 HTTP 401。"
+          },
+          "refs": [
+            9542
+          ]
+        },
+        {
+          "kind": "new",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Adjustable notification volume",
+            "zh": "可调通知音量"
+          },
+          "body": {
+            "en": "Added a 0–100% notification volume slider in Sound settings with a default of 70%. All notification sounds now route through one master gain, normalizing bundled WAV assets to consistent loudness.",
+            "zh": "在声音设置中新增 0–100% 的通知音量滑块，默认值为 70%。所有通知声音现在通过一个主增益路由，将内置 WAV 资源标准化为一致的响度。"
+          },
+          "refs": [
+            9535
+          ]
+        }
+      ],
+      "changes": {
+        "new": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Open wizard host suggestions from an explicit arrow",
+              "zh": "通过明确的箭头打开向导主机建议"
+            },
+            "body": {
+              "en": "Step 1's host field now shows saved SSH connections through an explicit chevron dropdown, listing all saved connections unfiltered and appending non-22 ports.",
+              "zh": "第一步的主机字段现在通过明确的箭头下拉菜单显示已保存的 SSH 连接，列出所有已保存的连接且不过滤，并附加非 22 端口。"
+            },
+            "refs": [
+              9536
+            ]
+          }
+        ],
+        "improved": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Bounded session index rebuild lifecycle",
+              "zh": "有界的会话索引重建生命周期"
+            },
+            "body": {
+              "en": "Manual session index rebuilds are now bounded and awaitable transactions. The sidebar no longer gets stuck in “Organizing history / Rebuilding index” after updates or repairs.",
+              "zh": "手动会话索引重建现在是有界且可等待的事务。更新或修复后，侧边栏不再卡在“整理历史记录 / 重建索引”状态。"
+            },
+            "refs": [
+              9528
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Auto-collapse completed Todo panel",
+              "zh": "完成待办后自动收起面板"
+            },
+            "body": {
+              "en": "Completed Todo panels now fade out after a short hold, and restoring a session does not reattach completed batches.",
+              "zh": "已完成的待办面板现在会在短暂停留后淡出，恢复会话时不会重新附加已完成的批次。"
+            },
+            "refs": [
+              9529
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Stale status races no longer crash",
+              "zh": "过时的状态竞争不再导致崩溃"
+            },
+            "body": {
+              "en": "A /status poll losing the race against an SSE-derived frame is now treated as a benign stale snapshot instead of an unhandled rejection crash.",
+              "zh": "与 SSE 派生帧竞争失败的 /status 轮询现在被视为良性的过时快照，而不再表现为未处理的拒绝崩溃。"
+            },
+            "refs": [
+              9541
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Reliable in-memory history indexing",
+              "zh": "可靠的内存历史索引"
+            },
+            "body": {
+              "en": "Background history and session indexes now use isolated in-memory SQLite databases, and history flushes finish every registered root before reporting completion, preventing migration collisions and skipped rescans under Windows load.",
+              "zh": "后台历史记录和会话索引现在使用相互隔离的内存 SQLite 数据库，历史记录排空会在报告完成前处理所有已登记根目录，避免在 Windows 负载下发生迁移冲突或漏掉重新扫描。"
+            },
+            "refs": [
+              9557
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Wait for mounted extent rebound",
+              "zh": "等待高度恢复后的挂载覆盖"
+            },
+            "body": {
+              "en": "Transcript browser replay now waits for stable geometry and preserves extent samples on failure, fixing a race that could expose blank frames in Windows WebView2.",
+              "zh": "转录浏览器回放现在等待稳定的几何信息并在失败时保留范围样本，修复了 Windows WebView2 中可能暴露空白帧的竞争条件。"
+            },
+            "refs": [
+              9551
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Correct blank rebound before paint",
+              "zh": "绘制前修正空白高度回弹"
+            },
+            "body": {
+              "en": "Corrects a recoverable blank transcript rebound synchronously from the native scroll delivery before the next visible frame, preventing blank frames.",
+              "zh": "在下一个可见帧之前，从原生滚动传递同步修正可恢复的空白转录回弹，防止空白帧。"
+            },
+            "refs": [
+              9553
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "SivanCola",
+        "github-actions[bot]",
+        "mchenziyi",
+        "XTLine"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.33.0",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.32.1...desktop-v1.33.0",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.33.0",
+      "baseVersion": "1.33.0",
+      "status": "reviewed",
+      "previousRelease": "1.32.1",
+      "builds": {
+        "cli": "v1.33.0",
+        "desktop": "v1.33.0",
+        "npm": "1.33.0"
+      }
+    },
+    {
+      "version": "1.32.1",
+      "date": "2026-08-28",
+      "channel": "stable",
+      "targetingVersion": 1,
+      "title": {
+        "en": "Reasonix 1.32.1",
+        "zh": "Reasonix 1.32.1"
+      },
+      "summary": {
+        "en": "This release improves agent conversation flow by ending ordinary turns naturally, removing the need for a synthetic finish tool call.",
+        "zh": "此版本改进了代理对话流程，普通回合自然结束，无需调用合成的 finish 工具。"
+      },
+      "surfaces": [
+        "desktop",
+        "cli"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "Tool Contract",
+            "zh": "工具契约"
+          },
+          "body": {
+            "en": "Updated tool contract documentation reflecting the removal of the finish tool schema.",
+            "zh": "更新了工具契约文档，反映 finish 工具模式的移除。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/a5d349b703711948b8742c2e9bc46e86c5b4344a/docs/TOOL_CONTRACT.md"
+        },
+        {
+          "title": {
+            "en": "Tool Contract (Chinese)",
+            "zh": "工具契约（中文）"
+          },
+          "body": {
+            "en": "Updated Chinese tool contract documentation reflecting the removal of the finish tool schema.",
+            "zh": "更新了中文工具契约文档，反映 finish 工具模式的移除。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/a5d349b703711948b8742c2e9bc46e86c5b4344a/docs/TOOL_CONTRACT.zh-CN.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "improved",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Natural turn completion",
+            "zh": "自然回合完成"
+          },
+          "body": {
+            "en": "Ordinary interactive turns now end when the provider completes a visible assistant response, eliminating the need for a synthetic finish tool call and preventing internal protocol repair errors.",
+            "zh": "普通交互回合现在在提供者完成可见助手响应时结束，无需调用合成的 finish 工具，并防止内部协议修复错误。"
+          },
+          "refs": [
+            9508
+          ]
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Removed mandatory finish tool",
+              "zh": "移除强制 finish 工具"
+            },
+            "body": {
+              "en": "The provider-visible finish schema, mandatory finish enforcement, protocol repair prompt, and user-facing repair failure path have been removed while preserving ask and data-bearing finalizers such as submit_plan.",
+              "zh": "移除了提供者可见的 finish 模式、强制 finish 执行、协议修复提示和面向用户的修复失败路径，同时保留了 ask 和携带数据的终结器（如 submit_plan）。"
+            },
+            "refs": [
+              9508
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Reduced tool schema size",
+              "zh": "减小工具模式大小"
+            },
+            "body": {
+              "en": "The stable tool schema has been reduced from 4,298 to 4,138 estimated tokens.",
+              "zh": "稳定工具模式从约 4,298 个 token 减少到 4,138 个 token。"
+            },
+            "refs": [
+              9508
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Prevented protocol repair error",
+              "zh": "防止协议修复错误"
+            },
+            "body": {
+              "en": "Fixed an issue where a normal visible answer without a finish call triggered another provider round and surfaced an internal protocol repair error to users.",
+              "zh": "修复了正常可见回答未调用 finish 时触发额外提供者回合并向用户显示内部协议修复错误的问题。"
+            },
+            "refs": [
+              9508
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "SivanCola"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.32.1",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.32.0...desktop-v1.32.1",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.32.1",
+      "baseVersion": "1.32.1",
+      "status": "reviewed",
+      "previousRelease": "1.32.0",
+      "builds": {
+        "cli": "v1.32.1",
+        "desktop": "v1.32.1",
+        "npm": "1.32.1"
+      }
+    },
+    {
+      "version": "1.32.0",
+      "date": "2026-08-28",
+      "channel": "stable",
+      "targetingVersion": 1,
+      "title": {
+        "en": "Remote workspaces and durable turns",
+        "zh": "远程工作区与持久化回合"
+      },
+      "summary": {
+        "en": "Remote SSH workspaces, durable ordered turns, smoother transcript navigation, and stronger Windows and state-recovery reliability.",
+        "zh": "远程 SSH 工作区、持久有序的回合、更流畅的对话导航，以及更可靠的 Windows 与状态恢复体验。"
+      },
+      "surfaces": [
+        "desktop",
+        "cli",
+        "service"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "Remote SSH Workspace Guide",
+            "zh": "远程 SSH 工作区指南"
+          },
+          "body": {
+            "en": "Learn how to connect to remote SSH workspaces, manage sessions, and use background turns.",
+            "zh": "了解如何连接远程 SSH 工作区、管理会话并使用后台回合。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/d7d0f2084bf9abbf4824e30a97f2ee019f2ff6f3/docs/GUIDE.md"
+        },
+        {
+          "title": {
+            "en": "CLI Reference",
+            "zh": "CLI 参考"
+          },
+          "body": {
+            "en": "Command-line interface documentation and configuration options.",
+            "zh": "命令行界面文档和配置选项。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/d7d0f2084bf9abbf4824e30a97f2ee019f2ff6f3/docs/CLI.md"
+        },
+        {
+          "title": {
+            "en": "Configuration Paths",
+            "zh": "配置路径"
+          },
+          "body": {
+            "en": "Where Reasonix stores configuration and state files.",
+            "zh": "Reasonix 存储配置和状态文件的位置。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/d7d0f2084bf9abbf4824e30a97f2ee019f2ff6f3/docs/CONFIG_PATHS.md"
+        },
+        {
+          "title": {
+            "en": "Migration Guide",
+            "zh": "迁移指南"
+          },
+          "body": {
+            "en": "How to migrate existing workspaces and data to the latest version.",
+            "zh": "如何将现有工作区和数据迁移到最新版本。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/d7d0f2084bf9abbf4824e30a97f2ee019f2ff6f3/docs/MIGRATING.md"
+        },
+        {
+          "title": {
+            "en": "Tool Contract",
+            "zh": "工具契约"
+          },
+          "body": {
+            "en": "Details on tool schemas and provider interactions.",
+            "zh": "工具模式和提供程序交互的详细信息。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/d7d0f2084bf9abbf4824e30a97f2ee019f2ff6f3/docs/TOOL_CONTRACT.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "new",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Remote SSH workspaces",
+            "zh": "远程 SSH 工作区"
+          },
+          "body": {
+            "en": "Connect remote SSH workspaces, resume exact sessions, and let busy turns continue in the background while you switch sessions.",
+            "zh": "连接远程 SSH 工作区、精确恢复会话，并在切换会话时让繁忙回合继续在后台运行。"
+          },
+          "refs": [
+            9369,
+            9317,
+            9319,
+            9368,
+            9367
+          ]
+        },
+        {
+          "kind": "new",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Durable, ordered turns",
+            "zh": "持久化、有序的回合"
+          },
+          "body": {
+            "en": "Ordered turn events now persist across interruptions and restarts, with accepted side effects fenced from replay.",
+            "zh": "有序的回合事件现在可跨中断与重启持久保存，并防止已接受的副作用被重复执行。"
+          },
+          "refs": [
+            9409
+          ]
+        },
+        {
+          "kind": "improved",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Smoother transcript scrolling and navigation",
+            "zh": "更流畅的对话滚动与导航"
+          },
+          "body": {
+            "en": "Stabilized scroll-surface ownership and commit navigation only after the destination has painted.",
+            "zh": "稳定滚动表面所有权，并在目标完成绘制后再提交会话导航。"
+          },
+          "refs": [
+            9493,
+            9422
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Windows taskbar icon and selection rendering",
+            "zh": "Windows 任务栏图标和选区渲染"
+          },
+          "body": {
+            "en": "Restored the taskbar icon and stabilized transcript selection rendering on Windows.",
+            "zh": "恢复了任务栏图标并稳定了 Windows 上的对话选区渲染。"
+          },
+          "refs": [
+            9364,
+            9473
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "MCP session reliability",
+            "zh": "MCP 会话可靠性"
+          },
+          "body": {
+            "en": "Moved supervised MCP sessions to the official Go SDK and correctly dispatch ACP-supplied host-session servers.",
+            "zh": "将受管 MCP 会话迁移到官方 Go SDK，并正确调度通过 ACP 提供的宿主会话服务器。"
+          },
+          "refs": [
+            9410,
+            9381
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Topic metadata migration",
+            "zh": "主题元数据迁移"
+          },
+          "body": {
+            "en": "Moved topic metadata to SQLite for reliability and recovery.",
+            "zh": "将主题元数据迁移到 SQLite 以提高可靠性和恢复能力。"
+          },
+          "refs": [
+            9466
+          ]
+        }
+      ],
+      "changes": {
+        "new": [
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Remote SSH workspaces",
+              "zh": "远程 SSH 工作区"
+            },
+            "body": {
+              "en": "Connect remote SSH workspaces, resume exact sessions, and let busy turns continue in the background while you switch sessions.",
+              "zh": "连接远程 SSH 工作区、精确恢复会话，并在切换会话时让繁忙回合继续在后台运行。"
+            },
+            "refs": [
+              9369,
+              9317,
+              9319,
+              9368,
+              9367
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Durable, ordered turns",
+              "zh": "持久化、有序的回合"
+            },
+            "body": {
+              "en": "Ordered turn events now persist across interruptions and restarts, with accepted side effects fenced from replay.",
+              "zh": "有序的回合事件现在可跨中断与重启持久保存，并防止已接受的副作用被重复执行。"
+            },
+            "refs": [
+              9409
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Individual session archiving",
+              "zh": "单个会话归档"
+            },
+            "body": {
+              "en": "Archive individual sessions safely from their project-tree group.",
+              "zh": "现在可以在项目树分组中安全归档单个会话。"
+            },
+            "refs": [
+              9374
+            ]
+          }
+        ],
+        "improved": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Smoother transcript scrolling and navigation",
+              "zh": "更流畅的对话滚动与导航"
+            },
+            "body": {
+              "en": "Stabilized scroll-surface ownership and commit navigation only after the destination has painted.",
+              "zh": "稳定滚动表面所有权，并在目标完成绘制后再提交会话导航。"
+            },
+            "refs": [
+              9493,
+              9422
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Compact MCP capability discovery",
+              "zh": "精简 MCP 能力发现"
+            },
+            "body": {
+              "en": "Capability listing now summarizes each MCP server and keeps full tool catalogs available on demand through inspection.",
+              "zh": "能力列表现在只摘要展示各 MCP 服务器，完整工具目录仍可按需检查。"
+            },
+            "refs": [
+              9499
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Compact ratio range",
+              "zh": "压缩比例范围"
+            },
+            "body": {
+              "en": "Lowered the minimum compact_ratio to 0.30 for earlier compaction.",
+              "zh": "将最小 compact_ratio 降低到 0.30，以便更早进行压缩。"
+            },
+            "refs": [
+              9158
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Clearer memory capability guidance",
+              "zh": "更清晰的记忆能力指引"
+            },
+            "body": {
+              "en": "The capability description now explains when and how to use Reasonix memory tools.",
+              "zh": "能力说明现在会解释何时以及如何使用 Reasonix 记忆工具。"
+            },
+            "refs": [
+              9376
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Client-specific release notes",
+              "zh": "按客户端拆分的更新日志"
+            },
+            "body": {
+              "en": "Release notes now separate Desktop and CLI changes for clearer upgrade decisions.",
+              "zh": "更新日志现在分别展示桌面端与 CLI 变更，便于判断升级影响。"
+            },
+            "refs": [
+              9397
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Windows taskbar icon and selection rendering",
+              "zh": "Windows 任务栏图标和选区渲染"
+            },
+            "body": {
+              "en": "Restored the taskbar icon and stabilized transcript selection rendering on Windows.",
+              "zh": "恢复了任务栏图标并稳定了 Windows 上的对话选区渲染。"
+            },
+            "refs": [
+              9364,
+              9473
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "MCP session reliability",
+              "zh": "MCP 会话可靠性"
+            },
+            "body": {
+              "en": "Moved supervised MCP sessions to the official Go SDK and correctly dispatch ACP-supplied host-session servers.",
+              "zh": "将受管 MCP 会话迁移到官方 Go SDK，并正确调度通过 ACP 提供的宿主会话服务器。"
+            },
+            "refs": [
+              9410,
+              9381
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Atomic recovered-session publication",
+              "zh": "原子发布恢复会话"
+            },
+            "body": {
+              "en": "Recovered session projections now publish atomically, avoiding partially updated catalog state.",
+              "zh": "恢复后的会话投影现在会原子发布，避免目录出现部分更新状态。"
+            },
+            "refs": [
+              9421
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Readable operational overlays",
+              "zh": "清晰可读的操作弹层"
+            },
+            "body": {
+              "en": "Operational dialogs and menus now use opaque theme surfaces so their content remains readable.",
+              "zh": "操作对话框和菜单现在使用不透明主题表面，确保内容始终清晰可读。"
+            },
+            "refs": [
+              9404
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "macOS self-update on exFAT",
+              "zh": "macOS 在 exFAT 上的自动更新"
+            },
+            "body": {
+              "en": "Fixed self-update on exFAT filesystems.",
+              "zh": "修复了 exFAT 文件系统上的自动更新。"
+            },
+            "refs": [
+              9153
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Standard todo stalls",
+              "zh": "Standard 待办停滞"
+            },
+            "body": {
+              "en": "Fixed stalled Standard todos by adding a bounded continuation prompt.",
+              "zh": "通过添加有界的继续提示修复了 Standard 待办停滞。"
+            },
+            "refs": [
+              9483
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Reliable session archiving",
+              "zh": "可靠的会话归档"
+            },
+            "body": {
+              "en": "Session archiving now tolerates brief local lock handoffs without reporting that the session is still in use.",
+              "zh": "会话归档现在可容忍短暂的本地锁交接，不会误报会话仍在使用中。"
+            },
+            "refs": [
+              9502
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Topic metadata migration",
+              "zh": "主题元数据迁移"
+            },
+            "body": {
+              "en": "Moved topic metadata to SQLite for reliability and recovery.",
+              "zh": "将主题元数据迁移到 SQLite 以提高可靠性和恢复能力。"
+            },
+            "refs": [
+              9466
+            ]
+          },
+          {
+            "targets": [
+              "service"
+            ],
+            "title": {
+              "en": "Crash-report storage migration",
+              "zh": "崩溃报告存储迁移"
+            },
+            "body": {
+              "en": "Migrated crash-report storage to Firebase with approval, output, and capacity safeguards.",
+              "zh": "将崩溃报告存储迁移到 Firebase，并加入审批、输出与容量保护。"
+            },
+            "refs": [
+              9418,
+              9424,
+              9425,
+              9415,
+              9413,
+              9407
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "WebSocket dependency update",
+              "zh": "WebSocket 依赖更新"
+            },
+            "body": {
+              "en": "Updated gorilla/websocket to 1.5.3.",
+              "zh": "将 gorilla/websocket 更新到 1.5.3。"
+            },
+            "refs": [
+              9382
+            ]
+          }
+        ]
+      },
+      "upgrade": [
+        {
+          "level": "info",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Existing topic metadata migrates automatically",
+            "zh": "现有主题元数据会自动迁移"
+          },
+          "body": {
+            "en": "Existing workspaces migrate on first access and retain legacy JSON mirrors for sequential downgrade and re-upgrade; no manual action is required.",
+            "zh": "现有工作区会在首次访问时迁移，并保留旧版 JSON 镜像以支持顺序降级与再次升级；无需手动操作。"
+          },
+          "refs": [
+            9466
+          ]
+        }
+      ],
+      "risks": [
+        {
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Fresh-workspace downgrade boundary",
+            "zh": "新工作区的降级边界"
+          },
+          "body": {
+            "en": "Workspaces first created in v1.32.0 keep topic metadata only in SQLite. A direct downgrade may recover titles from session metadata but cannot guarantee creation timestamps or auto-title stages. Do not run old and new Reasonix versions against the same workspace concurrently.",
+            "zh": "在 v1.32.0 中首次创建的工作区仅在 SQLite 中保存主题元数据。直接降级时可从会话元数据恢复标题，但无法保证创建时间或自动标题阶段完整恢复。请勿让新旧 Reasonix 版本同时写入同一工作区。"
+          },
+          "refs": [
+            9466
+          ]
+        }
+      ],
+      "contributors": [
+        "SivanCola",
+        "XTLine",
+        "Linearl",
+        "hdkshingala",
+        "zhongerdeajie",
+        "zcxads666"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.32.0",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.31.4...desktop-v1.32.0",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.32.0",
+      "baseVersion": "1.32.0",
+      "status": "reviewed",
+      "previousRelease": "1.31.4",
+      "builds": {
+        "cli": "v1.32.0",
+        "desktop": "v1.32.0",
+        "npm": "1.32.0"
+      }
+    },
+    {
+      "version": "1.31.4",
+      "targetingVersion": 1,
+      "date": "2026-08-25",
+      "channel": "stable",
+      "title": {
+        "en": "Desktop stability and performance improvements",
+        "zh": "桌面端稳定性与性能改进"
+      },
+      "summary": {
+        "en": "This release fixes several desktop issues including corrupted session metadata recovery, background job notifications, provider deletion, and transcript scrolling. It also improves performance by retiring an expensive metrics rollup.",
+        "zh": "此版本修复了多个桌面端问题，包括损坏的会话元数据恢复、后台任务通知、模型服务删除和会话滚动。同时通过移除高成本的指标汇总提升了性能。"
+      },
+      "surfaces": [
+        "desktop",
+        "cli",
+        "service"
+      ],
+      "guides": [
+        {
+          "title": {
+            "en": "Goal Enforcement Guide",
+            "zh": "目标执行指南"
+          },
+          "body": {
+            "en": "Learn how goal enforcement works in Reasonix.",
+            "zh": "了解 Reasonix 中目标执行的工作原理。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/aa3688814852ebae0835ca07731ee929fbd35c7e/docs/GOAL_ENFORCEMENT.zh-CN.md"
+        },
+        {
+          "title": {
+            "en": "User Guide",
+            "zh": "用户指南"
+          },
+          "body": {
+            "en": "Comprehensive guide to using Reasonix.",
+            "zh": "使用 Reasonix 的综合指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/aa3688814852ebae0835ca07731ee929fbd35c7e/docs/GUIDE.md"
+        },
+        {
+          "title": {
+            "en": "User Guide (Chinese)",
+            "zh": "用户指南（中文）"
+          },
+          "body": {
+            "en": "Comprehensive guide to using Reasonix in Chinese.",
+            "zh": "使用 Reasonix 的中文综合指南。"
+          },
+          "href": "https://github.com/esengine/DeepSeek-Reasonix/blob/aa3688814852ebae0835ca07731ee929fbd35c7e/docs/GUIDE.zh-CN.md"
+        }
+      ],
+      "highlights": [
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Recover from corrupted session metadata",
+            "zh": "从损坏的会话元数据中恢复"
+          },
+          "body": {
+            "en": "Sessions with all-zero or whitespace-only metadata files now rebuild automatically instead of blocking saves and tab closing.",
+            "zh": "元数据文件全零或仅含空白的会话现在会自动重建，不再阻止保存和关闭标签页。"
+          },
+          "refs": [
+            9155
+          ]
+        },
+        {
+          "kind": "improved",
+          "targets": [
+            "desktop",
+            "cli"
+          ],
+          "title": {
+            "en": "Clearer background job notifications",
+            "zh": "更清晰的后台任务通知"
+          },
+          "body": {
+            "en": "Quiet long-running background jobs are no longer reported as stalled; the notice now states the job is still running and explains how to adjust the warning threshold.",
+            "zh": "安静运行的后台任务不再被报告为“卡住”；通知现在说明任务仍在运行，并解释如何调整警告阈值。"
+          },
+          "refs": [
+            9115
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Delete configured default providers",
+            "zh": "删除已配置的默认模型服务"
+          },
+          "body": {
+            "en": "You can now remove a configured custom provider even when it is the current default; the backend safely retargets references.",
+            "zh": "现在即使模型服务是当前默认值，也可以删除已配置的自定义服务；后端会安全地重新定向引用。"
+          },
+          "refs": [
+            9344
+          ]
+        },
+        {
+          "kind": "fixed",
+          "targets": [
+            "desktop"
+          ],
+          "title": {
+            "en": "Stable transcript scrolling",
+            "zh": "稳定的会话滚动"
+          },
+          "body": {
+            "en": "Fixed scroll bouncing, flickering, and inability to reach the bottom in long transcripts, especially during streaming output.",
+            "zh": "修复了长会话中滚动跳动、闪烁和无法到达底部的问题，尤其是在流式输出期间。"
+          },
+          "refs": [
+            9248,
+            9341
+          ]
+        },
+        {
+          "kind": "improved",
+          "targets": [
+            "service"
+          ],
+          "title": {
+            "en": "Reduced database read costs",
+            "zh": "降低数据库读取成本"
+          },
+          "body": {
+            "en": "Retired an expensive metrics rollup that consumed the entire database read budget, improving overall performance.",
+            "zh": "移除了消耗全部数据库读取预算的高成本指标汇总，提升了整体性能。"
+          },
+          "refs": [
+            9379
+          ]
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Better math rendering in desktop and CLI",
+              "zh": "桌面端和 CLI 中更好的数学渲染"
+            },
+            "body": {
+              "en": "Fixed boxed formula rendering in WKWebView and added support for more LaTeX commands in the CLI renderer.",
+              "zh": "修复了 WKWebView 中盒装公式的渲染，并在 CLI 渲染器中添加了对更多 LaTeX 命令的支持。"
+            },
+            "refs": [
+              9141
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Preserve sidebar activity order",
+              "zh": "保持侧栏活动顺序"
+            },
+            "body": {
+              "en": "Fixed sidebar conversation reordering when switching sessions by preserving known activity timestamps.",
+              "zh": "通过保留已知的活动时间戳，修复了切换会话时侧栏对话重新排序的问题。"
+            },
+            "refs": [
+              9314
+            ]
+          },
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Stop repeated session catalog reindexing",
+              "zh": "停止会话目录反复重新索引"
+            },
+            "body": {
+              "en": "Fixed a loop where idle sessions repeatedly entered indexing/repair state, making deletion appear unavailable.",
+              "zh": "修复了空闲会话反复进入索引/修复状态导致删除不可用的循环。"
+            },
+            "refs": [
+              9312
+            ]
+          }
+        ],
+        "fixed": [
+          {
+            "targets": [
+              "desktop"
+            ],
+            "title": {
+              "en": "Atomic OpenCode Go group removal",
+              "zh": "OpenCode Go 分组原子删除"
+            },
+            "body": {
+              "en": "Fixed removal of the OpenCode Go provider card by supporting atomic deletion of its custom provider routes.",
+              "zh": "通过支持原子删除其自定义服务路由，修复了 OpenCode Go 服务卡片的移除问题。"
+            },
+            "refs": [
+              9356
+            ]
+          },
+          {
+            "targets": [
+              "desktop",
+              "cli"
+            ],
+            "title": {
+              "en": "Restore explicit readiness recovery",
+              "zh": "恢复显式收尾恢复"
+            },
+            "body": {
+              "en": "Standard and Delivery turns no longer launch hidden readiness follow-up turns, reducing extra thinking rounds and provider requests.",
+              "zh": "标准回合和交付回合不再启动隐藏的收尾后续回合，减少了额外的思考轮次和服务请求。"
+            },
+            "refs": [
+              9341
+            ]
+          }
+        ]
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [
+        "Linearl",
+        "yuhuping",
+        "SivanCola",
+        "lightfront",
+        "esengine",
+        "wuhanwoaini521"
+      ],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.31.4",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.31.3...desktop-v1.31.4",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      },
+      "releaseId": "1.31.4",
+      "baseVersion": "1.31.4",
+      "status": "reviewed",
+      "previousRelease": "1.31.3",
+      "builds": {
+        "cli": "v1.31.4",
+        "desktop": "v1.31.4",
+        "npm": "1.31.4"
+      }
+    },
+    {
       "version": "1.31.3",
       "date": "2026-08-22",
       "channel": "stable",

@@ -23,6 +23,7 @@ import (
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
+	"reasonix/internal/mcpinteraction"
 	"reasonix/internal/memory"
 	"reasonix/internal/nilutil"
 	"reasonix/internal/plancontract"
@@ -541,6 +542,10 @@ func (a *Agent) withTurnPreferences(input string) string {
 // SetAsker installs the asker the `ask` tool uses to question the user.
 // Interactive frontends wire one in; headless runs leave it nil.
 func (a *Agent) SetAsker(as Asker) { a.svc.asker = as }
+
+// SetInteractionBroker installs the broker that carries MCP server-initiated
+// elicitations to the user. Headless runs leave it nil so requests cancel.
+func (a *Agent) SetInteractionBroker(b mcpinteraction.Broker) { a.svc.interactionBroker = b }
 
 // SetMemoryQueue installs the sink the remember/forget tools use to apply a
 // memory change in the current session. The controller wires itself in.
@@ -1146,7 +1151,7 @@ func New(prov provider.Provider, tools *tool.Registry, session *Session, opts Op
 	}
 	a.SetResponseLanguage(opts.ResponseLanguage)
 	a.SetReasoningLanguage(opts.ReasoningLanguage)
-	a.bindToolResultSessionCapability()
+	a.bindCapabilityObservers()
 	a.maybeArmForkFromEnv()
 	a.maybeWrapForkCaptureProvider()
 	if warnDeprecatedRetention {
@@ -1306,8 +1311,9 @@ func (a *Agent) Run(ctx context.Context, input string) (runErr error) {
 }
 
 // ReadinessResult is the host-consumable outcome of the Delivery final-answer
-// readiness check. The Controller reads it after each goal turn; plain turns
-// receive the same outcome as a FinalReadinessError.
+// readiness check. The Controller reads it after each Goal/approved-Plan turn;
+// plain Standard turns end after the visible answer and do not enter the Goal
+// continuation path.
 type ReadinessResult struct {
 	// Ready is true when no missing requirement remains.
 	Ready bool
@@ -1598,9 +1604,6 @@ func parseExecutorHandoff(input string) (task, plan string, ok bool) {
 func looksLikeExecutorHandoffDeferral(answer string) bool {
 	lower := strings.ToLower(strings.TrimSpace(answer))
 	if lower == "" {
-		return true
-	}
-	if looksLikePendingAction(lower) {
 		return true
 	}
 	if containsAnySubstring(lower, executorHandoffDeferralPhrases) {
@@ -2148,7 +2151,7 @@ func toProviderToolExecution(in *tool.ShellExecution) *provider.ToolExecution {
 	return out
 }
 
-func (a *Agent) emitFullToolDispatch(ctx context.Context, c provider.ToolCall, refreshed bool) {
+func (a *Agent) emitFullToolDispatch(ctx context.Context, c provider.ToolCall, refreshed bool) error {
 	t, _, ambiguous := a.svc.tools.ResolveCall(c.Name)
 	ok := t != nil && len(ambiguous) == 0
 	ev := event.Tool{ID: c.ID, Name: c.Name, Args: c.Arguments, ReadOnly: ok && t.ReadOnly(), Refreshed: refreshed}
@@ -2165,7 +2168,7 @@ func (a *Agent) emitFullToolDispatch(ctx context.Context, c provider.ToolCall, r
 			ev.Profile = pr.ResolveProfile(json.RawMessage(c.Arguments))
 		}
 	}
-	a.svc.sink.Emit(event.Event{Kind: event.ToolDispatch, Tool: ev})
+	return event.EmitChecked(a.svc.sink, event.Event{Kind: event.ToolDispatch, Tool: ev})
 }
 
 // emitResolvedToolDispatch upserts the real target classification of a stable
@@ -2840,5 +2843,22 @@ func finishReasonMessage(u *provider.Usage) (string, bool) {
 		return "response truncated: model repetition detected", true
 	default:
 		return "", false
+	}
+}
+
+// streamInterruptNotice explains why a provider stream never reached a clean
+// terminal, in words a user can act on. Only the closed StreamInterrupt* enum
+// is rendered — the wrapped transport error can carry URLs or gateway bodies
+// and must not reach the transcript (#9560).
+func streamInterruptNotice(err error) (code, text string) {
+	switch provider.StreamInterruptReason(err) {
+	case provider.StreamInterruptIdleTimeout:
+		return event.NoticeCodeStreamInterruptedIdleTimeout, "model stream stalled: no data arrived before the idle timeout; check the provider gateway or network proxy"
+	case provider.StreamInterruptPrematureEOF:
+		return event.NoticeCodeStreamInterruptedPrematureEOF, "model stream ended before completion; the provider gateway or network proxy dropped the connection"
+	case provider.StreamInterruptConnectionReset:
+		return event.NoticeCodeStreamInterruptedConnectionReset, "model connection was reset; check the provider gateway or network proxy"
+	default:
+		return "", ""
 	}
 }

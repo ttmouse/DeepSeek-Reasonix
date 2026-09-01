@@ -24,6 +24,11 @@ type turnRuntime struct {
 	trackingTodoProgress bool
 	todoStallRounds      int
 	seenTodoProgress     map[string]struct{}
+	// standardTodoContinuations is the bounded same-Run repair for a Standard
+	// execution turn that wrote an active todo and then tried to stop. The
+	// fingerprint gates the optional second nudge on new host-observed work.
+	standardTodoContinuations int
+	standardTodoProgress      string
 
 	executorHandoff bool
 	input           string
@@ -49,9 +54,7 @@ type turnRuntime struct {
 	// readinessRecovered marks a run that started with evidence preserved from
 	// (or a pending recovery of) a prior readiness failure, so the final
 	// allowed audit can report Recovered=true.
-	readinessRecovered             bool
-	automaticReadinessContinuation bool
-	mutationExpected               bool
+	readinessRecovered bool
 
 	// recoveryTaskSummary is the bounded task text for this Agent.Run. It lets
 	// a shared recovery gate review sub-agent mutations against the child
@@ -72,6 +75,8 @@ type turnRuntime struct {
 	// repeatSuccessCounts catches the shape stormSig cannot see: the same write
 	// succeeding over and over leaves no error for a failure-only breaker.
 	repeatSuccessCounts map[string]int
+	loop                turnLoopState
+	softBudgetMutation  bool
 
 	// constraints and engine are frozen at the start of the Run.
 	constraints runtimepolicy.Constraints
@@ -93,6 +98,8 @@ type turnRuntime struct {
 	// lastReasoning is the previous executor round's reasoning-token spend,
 	// read by the governor trigger (live policy and fork capture alike).
 	lastReasoning int
+
+	phase phaseClock
 }
 
 // pendingTurn is what someone outside the Run arms for the next one: a

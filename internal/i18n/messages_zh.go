@@ -99,6 +99,11 @@ var Chinese = Messages{
 	AskSubmitTitle:                         "提交答案",
 	AskUnanswered:                          "(未答)",
 	AskSubmitHint:                          "Enter 提交 · ← 返回修改",
+	ElicitURLHint:                          "o 打开链接 · Enter 接受 · d 拒绝 · Esc 取消",
+	ElicitConfirmOnly:                      "Enter 确认;d 拒绝;Esc 取消。",
+	ElicitUnanswered:                       "(未填写)",
+	ElicitSubmit:                           "提交",
+	ElicitSubmitHint:                       "Enter 编辑字段 · tab 下一项 · 提交行:Enter 接受、d 拒绝、Esc 取消",
 	ToolApprovalPromptFmt:                  "需要你的许可\n\n将调用工具 %s%s。\n%s\n%s",
 	ToolApprovalChoices:                    "1. 本次允许\n2. 本会话允许 %s\n3. 总是允许 %s（保存到配置）\n4. 拒绝\n选择 [1/2/3/4]（兼容 y/a/p/n）",
 	BashPrefixChoices:                      "1. 本次允许\n2. 本会话允许 %s\n3. 总是允许 %s（保存到配置）\n4. 拒绝\n选择 [1/2/3/4]（兼容 y/a/p/n）",
@@ -567,7 +572,7 @@ var Chinese = Messages{
   reasonix acp [--model NAME]                           通过 stdio 提供 Agent Client Protocol（也可用：reasonix --acp）
   reasonix setup [path]                                 交互式配置向导；生成 reasonix.toml（及 .env）
   reasonix config reasoning-language [auto|zh|en]        配置可见思考语言
-  reasonix config compact-ratio [--local] [65..85]       配置自动压缩阈值
+  reasonix config compact-ratio [--local] [30..85]       配置自动压缩阈值
   reasonix config telemetry [auto|on|off]                配置不含内容的 CLI 使用统计
   reasonix report [list|show|send|delete] [ID]           审阅并明确发送本地 CLI 崩溃报告
   reasonix mcp <add|remove|list|import>                 管理 reasonix.toml 里的 MCP 服务器

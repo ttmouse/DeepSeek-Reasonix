@@ -95,6 +95,11 @@ var ChineseTraditional = Messages{
 	AskSubmitTitle:                         "提交答案",
 	AskUnanswered:                          "(未答)",
 	AskSubmitHint:                          "Enter 提交 · ← 返回修改",
+	ElicitURLHint:                          "o 開啟連結 · Enter 接受 · d 拒絕 · Esc 取消",
+	ElicitConfirmOnly:                      "Enter 確認;d 拒絕;Esc 取消。",
+	ElicitUnanswered:                       "(未填寫)",
+	ElicitSubmit:                           "提交",
+	ElicitSubmitHint:                       "Enter 編輯欄位 · tab 下一項 · 提交列:Enter 接受、d 拒絕、Esc 取消",
 	ToolApprovalPromptFmt:                  "需要你的許可\n\n將呼叫工具 %s%s。\n%s\n%s",
 	ToolApprovalChoices:                    "1. 本次允許\n2. 本會話允許 %s\n3. 總是允許 %s（儲存到設定）\n4. 拒絕\n選擇 [1/2/3/4]（相容 y/a/p/n）",
 	BashPrefixChoices:                      "1. 本次允許\n2. 本會話允許 %s\n3. 總是允許 %s（儲存到設定）\n4. 拒絕\n選擇 [1/2/3/4]（相容 y/a/p/n）",
@@ -507,7 +512,7 @@ var ChineseTraditional = Messages{
   reasonix acp [--model NAME]                           透過 stdio 提供 Agent Client Protocol（也可用：reasonix --acp）
   reasonix setup [path]                                 互動式設定精靈；生成 reasonix.toml（及 .env）
   reasonix config reasoning-language [auto|zh|en]        設定可見思考語言
-  reasonix config compact-ratio [--local] [65..85]       設定自動壓縮閾值
+  reasonix config compact-ratio [--local] [30..85]       設定自動壓縮閾值
   reasonix config telemetry [auto|on|off]                設定不含內容的 CLI 使用統計
   reasonix report [list|show|send|delete] [ID]           審閱並明確傳送本機 CLI 當機報告
   reasonix mcp <add|remove|list|import>                 管理 reasonix.toml 裡的 MCP 伺服器

@@ -1,4 +1,5 @@
 /*
+/*
  * Reasonix desktop — single-column, developer-dense, terminal-flavored chat UI.
  *
  * Multi-platform notes:
@@ -8,6 +9,12 @@
  *  - --wails-draggable marks the title region as an OS drag handle (macOS inset
  *    title bar); interactive children opt out with --wails-draggable: no-drag.
  */
+
+@property --label-fade-end {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
 
 @font-face {
   font-family: "Reasonix Seti";
@@ -42,6 +49,22 @@
   --fg: #f4f5f7;
   --fg-dim: #c0c4cc;
   --fg-faint: #858b96;
+
+  /* Shared semantic contract. Theme directions may override any of these,
+     while partial directions such as Amber inherit a complete, usable set. */
+  --stage: var(--bg);
+  --surface: var(--bg-elev);
+  --surface-2: var(--bg-elev-2);
+  --surface-3: var(--bg-soft);
+  --panel: var(--bg-elev);
+  --border-2: color-mix(in srgb, var(--fg) 20%, transparent);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
+  --shadow-color: #000;
+  /* Operational overlays are opaque unless a background theme pack opts into
+     the existing pane-opacity contract. */
+  --overlay-surface-bg: var(--bg-elev);
   --global-font-scale: 1;
   --font-scale: var(--global-font-scale);
   --text-2xs: calc(10px * var(--font-scale));
@@ -475,6 +498,7 @@
   color-scheme: dark;
 }
 
+/* Theme styles are "directions" — graphite / aurora / slate / carbon /
 /* Theme styles are "directions" — graphite / aurora / slate / carbon /
    nocturne / amber — and each is independent of light/dark. Dark accent (brighter, dark fg) is the
    default for every direction; the light accent is applied when the user
@@ -1507,6 +1531,7 @@
   --accent-strong: #de7a4b;
 }
 :root[data-theme="light"][data-theme-style="amber"] {
+  --sidebar-bg: #f3f6fa;
   --accent: #dd5b28;
   --accent-fg: #ffffff;
   --accent-soft: rgba(221, 91, 40, 0.12);
@@ -1514,6 +1539,7 @@
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme-style="amber"]:not([data-theme]) {
+    --sidebar-bg: #f3f6fa;
     --accent: #dd5b28;
     --accent-fg: #ffffff;
     --accent-soft: rgba(221, 91, 40, 0.12);
@@ -1971,6 +1997,7 @@ textarea {
 }
 
 /* Independent typography regions. Missing custom properties deliberately fall
+/* Independent typography regions. Missing custom properties deliberately fall
    back to the global appearance settings, preserving existing installations. */
 .transcript,
 .transcript__live-region {
@@ -2013,6 +2040,7 @@ textarea {
 }
 
 /* Root typography tokens are computed before inheritance, so a descendant
+/* Root typography tokens are computed before inheritance, so a descendant
    --font-scale cannot retroactively change them. Re-declare the proportional
    tokens at each semantic region root to make independent scaling real. */
 body,
@@ -2039,6 +2067,7 @@ body,
   --font-control-small: var(--text-sm);
 }
 
+/* Only real hyperlinks get the pointer cursor; everything else (buttons, tabs,
 /* Only real hyperlinks get the pointer cursor; everything else (buttons, tabs,
    tree rows, menu items) stays default so the UI reads as native chrome. */
 a[href] {
@@ -2119,18 +2148,22 @@ a[href] {
   grid-template-columns: 0px minmax(0, 1fr) minmax(0, var(--workspace-width));
 }
 /* Skip dock-column interpolation in creation mode. WebKit can mount the
+/* Skip dock-column interpolation in creation mode. WebKit can mount the
    overview at zero inline size and fail to repaint its text on reopen. */
 .app--creation .layout.layout--workspace-open,
 .app--creation .layout.layout--workspace-open.layout--sidebar-collapsed {
   transition: grid-template-columns 0s, min-width 0s;
 }
+.layout--workspace-open.layout--workspace-maximized,
 .layout--workspace-maximized {
   min-width: 0;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
+.layout--workspace-open.layout--workspace-maximized.layout--sidebar-collapsed,
 .layout--workspace-maximized.layout--sidebar-collapsed {
   grid-template-columns: 0px minmax(0, 1fr);
 }
+/* Terminal drawer — an independent bottom panel below the chat pane.
 /* Terminal drawer — an independent bottom panel below the chat pane.
    Sidebar and workspace panel stay full-height in columns 1 and 3;
    the terminal occupies column 2 row 3, statusbar at row 4. */
@@ -2180,6 +2213,7 @@ a[href] {
   overflow: hidden;
 }
 /* Border and background only visible when the terminal is actually expanded,
+/* Border and background only visible when the terminal is actually expanded,
    avoiding a 1px artifact line when the drawer is collapsed to 0px. */
 .layout--terminal-drawer-expanded .terminal-drawer {
   background: var(--terminal-bg, #111315);
@@ -2192,6 +2226,7 @@ a[href] {
   border-bottom: 1px solid var(--terminal-border);
 }
 /* When the terminal drawer is open, the sidebar and workspace panel span the
+/* When the terminal drawer is open, the sidebar and workspace panel span the
    full content height (rows 2–3) so only the chat pane is shortened. */
 .layout.layout--terminal-drawer-open .sidebar {
   grid-row: 2 / 4;
@@ -2199,6 +2234,7 @@ a[href] {
 .layout.layout--terminal-drawer-open .workbench-dock {
   grid-row: 2 / 4;
 }
+/* The dock's vertical drag handle must span the same rows as the dock so the
 /* The dock's vertical drag handle must span the same rows as the dock so the
    resizer line extends from the top of the chat area down to the bottom of
    the terminal drawer. */
@@ -2246,6 +2282,7 @@ a[href] {
   grid-row: 3;
 }
 
+/* Keep the old layout--terminal-open rules for backward compat — they are
 /* Keep the old layout--terminal-open rules for backward compat — they are
    no longer added by App.tsx but may remain in cached localStorage styles. */
 .layout--terminal-open {
@@ -2330,7 +2367,7 @@ a[href] {
   padding-left: 96px;
 }
 
-.app--darwin .layout--workbench-chrome-hidden.layout--workspace-maximized .workbench-dock__tools {
+.app--darwin .layout--workbench-chrome-hidden.layout--sidebar-collapsed.layout--workspace-maximized .workbench-dock__tools {
   padding-left: 96px;
 }
 
@@ -2349,6 +2386,7 @@ a[href] {
   overflow: hidden;
 }
 
+/* Windows window movement belongs to the dedicated chrome surfaces. Keep the
 /* Windows window movement belongs to the dedicated chrome surfaces. Keep the
    navigation sidebar and its adjacent resize handle out of the native drag path. */
 .app--windows .sidebar {
@@ -2559,7 +2597,7 @@ a[href] {
   border: 1px solid var(--border-soft);
   border-radius: 9px;
   background: color-mix(in srgb, var(--bg-elev) 86%, var(--sidebar-bg));
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow) 11%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-color) 11%, transparent);
   padding: 7px;
 }
 .sidebar-im__panel-head {
@@ -3320,6 +3358,7 @@ a[href] {
 }
 
 /* Startup splash restored from the v0.50 desktop intro. It masks cold boot while
+/* Startup splash restored from the v0.50 desktop intro. It masks cold boot while
    the Wails bridge and background startup work settle, then yields to the app. */
 .startup-splash {
   position: fixed;
@@ -3455,7 +3494,7 @@ a[href] {
   justify-content: center;
   gap: 10px;
   color: var(--fg);
-  background: color-mix(in srgb, var(--chat-bg, var(--bg)) 88%, transparent);
+  background: var(--chat-bg, var(--bg));
   pointer-events: auto;
   user-select: none;
   cursor: progress;
@@ -3482,9 +3521,20 @@ a[href] {
   position: relative;
   width: 100%;
 }
+.transcript__live-region--overlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: var(--z-local-raised);
+  pointer-events: none;
+}
 .transcript__live-content {
   position: relative;
   width: 100%;
+}
+.transcript[data-transcript-reader-visual-guard="true"] [data-testid="virtuoso-item-list"] {
+  transform: translateY(var(--transcript-reader-visual-offset, 0));
+  will-change: transform;
 }
 .transcript__live-status {
   display: flex;
@@ -3506,6 +3556,7 @@ a[href] {
 }
 
 /* ── Virtual transcript rows ─────────────────────────────────────── */
+/* React Virtuoso owns list offsets and row measurement. Rows stay in normal
 /* React Virtuoso owns list offsets and row measurement. Rows stay in normal
    flow; flow-root contains child margins so ResizeObserver sees the complete
    dynamic height instead of a collapsed margin outside the measured item. */
@@ -3561,7 +3612,7 @@ a[href] {
   justify-content: center;
   gap: 8px;
   min-height: 36px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 12px;
 }
 .transcript__older-status .btn {
@@ -3595,6 +3646,15 @@ a[href] {
 .history-preview__body .transcript__row > * {
   max-width: none;
 }
+/* Keep the lazy Markdown source readable while Virtuoso waits for the real
+   parser result. The row itself remains free to measure once the marker is
+   removed; no manual-scroll path writes a forced row height. */
+.transcript__row .msg--assistant .msg__body > .md[data-transcript-geometry-pending] {
+  box-sizing: border-box;
+  height: max(0px, calc(var(--transcript-row-estimate) - 32px));
+  overflow: hidden;
+}
+/* Offscreen rows are unmounted by the virtualizer, so content-visibility
 /* Offscreen rows are unmounted by the virtualizer, so content-visibility
    culling is redundant inside rows — and skipping it keeps offsetHeight
    measurements exact instead of contain-intrinsic-size placeholders. */
@@ -3607,19 +3667,6 @@ a[href] {
 .transcript__row .md > * {
   content-visibility: visible;
   contain-intrinsic-size: none;
-}
-/* A lazy Markdown source fallback is readable but does not have the final
-   block geometry. Give it the same physical box as Virtuoso's row seed so
-   the first measurement is truthful; releasing this fixed box when parsing
-   completes guarantees ResizeObserver sees any real height difference. */
-.transcript__row .msg--assistant .msg__body > .md[data-transcript-geometry-pending] {
-  box-sizing: border-box;
-  /* .msg contributes its 18px block margins (with the row's first-child
-     margin normalization this is 32px total). Reserve the full outer-row
-     inset here so the lazy fallback cannot be 16px taller than its seed and
-     later collapse while the reader is moving upward. */
-  height: max(0px, calc(var(--transcript-row-estimate) - 32px));
-  overflow: hidden;
 }
 .transcript__jump-bottom {
   --wails-draggable: no-drag;
@@ -3684,7 +3731,7 @@ a[href] {
   align-items: center;
   gap: 8px;
   margin: auto;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 13px;
 }
 .transcript__loading-icon {
@@ -4402,6 +4449,7 @@ a[href] {
   contain-intrinsic-size: 1px 60px;
 }
 /* Virtuoso already owns transcript virtualization. A second content-visibility
+/* Virtuoso already owns transcript virtualization. A second content-visibility
  * viewport inside each mounted row gives the browser a 60px intrinsic box and
  * then expands it when the row crosses the viewport, which makes Virtuoso's
  * upward compensation write a large reverse frame during manual reading. Keep
@@ -4868,7 +4916,7 @@ a[href] {
 }
 .msg-pasted-head button:hover {
   color: var(--fg);
-  background: var(--hover);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
 }
 .msg-pasted-expanded {
   padding: 8px 10px 10px;
@@ -4919,6 +4967,7 @@ a[href] {
   contain-intrinsic-size: 1px 36px;
 }
 /* T1: a tone-colored sweep bar along the bottom while the card is running
+/* T1: a tone-colored sweep bar along the bottom while the card is running
    (running cards render a .process-card__spin status icon). */
 @media (prefers-reduced-motion: no-preference) {
   .process-card:has(.process-card__spin)::after {
@@ -4942,6 +4991,8 @@ a[href] {
 .reasoning {
   margin: 2px 0 4px;
 }
+.reasoning--loading { height: 58px; }
+.reasoning--loading[data-expanded] { height: min(40vh, 480px); }
 .reasoning__head {
   display: inline-flex;
   align-items: center;
@@ -4994,6 +5045,7 @@ a[href] {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* While streaming the summary scrolls to the line tail, where a trailing
 /* While streaming the summary scrolls to the line tail, where a trailing
    ellipsis would sit on top of the live text. */
 .reasoning-summary[data-follow-end] {
@@ -5426,7 +5478,10 @@ button.reasoning-summary:focus-visible {
 }
 .reasoning__body,
 .turn-collapse__inline-reasoning {
-  overflow: hidden;
+  max-height: min(40vh, 480px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 2px 0 6px 8px;
   border-left: 2px solid color-mix(in srgb, var(--border) 82%, transparent);
   padding-left: 12px;
@@ -5469,6 +5524,19 @@ button.reasoning-summary:focus-visible {
 .md {
   font-family: var(--font-content-family);
   font-weight: var(--font-weight-regular);
+}
+/* KaTeX \boxed draws its frame as an empty .fbox span that relies on
+   width:100% resolving against an inline-table + table-layout:fixed row.
+   WKWebView resolves that percentage to the empty span's intrinsic width (0),
+   so the box's top/bottom borders collapse to nothing and the left/right
+   borders merge into a single tall vertical bar. Fill the frame to its
+   containing row with -webkit-fill-available instead, which preserves the
+   span's inline-block baseline alignment (its vertical position) while giving
+   it the full content width. Keep a standards-compatible fallback for
+   browsers that do not implement the WebKit value. */
+.md .katex .fbox {
+  width: 100%;
+  width: -webkit-fill-available;
 }
 .md--stream-tail {
   overflow-wrap: anywhere;
@@ -5572,6 +5640,7 @@ button.reasoning-summary:focus-visible {
   padding: 1px 5px;
 }
 /* Horizontal overflow only: never create a vertical nested scroller. CSS
+/* Horizontal overflow only: never create a vertical nested scroller. CSS
    forces overflow-y to "auto" when overflow-x is non-visible, so tables use a
    wrapper (below) for x-scroll and the table itself stays overflow:visible. */
 .md-table-scroll {
@@ -5581,6 +5650,7 @@ button.reasoning-summary:focus-visible {
   overflow-y: hidden;
   margin: 0 0 12px;
 }
+/* Large tables default to an in-flow preview; expand mounts the virtual
 /* Large tables default to an in-flow preview; expand mounts the virtual
    scroller only when the user opts in (see MarkdownTable.tsx). */
 .md-table-fold {
@@ -5639,6 +5709,7 @@ button.reasoning-summary:focus-visible {
   background: var(--bg-soft);
   font-weight: var(--font-weight-strong);
 }
+/* Row-virtualized oversized markdown tables (see MarkdownTable.tsx): the
 /* Row-virtualized oversized markdown tables (see MarkdownTable.tsx): the
    wrapper owns vertical scroll, the thead stays pinned, and body rows are
    absolutely positioned by the virtualizer. Flex rows keep header/body cells
@@ -5706,6 +5777,7 @@ button.reasoning-summary:focus-visible {
   opacity: 0.55;
 }
 
+/* Override browser user-agent <code> monospace so inherited font (from
 /* Override browser user-agent <code> monospace so inherited font (from
    .code / .code-lines-wrap) reaches highlighted tokens and line text. */
 .code code,
@@ -5840,7 +5912,7 @@ button.reasoning-summary:focus-visible {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   max-width: calc(100% - 16px);
   font-family: var(--font-sans);
-  font-size: var(--font-sm);
+  font-size: var(--text-sm);
 }
 .code-search__icon {
   display: flex;
@@ -5870,7 +5942,7 @@ button.reasoning-summary:focus-visible {
   color: var(--fg-faint);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-xs);
+  font-size: var(--text-xs);
   padding: 0 4px;
 }
 .code-search__count--error {
@@ -5901,7 +5973,7 @@ button.reasoning-summary:focus-visible {
   flex-shrink: 0;
 }
 .code-search__close:hover {
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   color: var(--fg);
 }
 .code-search__copy.copybtn {
@@ -5921,7 +5993,7 @@ button.reasoning-summary:focus-visible {
 .code-search__copy.copybtn:hover,
 .code-search__copy.copybtn:focus-visible {
   gap: 0;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   color: var(--fg);
 }
 .code-search__nav {
@@ -5939,7 +6011,7 @@ button.reasoning-summary:focus-visible {
   flex-shrink: 0;
 }
 .code-search__nav:hover {
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   color: var(--fg);
 }
 .code-search__toggle {
@@ -5959,7 +6031,7 @@ button.reasoning-summary:focus-visible {
   flex-shrink: 0;
 }
 .code-search__toggle:hover {
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   color: var(--fg);
 }
 .code-search__toggle--on {
@@ -6501,6 +6573,7 @@ body > .mermaid-diagram--fullscreen {
   border-color: var(--accent-soft);
 }
 /* Read-only research calls keep the same process-card shell, but their content
+/* Read-only research calls keep the same process-card shell, but their content
    is visually quieter than write/shell/sub-agent calls. */
 .tool--quiet {
   border-color: var(--border-soft);
@@ -6594,6 +6667,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
 }
 /* Sub-agent progress chip: phase + running elapsed + recent activity. The dot
+/* Sub-agent progress chip: phase + running elapsed + recent activity. The dot
  * carries the phase color; the chip never grows the head beyond one line. */
 .tool__subagent-chip {
   display: inline-flex;
@@ -6629,11 +6703,11 @@ body > .mermaid-diagram--fullscreen {
 }
 .tool__subagent-chip--reasoning .tool__subagent-dot,
 .tool__subagent-chip--responding .tool__subagent-dot {
-  background: var(--accent-warm);
+  background: var(--accent);
 }
 .tool__subagent-chip--tool .tool__subagent-dot,
 .tool__subagent-chip--retrying .tool__subagent-dot {
-  background: var(--accent-cool);
+  background: var(--accent);
 }
 .tool__subagent-chip--completed .tool__subagent-dot {
   background: var(--ok);
@@ -6646,6 +6720,7 @@ body > .mermaid-diagram--fullscreen {
   50% { opacity: 0.35; }
 }
 
+/* Expanded sub-agent preview: reasoning / response preview / notices live in
 /* Expanded sub-agent preview: reasoning / response preview / notices live in
  * their own block and never mix with ordinary tool output. Long text wraps;
  * it must not widen the chat column. */
@@ -6890,6 +6965,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 12px 32px 10px;
 }
 /* Decision cards (plan/tool approval, ask, clear-context) can grow tall; cap
+/* Decision cards (plan/tool approval, ask, clear-context) can grow tall; cap
    the footer and let it scroll so approval buttons never slip behind the
    status bar (#7030). Scoped to the decision state only: an unconditional
    overflow here clips the upward-popping "/" and "@" menus (.slashmenu), whose
@@ -6981,6 +7057,7 @@ body > .mermaid-diagram--fullscreen {
   flex-direction: column;
 }
 /* Run strip: an in-flow bar at the top of the card. For user-sized cards JS
+/* Run strip: an in-flow bar at the top of the card. For user-sized cards JS
    adds the strip's reserved height so the input's logical minimum is unchanged.
    For natural-height cards the card grows without the explicit reservation. */
 .composer-run-strip {
@@ -7017,6 +7094,7 @@ body > .mermaid-diagram--fullscreen {
 .composer-run-strip--waiting .composer-run-strip__dot {
   animation: none;
 }
+/* Attention handoff: while a prompt card is waiting on the user, the card
 /* Attention handoff: while a prompt card is waiting on the user, the card
    drops the accent running tint and takes a calm warn edge instead. */
 .composer-card--waiting {
@@ -7059,6 +7137,7 @@ body > .mermaid-diagram--fullscreen {
   opacity: 0.95;
 }
 /* Hide the resize handle while the input is focused — the user is typing,
+/* Hide the resize handle while the input is focused — the user is typing,
    not resizing.  The handle otherwise appears as a colored pill above the
    card on hover (which always co-occurs with focus after a click). */
 .composer-card:focus-within .composer-resize-handle::before {
@@ -7083,7 +7162,6 @@ body > .mermaid-diagram--fullscreen {
      its anchor while a menu is open; 50vh is a no-JS/pre-measure fallback. */
   max-height: min(360px, var(--composer-menu-available-height, 50vh));
   overflow-y: auto;
-  background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 5px;
@@ -7216,6 +7294,7 @@ body > .mermaid-diagram--fullscreen {
   flex: 1;
 }
 .composer__content {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -7313,7 +7392,7 @@ body > .mermaid-diagram--fullscreen {
 .invocation-display__remove:hover,
 .invocation-display__remove:focus-visible {
   outline: none;
-  background: var(--hover);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
   color: var(--fg);
 }
 @media (hover: none) {
@@ -8134,6 +8213,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .composer-access-menu {
+  width: min(336px, calc(100vw - 16px));
   padding: 7px;
   border: 1px solid var(--border-soft);
   border-radius: 16px;
@@ -8253,7 +8333,7 @@ body > .mermaid-diagram--fullscreen {
   display: block;
   font-size: 11px;
   line-height: 1.5;
-  color: var(--dim);
+  color: var(--fg-faint);
 }
 
 .composer-main-menu__goal-runtime-line--blocked {
@@ -8453,7 +8533,6 @@ body > .mermaid-diagram--fullscreen {
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--panel);
   box-shadow: var(--shadow-2);
   color: var(--fg);
 }
@@ -8704,7 +8783,6 @@ body > .mermaid-diagram--fullscreen {
   min-width: 200px;
   max-height: 50vh;
   overflow-y: auto;
-  background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 5px;
@@ -9019,6 +9097,9 @@ body > .mermaid-diagram--fullscreen {
   margin: 0 auto 10px;
   animation: shelf-in var(--dur-slow) var(--ease-out) both;
 }
+.todo-exit {
+  animation: shelf-in 240ms 900ms ease reverse both;
+}
 @keyframes shelf-in {
   from {
     opacity: 0;
@@ -9033,6 +9114,14 @@ body > .mermaid-diagram--fullscreen {
 .composer-decision-host--hidden,
 .composer-decision-host[hidden] {
   display: none !important;
+}
+.composer-decision-host--footprint-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+.footer--navigation-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 .prompt-shelf__card {
   display: grid;
@@ -9297,6 +9386,7 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   min-width: 88px;
 }
+/* Unified decision surface: vertical full-width options, sticky footer, and
 /* Unified decision surface: vertical full-width options, sticky footer, and
    one bounded content scroller. Never collapses to horizontal pills. */
 .prompt-shelf--decision .prompt-shelf__card {
@@ -10061,6 +10151,7 @@ body > .mermaid-diagram--fullscreen {
   overflow-wrap: anywhere;
 }
 /* Tool-approval consequence preview: same quick-pick pattern as the ask
+/* Tool-approval consequence preview: same quick-pick pattern as the ask
    detail row — pill buttons stay compact, the row spells out what the
    hovered/selected action will do. */
 .approval-consequence {
@@ -10416,17 +10507,6 @@ body > .mermaid-diagram--fullscreen {
   gap: 8px;
   height: 100%;
 }
-.workspace-current-file__icon {
-  flex: 0 0 auto;
-  color: var(--fg-faint);
-}
-.workspace-current-file__icon.workspace-file-icon,
-.workspace-current-file__icon .workspace-file-icon {
-  width: 18px;
-  height: 20px;
-  flex: 0 0 18px;
-  font-size: 20px;
-}
 .workspace-current-file__text {
   flex: 1 1 auto;
   min-width: 0;
@@ -10450,22 +10530,33 @@ body > .mermaid-diagram--fullscreen {
   display: flex;
   align-items: center;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   color: var(--fg-faint);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.15;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  scrollbar-width: none;
+}
+.workspace-current-file__path::-webkit-scrollbar {
+  display: none;
 }
 .workspace-current-file__crumb {
   display: inline-flex;
   align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
   white-space: nowrap;
   line-height: 1.15;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 2px;
+}
+.workspace-current-file__crumb:hover {
+  color: var(--fg);
+}
+.workspace-current-file__crumb:last-child {
+  color: var(--fg);
+  font-weight: 620;
 }
 .workspace-current-file__crumb-sep {
   display: inline-flex;
@@ -10476,27 +10567,11 @@ body > .mermaid-diagram--fullscreen {
   font-size: 16px;
   line-height: 0;
 }
-.workspace-current-file__recent {
-  --wails-draggable: no-drag;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--fg-faint);
-}
-.workspace-current-file__recent:hover,
+/* The recent-files toggle shares .workspace-iconbtn for size, hover, and
+   transition; this class only keeps the opened (menu showing) highlight. */
 .workspace-current-file__recent--open {
-  border-color: var(--border-soft);
-  background: var(--bg-soft);
   color: var(--fg);
-}
-.workspace-current-file__recent--open svg {
-  transform: rotate(180deg);
+  background: var(--bg-soft);
 }
 .workspace-preview__window-actions {
   flex: 0 0 auto;
@@ -10509,7 +10584,6 @@ body > .mermaid-diagram--fullscreen {
   padding: 7px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--bg-elev);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 .workspace-recent-menu__title {
@@ -10648,6 +10722,10 @@ body > .mermaid-diagram--fullscreen {
   border: 0;
   border-radius: 0;
   overflow: auto;
+  /* Code preview wraps by default instead of horizontal scrolling. */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 /* line-numbered code fills the preview body */
 .workspace-preview__body--code .code--lines {
@@ -10788,7 +10866,6 @@ body > .mermaid-diagram--fullscreen {
   padding: 5px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-elev);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36);
   transform-origin: top left;
   animation: menu-pop-in var(--dur-base) var(--ease-out) both;
@@ -10914,6 +10991,7 @@ body > .mermaid-diagram--fullscreen {
   overflow: auto;
   font-size: 11px;
 }
+/* past:chats hover preview (PR-C2). Inherits colors from the .tooltip container
 /* past:chats hover preview (PR-C2). Inherits colors from the .tooltip container
    (--fg / --fg-dim / --fg-faint / --border / --bg-elev) and only adjusts layout. */
 .past-chat-hover {
@@ -11051,11 +11129,11 @@ body > .mermaid-diagram--fullscreen {
   align-items: center;
   gap: 7px;
   margin: 4px 10px 8px;
-  padding: 0 9px;
-  height: 32px;
+  padding: 0 12px;
+  height: 28px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
+  border-radius: 999px;
+  background: transparent;
   color: var(--fg-faint);
 }
 .workspace-search input {
@@ -11124,6 +11202,12 @@ body > .mermaid-diagram--fullscreen {
   min-height: 0;
   overflow: auto;
   padding: 0 6px 12px;
+  /* Hide the scrollbar (the tree scrolls on wheel/trackpad, matching the
+     hidden-scrollbar convention used by the breadcrumb and dock tabs). */
+  scrollbar-width: none;
+}
+.workspace-tree::-webkit-scrollbar {
+  display: none;
 }
 .workspace-tree__row {
   --wails-draggable: no-drag;
@@ -11150,6 +11234,7 @@ body > .mermaid-diagram--fullscreen {
   transition: opacity 0.12s ease;
 }
 /* Guides appear only while hovering the files panel so the expanded-tree
+/* Guides appear only while hovering the files panel so the expanded-tree
    connectors don't clutter the default view. */
 .workspace-files:hover .workspace-tree__guides,
 .workspace-files:focus-within .workspace-tree__guides {
@@ -11169,16 +11254,6 @@ body > .mermaid-diagram--fullscreen {
 .workspace-tree__row--active {
   background: var(--tree-row-current-bg);
   color: var(--tree-row-current-fg);
-}
-.workspace-tree__row--active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 5px;
-  bottom: 5px;
-  width: 2px;
-  border-radius: 999px;
-  background: var(--tree-row-marker);
 }
 .workspace-tree__row--search {
   height: auto;
@@ -11219,6 +11294,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   border-radius: var(--tree-row-radius);
 }
+/* Hover/selection highlight spans the whole row (file entry + revert button)
 /* Hover/selection highlight spans the whole row (file entry + revert button)
    so the revert control sits inside the same background as the file. The
    inner file button stays transparent and inherits the row's surface. */
@@ -11261,6 +11337,7 @@ body > .mermaid-diagram--fullscreen {
   pointer-events: none;
   transition: opacity var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
 }
+/* The revert control is a per-row action overlaid on the status badge: hidden
 /* The revert control is a per-row action overlaid on the status badge: hidden
    until the row is hovered, then revealed in the same right-hand slot so it
    reads as replacing the badge. Keyboard focus reveals it too, so the action
@@ -11671,6 +11748,7 @@ body > .mermaid-diagram--fullscreen {
   }
 }
 /* Overlays that opt into exit animation via useMountTransition flip
+/* Overlays that opt into exit animation via useMountTransition flip
  * data-state="closing" before unmount; reverse the backdrop fade. */
 .drawer-backdrop[data-state="closing"] {
   animation: backdrop-out var(--dur-base) var(--ease-out) both;
@@ -11694,7 +11772,7 @@ body > .mermaid-diagram--fullscreen {
   display: flex;
   flex-direction: column;
   background: var(--bg-elev);
-  border: 1px solid var(--border-strong, var(--border));
+  border: 1px solid var(--border-2, var(--border));
   border-radius: 14px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -12196,8 +12274,8 @@ body > .mermaid-diagram--fullscreen {
   white-space: nowrap;
 }
 .mem-ws-select__trigger:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-elev-1);
+  border-color: var(--border-2);
+  background: var(--bg-elev);
 }
 .mem-ws-select__label {
   max-width: 180px;
@@ -12216,7 +12294,6 @@ body > .mermaid-diagram--fullscreen {
   max-width: min(90vw, 320px);
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg-elev);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
   padding: 4px;
 }
@@ -12450,7 +12527,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elev-1) 76%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 76%, transparent);
 }
 .mem-add-card__head {
   display: flex;
@@ -12580,7 +12657,7 @@ body > .mermaid-diagram--fullscreen {
   display: grid;
   place-items: center;
   min-height: 28px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
 }
 .mem-doc__identity > div {
   display: flex;
@@ -13183,7 +13260,6 @@ body > .mermaid-diagram--fullscreen {
   z-index: var(--z-menu);
   min-width: 160px;
   padding: 5px;
-  background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 9px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -15514,7 +15590,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--bg-elev);
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--text-sm);
 }
 .recovery-lineage-dialog__actions {
@@ -16660,6 +16736,42 @@ body > .mermaid-diagram--fullscreen {
   justify-self: end;
 }
 
+.settings-sound-row .notification-volume-control {
+  width: clamp(190px, 36vw, 260px);
+  min-width: 0;
+  justify-self: end;
+}
+
+.notification-volume-control {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-volume-control input[type="range"] {
+  --wails-draggable: no-drag;
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.notification-volume-control input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.notification-volume-control output {
+  min-width: 42px;
+  color: var(--fg);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  text-align: right;
+}
+
 .sound-select {
   display: flex;
   align-items: center;
@@ -16687,8 +16799,8 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .sound-select__trigger:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-elev-1);
+  border-color: var(--border-2);
+  background: var(--bg-elev);
 }
 
 .sound-select__trigger:focus-visible {
@@ -16719,7 +16831,6 @@ body > .mermaid-diagram--fullscreen {
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg-elev);
   box-shadow: 0 18px 42px rgba(0,0,0,0.46);
   isolation: isolate;
 }
@@ -16867,6 +16978,7 @@ body > .mermaid-diagram--fullscreen {
   margin: 0;
 }
 
+/* Preserve the original wide-screen flex relationship. The narrow breakpoint
 /* Preserve the original wide-screen flex relationship. The narrow breakpoint
    turns this wrapper into a real flex item to keep its controls together. */
 .memory-tabs-row__tail {
@@ -17239,8 +17351,8 @@ body > .mermaid-diagram--fullscreen {
   cursor: pointer;
 }
 .settings-model-picker__trigger:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: var(--bg-elev-1);
+  border-color: var(--border-2);
+  background: var(--bg-elev);
 }
 .settings-model-picker__trigger:focus-visible {
   outline: none;
@@ -17291,7 +17403,6 @@ body > .mermaid-diagram--fullscreen {
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg-elev);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
   isolation: isolate;
 }
@@ -17299,7 +17410,7 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   padding: 8px;
   border-bottom: 1px solid var(--border-soft);
-  background: var(--bg-elev);
+  background: transparent;
 }
 .settings-model-picker__search input {
   width: 100%;
@@ -17375,7 +17486,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .settings-model-picker__option--pinned {
   margin-bottom: 6px;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
 }
 .settings-model-picker__option > span {
   display: flex;
@@ -17538,7 +17649,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev-1));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev));
 }
 .provider-quick-setup__intro {
   display: flex;
@@ -17669,7 +17780,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   color: var(--fg);
   text-align: left;
   cursor: pointer;
@@ -17685,7 +17796,7 @@ body > .mermaid-diagram--fullscreen {
 .provider-template-card--installed,
 .provider-template-card--installed-modified,
 .provider-template-card--name-conflict {
-  background: color-mix(in srgb, var(--bg-elev-1) 82%, var(--bg) 18%);
+  background: color-mix(in srgb, var(--bg-elev) 82%, var(--bg) 18%);
 }
 .provider-template-card--installed-modified,
 .provider-template-card--name-conflict {
@@ -17693,7 +17804,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .provider-template-card--similar-existing {
   border-color: color-mix(in srgb, var(--warning, #b7791f) 34%, var(--border));
-  background: color-mix(in srgb, var(--warning-soft, #fff7ed) 24%, var(--bg-elev-1) 76%);
+  background: color-mix(in srgb, var(--warning-soft, #fff7ed) 24%, var(--bg-elev) 76%);
 }
 .provider-template-card--active {
   border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
@@ -17882,7 +17993,7 @@ body > .mermaid-diagram--fullscreen {
 .provider-model-draft__head span {
   display: block;
   margin-top: 3px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
 }
 .provider-model-draft__tools,
@@ -17897,7 +18008,7 @@ body > .mermaid-diagram--fullscreen {
   min-height: 34px;
 }
 .provider-model-draft__context-guide {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
   line-height: 1.45;
 }
@@ -17938,7 +18049,7 @@ body > .mermaid-diagram--fullscreen {
   grid-template-columns: auto minmax(88px, 1fr);
   align-items: center;
   gap: 7px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-family: var(--font-sans);
   font-size: var(--font-control-small);
 }
@@ -17962,7 +18073,7 @@ body > .mermaid-diagram--fullscreen {
   line-height: 1.35;
 }
 .provider-model-draft__vision {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-family: var(--font-sans);
   font-size: var(--font-control-small);
 }
@@ -17970,7 +18081,7 @@ body > .mermaid-diagram--fullscreen {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-family: var(--font-sans);
   font-size: var(--text-2xs);
 }
@@ -17978,7 +18089,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 2px 6px;
   border: 1px solid var(--border-soft);
   border-radius: 999px;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
   line-height: 1.35;
 }
 .provider-model-draft__option input {
@@ -17989,7 +18100,7 @@ body > .mermaid-diagram--fullscreen {
   overflow-wrap: anywhere;
 }
 .provider-model-draft__empty {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
 }
 .provider-capabilities {
@@ -18016,7 +18127,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   flex-direction: column;
   gap: 4px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
   line-height: 1.4;
 }
@@ -18047,7 +18158,7 @@ body > .mermaid-diagram--fullscreen {
   height: 14px;
   margin: 2px;
   border-radius: 50%;
-  background: var(--fg-muted);
+  background: var(--fg-faint);
   transition: transform 140ms ease, background 140ms ease;
 }
 .provider-capability-row__switch:checked {
@@ -18083,7 +18194,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 9px 10px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
 }
 .provider-key-status strong {
   min-width: 0;
@@ -18164,7 +18275,7 @@ body > .mermaid-diagram--fullscreen {
   border: 1px dashed var(--border);
   border-radius: 8px;
   color: var(--fg-dim);
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
 }
 .provider-empty strong {
   color: var(--fg);
@@ -18203,7 +18314,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 0 12px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elev-1) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 72%, transparent);
   color: var(--fg);
   font-size: var(--font-control);
   font-weight: 650;
@@ -18216,7 +18327,7 @@ body > .mermaid-diagram--fullscreen {
   min-height: 64px;
 }
 .provider-readonly-field--stacked span {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
   font-weight: 500;
   line-height: 1.35;
@@ -18228,10 +18339,91 @@ body > .mermaid-diagram--fullscreen {
   padding: 0 12px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elev-1) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 72%, transparent);
   color: var(--fg);
   font-size: var(--font-control);
   font-weight: 650;
+}
+.shell-support {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shell-support__detection {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 500;
+}
+.shell-capability__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+}
+.shell-capability__row svg {
+  flex: none;
+  color: var(--fg-faint);
+}
+.shell-capability__name {
+  flex: none;
+  font-weight: 650;
+}
+.shell-capability__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-faint);
+  font-size: var(--font-control-small);
+}
+.set-shell-reload {
+  margin-left: auto;
+}
+.shell-support__card {
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elev) 72%, transparent);
+}
+.shell-support__hint {
+  font-size: var(--font-control-small);
+  color: var(--fg-faint);
+  line-height: 1.4;
+}
+.shell-support__repair-command {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.shell-support__repair-command code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 7px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: var(--font-control-small);
+}
+.shell-support__repair-safety {
+  margin-top: 6px;
+  color: var(--fg-faint);
+  font-size: var(--font-control-small);
+  line-height: 1.4;
+}
+.shell-support__actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 .provider-models-row {
   display: grid;
@@ -18246,7 +18438,7 @@ body > .mermaid-diagram--fullscreen {
   gap: 8px 10px;
 }
 .provider-model-fetch-row span {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
   line-height: 1.4;
 }
@@ -18276,7 +18468,7 @@ body > .mermaid-diagram--fullscreen {
   border-radius: 8px;
   font-size: var(--font-control-small);
   line-height: 1.4;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
 }
 .provider-fetch-banner--ok {
   border-color: color-mix(in srgb, var(--ok) 38%, var(--border));
@@ -18290,7 +18482,7 @@ body > .mermaid-diagram--fullscreen {
   margin-top: 4px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elev-1) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 72%, transparent);
 }
 .provider-editor-advanced > summary {
   min-height: 40px;
@@ -18320,7 +18512,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .provider-editor-advanced__icon {
   flex: 0 0 auto;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   transition: transform 160ms ease;
 }
 .provider-editor-advanced[open] .provider-editor-advanced__icon {
@@ -18328,7 +18520,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .provider-editor-advanced__hint {
   flex: 0 1 auto;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: var(--font-control-small);
   font-weight: 500;
   text-align: right;
@@ -18828,7 +19020,7 @@ body > .mermaid-diagram--fullscreen {
 .bot-mobile-remote__qr--empty svg {
   width: 34px;
   height: 34px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
 }
 .bot-mobile-remote__qr-code {
   display: block;
@@ -19052,7 +19244,7 @@ body > .mermaid-diagram--fullscreen {
   width: fit-content;
   border-radius: 999px;
   background: var(--bg-elev);
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
   font-weight: 720;
   line-height: 1.15;
@@ -19154,7 +19346,7 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
 }
 .bot-channel-tab__icon .bot-channel-tab__brand {
   width: 24px;
@@ -19189,7 +19381,7 @@ body > .mermaid-diagram--fullscreen {
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: var(--fg-muted);
+  background: var(--fg-faint);
 }
 .bot-channel-tab__dot--configured {
   background: var(--ok);
@@ -20562,7 +20754,7 @@ body > .mermaid-diagram--fullscreen {
   margin-top: 8px;
 }
 .bot-diagnostic-actions small {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -20694,7 +20886,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-elev-1);
+  background: var(--bg-elev);
 }
 .bot-channel-card--enabled {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
@@ -21527,6 +21719,7 @@ body > .mermaid-diagram--fullscreen {
   margin-top: 2px;
 }
 /* sub-agent calls render indented under their parent task card — the base
+/* sub-agent calls render indented under their parent task card — the base
    tool__body already provides border-left + 12px padding, so subagent just
    needs left indent for hierarchy.  Expanded padding is handled by
    .tool--open .tool__body. */
@@ -21604,6 +21797,14 @@ body > .mermaid-diagram--fullscreen {
   border-color: color-mix(in srgb, var(--accent) 32%, var(--border-soft));
   color: var(--accent);
 }
+.todobar__status--waiting {
+  border-color: color-mix(in srgb, var(--warn) 32%, var(--border-soft));
+  color: var(--warn);
+}
+.todobar__status--paused {
+  border-color: color-mix(in srgb, var(--fg-dim) 32%, var(--border-soft));
+  color: var(--fg-dim);
+}
 .todobar__text {
   min-width: 0;
 }
@@ -21613,6 +21814,11 @@ body > .mermaid-diagram--fullscreen {
 }
 .todobar__item--in_progress .todobar__text {
   color: var(--fg);
+  font-weight: 500;
+}
+.todobar__item--waiting .todobar__text,
+.todobar__item--paused .todobar__text {
+  color: var(--fg-dim);
   font-weight: 500;
 }
 .todobar__item--pending .todobar__text {
@@ -21983,7 +22189,7 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg-dim);
 }
 .slashmenu__item--back:hover {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
 }
 .slashmenu__item--empty {
   color: var(--fg-faint);
@@ -22055,7 +22261,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .composer__pasted-head button:hover {
   color: var(--fg);
-  background: var(--hover);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
 }
 .composer__pasted-preview {
   max-height: 180px;
@@ -22293,6 +22499,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* onboarding — first-run gate covering the whole window. Sits above every
+/* onboarding — first-run gate covering the whole window. Sits above every
    other layer; the card is centered, terminal-styled, with a faint scanline
    accent so it reads as "stop and paste a key" rather than a generic modal. */
 .onboarding {
@@ -22414,7 +22621,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .onboarding__provider:hover:not(:disabled) {
   background: var(--bg-hover, rgba(128, 128, 128, 0.08));
-  border-color: var(--border-strong, var(--border));
+  border-color: var(--border-2, var(--border));
 }
 .onboarding__provider:disabled {
   opacity: 0.5;
@@ -22480,6 +22687,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Memory filter input: a full-width mem-input variant that sits below
+/* Memory filter input: a full-width mem-input variant that sits below
    the section title. The existing mem-input already has a 28px height
    and the right border tokens; this just sets margin so it doesn't
    crowd the doc list. */
@@ -22489,6 +22697,7 @@ body > .mermaid-diagram--fullscreen {
 
 }
 
+/* InlineDiff: a compact before/after diff card. The header strip carries
 /* InlineDiff: a compact before/after diff card. The header strip carries
    the filename, the +/- counts, and a Copy button. The body is a monospace
    pre with +/- row coloring. The CSS tokens are the same --add-bg /
@@ -22650,7 +22859,7 @@ body > .mermaid-diagram--fullscreen {
   gap: 4px;
   padding: 4px 10px;
   font-size: 11px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -22854,6 +23063,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* The image viewer is an app-level fullscreen surface. Hide the custom
+/* The image viewer is an app-level fullscreen surface. Hide the custom
    Windows caption controls while it is open so the preview owns the only
    visible close affordance; native shortcuts such as Alt+F4 remain intact. */
 .app--windows-frameless:has(.image-viewer-backdrop) > .windows-window-controls {
@@ -22862,6 +23072,7 @@ body > .mermaid-diagram--fullscreen {
   pointer-events: none;
 }
 
+/* When the workspace panel is closed (no layout--workspace-open or
 /* When the workspace panel is closed (no layout--workspace-open or
    layout--workspace-maximized), make the window controls box transparent so it
    blends into the title bar / background instead of showing a distinct box. */
@@ -22876,6 +23087,7 @@ body > .mermaid-diagram--fullscreen {
   box-shadow: none;
 }
 
+/* When a drawer/palette overlay is open, dim the window controls so they
 /* When a drawer/palette overlay is open, dim the window controls so they
    visually sit behind the backdrop instead of staying highlighted on top. */
 .drawer-backdrop[data-state="open"] ~ .windows-window-controls {
@@ -23598,6 +23810,7 @@ body > .mermaid-diagram--fullscreen {
   --wails-draggable: no-drag;
 }
 /* When the dock is closed in workbench mode, the fixed top-right dock-toggle
+/* When the dock is closed in workbench mode, the fixed top-right dock-toggle
    overlaps the topic bar's right edge; leave room so the actions don't
    collide with it. When the dock is open it occupies the right column, so no
    extra margin is needed. Classic/creation keep the toggle inside the actions
@@ -23752,6 +23965,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Borderless icon-only entries: file opener, More menu, workspace toggle,
+/* Borderless icon-only entries: file opener, More menu, workspace toggle,
    and the utility (search) button. Default state has no background/border —
    hover/focus still highlight so the controls stay discoverable. */
 .topicbar__actions .external-opener,
@@ -23783,6 +23997,7 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg) !important;
 }
 
+/* Compact icon + caret: shrink the primary so the app icon sits close to
 /* Compact icon + caret: shrink the primary so the app icon sits close to
    the caret instead of being spread across two centered halves. */
 .topicbar__actions .external-opener__primary {
@@ -24014,7 +24229,6 @@ body > .mermaid-diagram--fullscreen {
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--bg-elev);
   box-shadow: 0 18px 42px color-mix(in srgb, #000 32%, transparent);
   --wails-draggable: no-drag;
 }
@@ -24294,6 +24508,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* L1: command-search bar — opens the ⌘K palette. Sits after the new-tab
+/* L1: command-search bar — opens the ⌘K palette. Sits after the new-tab
    button and fills the remaining strip width like the prototype. */
 .tabbar__command {
   flex: 1 1 auto;
@@ -24324,7 +24539,7 @@ body > .mermaid-diagram--fullscreen {
     color 0.12s;
 }
 .tabbar__command:hover {
-  border-color: var(--border-strong, var(--border));
+  border-color: var(--border-2, var(--border));
   background: var(--bg-elev);
   color: var(--fg-dim);
 }
@@ -24543,7 +24758,7 @@ body > .mermaid-diagram--fullscreen {
   height: 22px;
   border-radius: 7px;
   background: var(--bg-elev);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 9%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-color) 9%, transparent);
 }
 
 .project-tree__add-project:hover:not(:disabled),
@@ -24569,6 +24784,7 @@ body > .mermaid-diagram--fullscreen {
   opacity: 0.96;
 }
 
+/* Header-action-btn in the header-actions row uses min-width so it can
 /* Header-action-btn in the header-actions row uses min-width so it can
    expand when a time-filter label is shown alongside the clock icon. */
 .project-tree__header-actions .project-tree__header-action-btn {
@@ -24628,7 +24844,7 @@ body > .mermaid-diagram--fullscreen {
   border: none;
   border-radius: 5px;
   background: transparent;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
@@ -24659,6 +24875,7 @@ body > .mermaid-diagram--fullscreen {
   user-select: none;
 }
 
+/* Classic hover preview card: rendered through a body portal so the sidebar's
 /* Classic hover preview card: rendered through a body portal so the sidebar's
    overflow clipping cannot cut it off; pointer-events stay off so it never
    steals the hover from the row underneath. */
@@ -24699,7 +24916,7 @@ body > .mermaid-diagram--fullscreen {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
 }
 
@@ -24727,7 +24944,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .project-tree__topic-window-toggle:hover {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
 }
 
 .project-tree__topic-window-toggle:focus-visible {
@@ -25018,6 +25235,10 @@ body > .mermaid-diagram--fullscreen {
   background: var(--list-row-hover-bg);
 }
 
+.project-tree__topic--remote-static:hover {
+  background: transparent;
+}
+
 .project-tree__topic--active:hover {
   background: color-mix(in srgb, var(--project-accent, var(--accent)) 10%, var(--sidebar-hover));
 }
@@ -25222,6 +25443,7 @@ body > .mermaid-diagram--fullscreen {
   outline-offset: -2px;
 }
 
+/* Classic single-line rows: the activity time sits right-aligned on the title
 /* Classic single-line rows: the activity time sits right-aligned on the title
    line (turns and the exact date live in the hover preview card). Mirrors the
    workbench side recipe, including the swap with the shortcut badge. */
@@ -25502,7 +25724,6 @@ body > .mermaid-diagram--fullscreen {
   padding: 5px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-elev);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
   transform-origin: top left;
   animation: menu-pop-in var(--dur-base) var(--ease-out) both;
@@ -25550,15 +25771,23 @@ body > .mermaid-diagram--fullscreen {
 
 .context-menu__shortcut {
   margin-left: 16px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
   font-family: inherit;
   pointer-events: none;
 }
 
+.context-menu__item > .context-menu__chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--fg-faint);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .context-menu__item:hover .context-menu__shortcut,
 .context-menu__item:focus-visible .context-menu__shortcut {
-  color: var(--fg-normal);
+  color: var(--fg);
 }
 
 .context-menu--composer-input .context-menu__item {
@@ -25633,13 +25862,13 @@ body > .mermaid-diagram--fullscreen {
   white-space: nowrap;
 }
 
-.transcript-selection-action button:hover,
-.transcript-selection-action button:focus-visible {
+.transcript-selection-action button:not(:disabled):hover,
+.transcript-selection-action button:not(:disabled):focus-visible {
   background: var(--sidebar-hover);
   outline: none;
 }
 
-.transcript-selection-action button:focus-visible {
+.transcript-selection-action button:not(:disabled):focus-visible {
   box-shadow: var(--focus-ring);
 }
 
@@ -25696,7 +25925,7 @@ body > .mermaid-diagram--fullscreen {
 	align-items: center;
 	gap: 8px;
   padding: 4px 10px 6px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -25740,6 +25969,33 @@ body > .mermaid-diagram--fullscreen {
   opacity: 0.45;
 }
 
+.project-tree__empty-secondary {
+  --wails-draggable: no-drag;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 32px;
+  margin: 0 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 560;
+}
+
+.project-tree__empty-secondary:hover:not(:disabled) {
+  background: var(--sidebar-hover);
+  color: var(--fg);
+}
+
+.project-tree__empty-secondary:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .context-inspector,
 .workbench-dock {
   grid-row: 2;
@@ -25748,6 +26004,7 @@ body > .mermaid-diagram--fullscreen {
   height: 100%;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   /* Unify the dock surface with the chat pane; inner panels inherit this. */
   --workspace-files-bg: var(--chat-bg);
   --workspace-preview-bg: var(--chat-bg);
@@ -25775,17 +26032,19 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .workbench-dock__tools {
+  position: relative;
   flex: 0 0 auto;
   height: 42px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  padding: 7px 10px 3px;
+  padding: 7px 44px 3px 10px;
   border-bottom: 1px solid transparent;
   --wails-draggable: drag;
 }
 
+/* Dock collapse/expand toggle pinned to the top-right corner of the window.
 /* Dock collapse/expand toggle pinned to the top-right corner of the window.
    Fixed position keeps it at the same spot whether the dock is open (it
    overlaps the dock's tools row) or closed (it sits on the topic bar's
@@ -25818,6 +26077,7 @@ body > .mermaid-diagram--fullscreen {
 
 .workbench-dock__tabs {
   --wails-draggable: no-drag;
+  position: relative;
   flex: 0 1 auto;
   width: max-content;
   max-width: 100%;
@@ -25830,10 +26090,41 @@ body > .mermaid-diagram--fullscreen {
   border-radius: 8px;
   background: var(--bg);
   border: 1px solid var(--border-soft);
+  /* Tabs may shrink to their min-width, but the strip must never overflow
+     into the add button or the dock-toggle: clip, and fade the right edge so
+     a squeezed-out tab dissolves instead of being cut off mid-glyph. The fade
+     is a painted overlay (::after) rather than a mask-image — masks force
+     per-frame compositor repaints of the whole strip while the FLIP slide
+     animates transforms during a drag, which reads as jank. The add button
+     lives outside this container, so it stays fully opaque. */
+  overflow: hidden;
+}
+
+.workbench-dock__tabs::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  background: linear-gradient(to right, transparent, var(--bg));
+  pointer-events: none;
+  /* Only shown while the strip actually overflows (see
+     .workbench-dock__tabs--overflow, driven by a ResizeObserver): when the
+     strip has room the overlay must not fade the last tab. */
+  display: none;
+}
+
+.workbench-dock__tabs--overflow::after {
+  display: block;
 }
 
 .workbench-dock__tab {
   --wails-draggable: no-drag;
+  /* Fade-end color for the label overlay: the resting tab is transparent
+     over the strip's --bg surface. */
+  --label-fade-end: var(--bg);
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -25842,7 +26133,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 30px;
   max-width: 118px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -25857,10 +26148,11 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .workbench-dock__tab-label {
+  position: relative;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  /* ellipsis replaced by a ::after right-edge fade (see below) */
 }
 
 .workbench-dock__tab:hover {
@@ -25887,6 +26179,8 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .workbench-dock__tab--active {
+  /* Label fade matches the selected fill. */
+  --label-fade-end: var(--bg-elev);
   background: var(--bg-elev);
   color: var(--fg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
@@ -25898,8 +26192,9 @@ body > .mermaid-diagram--fullscreen {
   }
 
   .workbench-dock__tab {
-    flex: 1 1 0;
-    max-width: none;
+    flex: 0 1 155px;
+    min-width: 85px;
+    max-width: 155px;
   }
 }
 
@@ -25911,6 +26206,7 @@ body > .mermaid-diagram--fullscreen {
   .workbench-dock__tab {
     flex: 0 0 30px;
     width: 30px;
+    min-width: 0;
     padding: 0;
     gap: 0;
   }
@@ -25933,6 +26229,357 @@ body > .mermaid-diagram--fullscreen {
 
 .workbench-dock__body > .workspace-panel {
   border-left: none;
+}
+
+/* --- Dock launcher: floating menu over the transcript while the dock is
+   collapsed (the panel replaces it once expanded). --- */
+.dock-launcher {
+  --wails-draggable: no-drag;
+  position: absolute;
+  top: 8px;
+  right: 0;
+  z-index: var(--z-local-popover);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: 3px;
+  border-radius: 8px 0 0 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-right: 0;
+}
+
+.dock-launcher__entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 560;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.dock-launcher__entry:hover {
+  background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+  color: var(--fg);
+}
+
+.dock-launcher__entry svg {
+  color: var(--fg-faint);
+  flex: 0 0 auto;
+}
+
+/* --- Tab container (right dock redesign) --- */
+
+.workbench-dock__panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-container {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* The dock header keeps the upstream workbench-dock chrome (tools strip +
+   rounded tab capsule); per-tab close and the + add button are the only
+   additions. The tools strip itself is defined upstream (42px, draggable);
+   these rules cover the added close/add buttons inside the capsule. */
+.workbench-dock__tab {
+  cursor: pointer;
+  min-width: 85px;
+  max-width: 155px;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease,
+    --label-fade-end 120ms ease;
+}
+
+/* While a tab is dragged it leaves the strip and floats above it, and its
+   original slot shows a dashed outline that slides left/right to preview
+   where the tab will land on release. The floating layer reuses the base
+   tab styles (font, padding, icon sizing) so the dragged copy looks exactly
+   like the original; --floating only overrides positioning and elevation. */
+.workbench-dock__tab--floating {
+  --wails-draggable: no-drag;
+  position: fixed;
+  background: var(--bg-elev);
+  color: var(--fg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  z-index: var(--z-floating-menu);
+}
+
+.workbench-dock__tab-slot {
+  --wails-draggable: no-drag;
+  flex: 0 0 auto;
+  display: inline-flex;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  transition: transform 120ms ease;
+  pointer-events: none;
+}
+
+.workbench-dock__tab-slot .workbench-dock__tab-label {
+  visibility: hidden;
+}
+
+.workbench-dock__tab-label {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  /* ellipsis replaced by a ::after right-edge fade (see below) */
+}
+
+/* Long tab titles fade out at the label's right edge instead of getting an
+   ellipsis. The overlay sits inside the label, so it only covers the strip
+   of text that overflow:hidden would otherwise cut — a short title never
+   reaches it, no overflow detection needed. The fade end color tracks the
+   tab's own background via --label-fade-end (set on .workbench-dock__tab
+   for base/hover/active states), so the fade never clashes with the tab's
+   hover or selected fill. */
+.workbench-dock__tab-label::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  background: linear-gradient(to right, transparent, var(--label-fade-end, var(--bg)));
+  pointer-events: none;
+}
+
+.workbench-dock__tab-close {
+  --wails-draggable: no-drag;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-faint);
+  cursor: pointer;
+  padding: 0;
+  margin-left: 1px;
+  /* Hidden until the tab is hovered (or the drag ghost shows it): the
+     resting tab stays clean. It keeps its box (opacity, not display) so the
+     label width never jumps when the button appears. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast, 120ms);
+}
+
+.workbench-dock__tab:hover .workbench-dock__tab-close,
+.workbench-dock__tab--active .workbench-dock__tab-close,
+.workbench-dock__tab--floating .workbench-dock__tab-close {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.workbench-dock__tab-close:hover {
+  background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+  color: var(--fg);
+}
+
+.workbench-dock__tab-add {
+  --wails-draggable: no-drag;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-faint);
+  cursor: pointer;
+  padding: 0;
+  /* Hug the tab strip: the tools row's 8px gap is cancelled down to a 4px
+     breathing room. Never shrinks, so when the strip compresses the button
+     stays visible and ends up pinned to the right edge. */
+  margin-left: -4px;
+}
+
+.workbench-dock__tab-add:hover {
+  background: var(--bg-elev);
+  color: var(--fg);
+}
+
+.tab-container__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-container__empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: var(--fg-faint);
+  font-size: 12px;
+  text-align: center;
+}
+
+.tab-container__content > .context-panel,
+.tab-container__content > .workspace-panel,
+.tab-container__content > .terminal-panel,
+.tab-container__content > .browser-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.tab-add-menu {
+  --wails-draggable: no-drag;
+  position: absolute;
+  top: 46px;
+  left: 10px;
+  right: auto;
+  z-index: var(--z-dock);
+  min-width: 170px;
+  max-width: calc(100% - 20px);
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tab-add-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.tab-add-menu__item:hover {
+  background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+}
+
+.tab-add-menu__item svg {
+  color: var(--fg-faint);
+}
+
+/* Browser panel */
+.browser-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--chat-bg);
+}
+
+.browser-panel__toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.browser-panel__nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.browser-panel__nav:hover:not(:disabled) {
+  background: var(--bg-elev);
+  color: var(--fg);
+}
+
+.browser-panel__nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.browser-panel__address {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 4px;
+}
+
+.browser-panel__address input {
+  width: 100%;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+}
+
+.browser-panel__address input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.browser-panel__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.browser-panel__frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
 }
 
 .layout--workspace-maximized .context-inspector,
@@ -25977,6 +26624,31 @@ body > .mermaid-diagram--fullscreen {
   border: 1px solid var(--border-soft);
   border-radius: 8px;
   background: var(--bg);
+}
+
+.context-panel__mcp-empty {
+  margin: 0;
+  color: var(--fg-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.context-panel__mcp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.context-panel__mcp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.context-panel__mcp-row strong {
+  font-variant-numeric: tabular-nums;
 }
 
 .context-panel__section-head {
@@ -26201,7 +26873,7 @@ body > .mermaid-diagram--fullscreen {
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow) 10%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow-color) 10%, transparent);
   transform: translateX(-50%);
   font-variant-numeric: tabular-nums;
 }
@@ -26669,7 +27341,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .context-panel__runtime-metric span {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 10px;
   line-height: 1.2;
 }
@@ -26758,7 +27430,7 @@ body > .mermaid-diagram--fullscreen {
 
 .context-panel__source-overview-head span {
   flex: 0 0 auto;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
 }
 
@@ -26834,7 +27506,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .context-panel__source-head em {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-style: normal;
 }
 
@@ -26851,7 +27523,7 @@ body > .mermaid-diagram--fullscreen {
 .context-panel__source-tone--slate { background: #64748b; }
 .context-panel__source-tone--violet { background: #7c3aed; }
 .context-panel__source-tone--rose { background: #e11d48; }
-.context-panel__source-tone--default { background: var(--fg-muted); }
+.context-panel__source-tone--default { background: var(--fg-faint); }
 
 .context-panel__source-summary,
 .context-panel__source-metrics {
@@ -26867,7 +27539,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .context-panel__source-metric span {
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 10px;
 }
 
@@ -26888,7 +27560,7 @@ body > .mermaid-diagram--fullscreen {
 .context-panel__source-bar-row > span {
   min-width: 0;
   overflow: hidden;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 10px;
   line-height: 1;
   text-overflow: ellipsis;
@@ -26930,7 +27602,7 @@ body > .mermaid-diagram--fullscreen {
   width: max-content;
   max-width: 100%;
   cursor: pointer;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
   line-height: 1.2;
 }
@@ -27012,7 +27684,7 @@ body > .mermaid-diagram--fullscreen {
 
 .context-panel__type-overview-head span {
   flex: 0 0 auto;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 11px;
 }
 
@@ -27072,9 +27744,11 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * Native-feel: overscroll containment, reduced-motion, view-transition suppression
  * -------------------------------------------------------------------------- */
 
+/* Prevent rubber-band / pull-to-refresh on scrollable panels so the webview
 /* Prevent rubber-band / pull-to-refresh on scrollable panels so the webview
    feels like a native window, not a browser tab. */
 .transcript,
@@ -27097,7 +27771,7 @@ body > .mermaid-diagram--fullscreen {
   gap: 5px;
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 12px;
 }
 
@@ -27135,7 +27809,7 @@ body > .mermaid-diagram--fullscreen {
   margin-left: auto;
   border: none;
   background: transparent;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   cursor: pointer;
   padding: 2px;
   border-radius: 3px;
@@ -27182,7 +27856,7 @@ body > .mermaid-diagram--fullscreen {
 
 .workspace-branch-menu__loading {
   padding: 10px 12px;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
   font-size: 12px;
   text-align: center;
 }
@@ -27227,6 +27901,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Respect the OS reduced-motion preference: squash all animations and force
+/* Respect the OS reduced-motion preference: squash all animations and force
    instant scrolling so the UI feels immediate rather than web-like. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -27240,10 +27915,11 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * Native Workbench refresh
  * -------------------------------------------------------------------------- */
 
-:root {
+:root:not([data-theme-style]) {
   --bg: #090b0e;
   --bg-soft: #101318;
   --bg-elev: #141820;
@@ -27271,7 +27947,7 @@ body > .mermaid-diagram--fullscreen {
   --sans: var(--font-ui);
 }
 
-:root[data-theme="light"] {
+:root[data-theme="light"]:not([data-theme-style]) {
   --bg: #e9edf3;
   --bg-soft: #f0f3f8;
   --bg-elev: #ffffff;
@@ -27291,7 +27967,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
+  :root:not([data-theme]):not([data-theme-style]) {
     --bg: #e9edf3;
     --bg-soft: #f0f3f8;
     --bg-elev: #ffffff;
@@ -27770,14 +28446,34 @@ body > .mermaid-diagram--fullscreen {
   background: color-mix(in srgb, var(--bg) 72%, transparent);
 }
 
+/* The strip above is a translucent --bg wash over the dock surface, so the
+   right-edge fade overlays must land on the wash's composited color, not the
+   raw --bg. A raw --bg endpoint is darker than the surface the wash actually
+   paints, which leaves a visible (lighter/darker) band at the strip's right
+   edge and on clipped tab titles. Use the same 72% wash composited over the
+   dock surface (--chat-bg). */
+.workbench-dock__tabs::after {
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg) 72%, var(--chat-bg)));
+}
+
 .workbench-dock__tab {
-  flex: 1 1 0;
-  max-width: none;
+  /* Title right-edge fade endpoint follows the translucent strip wash. */
+  --label-fade-end: color-mix(in srgb, var(--bg) 72%, var(--chat-bg));
+}
+
+.workbench-dock__tab {
+  flex: 0 1 155px;
+  max-width: 155px;
   height: 28px;
   border-radius: 7px;
 }
 
 .workbench-dock__tab--active {
+  /* Keep the label right-edge fade on the selected fill: the base
+     .workbench-dock__tab--active rule sets --label-fade-end to --bg-elev, but
+     this skin recolors the selected background to --bg-elev-2, so an
+     unsynced fade-end leaves a pale block at the title's right edge. */
+  --label-fade-end: var(--bg-elev-2);
   background: var(--bg-elev-2);
 }
 
@@ -27835,6 +28531,7 @@ body > .mermaid-diagram--fullscreen {
   }
 }
 
+/* -------------------------------------------------------------------------
 /* -------------------------------------------------------------------------
    Shared desktop implementation
    Keeps every theme on the Graphite-tuned app shell. Theme styles should swap
@@ -28565,7 +29262,7 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .project-tree__search:focus-within,
 :root[data-theme-style] .project-tree__search:hover {
-  border-color: var(--border-strong, var(--border));
+  border-color: var(--border-2, var(--border));
 }
 
 :root[data-theme-style] .project-tree__header {
@@ -29564,33 +30261,57 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .workbench-dock__tools {
   height: 45px;
-  padding: 0 12px;
+  /* Right padding clears the fixed dock-toggle (30px + 12px offset = 42px),
+     so the + add button never lands under it when the strip is compressed.
+     Must be re-declared here: the base rule's padding-right is overridden by
+     this theme rule's shorthand. */
+  padding: 0 44px 0 12px;
   border-bottom: 1px solid var(--border-soft);
 }
 
 :root[data-theme-style] .workbench-dock__tabs {
   position: relative;
-  width: auto;
+  width: max-content;
   height: 100%;
-  flex: 0 0 auto;
+  /* Content width, not stretched: the + add button (a sibling in the tools
+     row) hugs the last tab. When the row is too narrow the strip shrinks
+     and the button ends up pinned to the right edge instead. */
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 8px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
+  overflow: hidden;
+}
+
+:root[data-theme-style] .workbench-dock__tabs::after {
+  /* The theme strip is transparent, so the fade overlay must blend into the
+     dock surface (--chat-bg) rather than the non-theme --bg. */
+  background: linear-gradient(to right, transparent, var(--chat-bg));
 }
 
 :root[data-theme-style] .workbench-dock__tab {
+  /* Fade-end color for the label overlay: the resting tab is transparent
+     over the dock surface. Hover/active override it with their fills. */
+  --label-fade-end: var(--chat-bg);
   position: relative;
-  flex: 0 0 auto;
-  min-width: auto;
-  max-width: none;
+  flex: 0 1 auto;
+  min-width: 85px;
+  max-width: 155px;
   height: 27px;
-  width: auto;
-  padding: 0 11px;
+  /* Width, not flex-basis, carries the 155px target: the strip is
+     width:max-content, and max-content sizing reads each item's width —
+     a flex-basis would be ignored there and the tab would collapse to its
+     min-width (the reason the old flex-basis variant squeezed every tab to
+     85px). flex: 0 1 auto still lets the strip shrink tabs toward 85px. */
+  width: 155px;
+  padding: 0 6px;
   border: 0;
   border-radius: 7px;
   justify-content: flex-start;
@@ -29599,7 +30320,15 @@ body > .mermaid-diagram--fullscreen {
   font-size: 12.5px;
   font-weight: 600;
   background: transparent;
-  transition: color var(--dur-fast), background var(--dur-fast);
+  transition: color var(--dur-fast), background var(--dur-fast), transform 120ms ease, --label-fade-end var(--dur-fast);
+}
+
+:root[data-theme-style] .workbench-dock__tab--floating {
+  /* The theme-style .workbench-dock__tab rule above (higher specificity)
+     resets position to relative; the portal-rendered drag ghost must stay
+     viewport-fixed so it follows the pointer. Declared after that rule so
+     the fixed value wins the cascade. */
+  position: fixed;
 }
 
 :root[data-theme-style] .workbench-dock__tab svg {
@@ -29608,29 +30337,43 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workbench-dock__tab-label {
+  flex: 1 1 auto;
   display: inline;
-  min-width: auto;
-  overflow: visible;
-  text-overflow: clip;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  /* ellipsis replaced by a ::after right-edge fade (see below) */
+}
+
+:root[data-theme-style] .workbench-dock__tab-label::after {
+  /* The fade end tracks the tab's own background (--label-fade-end), which
+     hover/active override with their color-mix fills. */
+  background: linear-gradient(to right, transparent, var(--label-fade-end, var(--chat-bg)));
 }
 
 :root[data-theme-style] .workbench-dock__tab--active {
   color: var(--fg);
-  /* Simple flat selected fill — a touch darker than the dock background,
-     no shadow, like a focused browser tab. */
-  background: color-mix(in srgb, var(--fg) 8%, var(--chat-bg));
+  /* One shared fill for both hover and selected states — the two states are
+     told apart by text color (--fg vs --fg-dim) instead of a second, darker
+     background. */
+  --label-fade-end: color-mix(in srgb, var(--fg) 5%, var(--chat-bg));
+  background: color-mix(in srgb, var(--fg) 5%, var(--chat-bg));
   box-shadow: none;
 }
 
 :root[data-theme-style] .workbench-dock__tab:hover {
   color: var(--fg-dim);
-  background: color-mix(in srgb, var(--fg) 4%, var(--chat-bg));
+  /* Same fill as the selected state (see above). */
+  --label-fade-end: color-mix(in srgb, var(--fg) 5%, var(--chat-bg));
+  background: color-mix(in srgb, var(--fg) 5%, var(--chat-bg));
 }
 
 :root[data-theme-style] .workbench-dock__tab--active::after {
   display: none;
 }
 
+/* Classic and Workbench use compact text tabs in the right dock. A restrained
 /* Classic and Workbench use compact text tabs in the right dock. A restrained
    hairline clarifies each hit target without turning the strip into boxed
    segmented controls. Creation keeps its separate equal-column treatment. */
@@ -29653,10 +30396,32 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Theme-style turns the strip into browser-like tabs (small rounded rects,
+/* Theme-style turns the strip into browser-like tabs (small rounded rects,
    selected one raised); the hairline separator reads as clutter between them. */
 :root[data-theme-style] .app--classic .workbench-dock__tab + .workbench-dock__tab::before,
 :root[data-theme-style] .app--workbench .workbench-dock__tab + .workbench-dock__tab::before {
   display: none;
+}
+
+/* The user wants the weak divider back under the theme skin too — but ONLY
+   between two inactive tabs. An active tab's neighbors get no hairline, so
+   the active one reads as a solid raised browser tab. Both sides of the
+   adjacent pair must be :not(.workbench-dock__tab--active). This selector
+   also outranks the display:none rule above ((0,6,1) > (0,5,1)) and is
+   declared after it anyway. */
+:root[data-theme-style] .app--classic .workbench-dock__tab:not(.workbench-dock__tab--active) + .workbench-dock__tab:not(.workbench-dock__tab--active)::before,
+:root[data-theme-style] .app--workbench .workbench-dock__tab:not(.workbench-dock__tab--active) + .workbench-dock__tab:not(.workbench-dock__tab--active)::before {
+  content: "";
+  position: absolute;
+  left: -4px;     /* centered in the 8px flex gap */
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  height: auto;   /* reset the non-theme rule's height:16px so top/bottom size it */
+  background: color-mix(in srgb, var(--fg) 17.5%, transparent); /* half the previous 35% */
+  pointer-events: none;
+  transform: none; /* reset the non-theme rule's translateY(-50%), which pushed it 8px up */
+  display: block; /* explicitly override the display:none above */
 }
 
 :root[data-theme-style] .workspace-panel,
@@ -29683,19 +30448,12 @@ body > .mermaid-diagram--fullscreen {
 }
 
 :root[data-theme-style] .workspace-search {
-  height: 34px;
+  height: 30px;
   margin: 10px 12px 8px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: transparent;
   color: var(--fg-faint);
-  transition: border-color var(--dur-fast), background var(--dur-fast);
-}
-
-:root[data-theme-style] .workspace-search:hover,
-:root[data-theme-style] .workspace-search:focus-within {
-  border-color: var(--app-graphite-hairline-strong);
-  background: color-mix(in srgb, var(--bg-soft) 72%, var(--bg-elev));
 }
 
 :root[data-theme-style] .workspace-files__scope {
@@ -29737,6 +30495,7 @@ body > .mermaid-diagram--fullscreen {
   transform: none;
 }
 
+/* Change rows: the highlight spans the whole row (file entry + revert button).
 /* Change rows: the highlight spans the whole row (file entry + revert button).
    The entry button inherits the row surface instead of painting its own. */
 :root[data-theme-style] .workspace-change-row:hover {
@@ -29787,6 +30546,7 @@ body > .mermaid-diagram--fullscreen {
   background: var(--bg-soft);
 }
 
+/* The changed-tab content sits directly in the preview body whose theme-style
 /* The changed-tab content sits directly in the preview body whose theme-style
    left/right padding is 0 (code/markdown views supply their own). Give the
    outer containers a horizontal inset. Only the outermost layer gets padding:
@@ -29844,10 +30604,6 @@ body > .mermaid-diagram--fullscreen {
   background: var(--chat-bg);
 }
 
-:root[data-theme-style] .workspace-current-file__icon {
-  color: var(--accent);
-}
-
 :root[data-theme-style] .workspace-current-file__name {
   font-size: 13px;
   font-weight: 650;
@@ -29857,11 +30613,13 @@ body > .mermaid-diagram--fullscreen {
   font-family: var(--mono);
 }
 
-:root[data-theme-style] .workspace-iconbtn:hover,
-:root[data-theme-style] .workspace-current-file__recent:hover,
+:root[data-theme-style] .workspace-iconbtn:hover {
+  color: var(--fg);
+  background: var(--bg-soft);
+}
+
 :root[data-theme-style] .workspace-current-file__recent--open {
   color: var(--fg);
-  border-color: var(--border);
   background: var(--bg-soft);
 }
 
@@ -29912,10 +30670,11 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .modelsw__menu {
   border-color: var(--app-graphite-hairline-strong);
   border-radius: 8px;
-  background: var(--bg-elev);
+  background: var(--overlay-surface-bg);
   box-shadow: var(--app-graphite-shadow-float);
 }
 
+/* Inline note panels (completion summary, git warnings) sit inside the
 /* Inline note panels (completion summary, git warnings) sit inside the
    workspace surface — no floating elevation, just a hairline + soft fill. */
 :root[data-theme-style] .workspace-note {
@@ -30152,6 +30911,7 @@ body > .mermaid-diagram--fullscreen {
   background: linear-gradient(120deg, #ff5a2c, #ff8a3d);
 }
 
+/* Theme direction accents for the design-signature controls copied from the
 /* Theme direction accents for the design-signature controls copied from the
    new_design comps: panel toggles, run-mode badges, active sessions, and file
    tree folder rows all use each theme's accent + accent-soft pair. */
@@ -30990,7 +31750,7 @@ body > .mermaid-diagram--fullscreen {
   border-radius: 7px;
   background: color-mix(in srgb, var(--bg-elev) 92%, var(--sidebar-bg));
   color: var(--fg-faint);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 10%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-color) 10%, transparent);
   transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
 }
 
@@ -31302,6 +32062,7 @@ body > .mermaid-diagram--fullscreen {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ==========================================================================
 /* ==========================================================================
    Creation desktop style — scaffold
    --------------------------------------------------------------------------
@@ -31664,6 +32425,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Scope compact swatches to real theme cards only — do not crush
+/* Scope compact swatches to real theme cards only — do not crush
    AppearanceOverview hero (.appearance-overview__thumb-base.theme-card__swatches). */
 .app--creation .theme-card .theme-card__swatches,
 :root[data-theme-style] .app--creation .theme-card .theme-card__swatches {
@@ -31692,6 +32454,7 @@ body > .mermaid-diagram--fullscreen {
   display: none;
 }
 
+/* Creation Graphite swatch colors apply to both theme cards and
 /* Creation Graphite swatch colors apply to both theme cards and
    AppearanceOverview hero (do not nest under .theme-card). */
 :root[data-theme-style] .app--creation .theme-card__swatches[data-theme-style-card="graphite"] .theme-card__swatch--bg {
@@ -32199,7 +32962,7 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .composer-run-strip,
 :root[data-theme-style] .app--creation .composer-run-strip {
-  color: color-mix(in srgb, var(--accent) 88%, var(--fg-muted));
+  color: color-mix(in srgb, var(--accent) 88%, var(--fg-faint));
   font-size: calc(11.5px * var(--font-scale));
 }
 
@@ -32240,13 +33003,13 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .composer-run-strip__text,
 :root[data-theme-style] .app--creation .composer-run-strip__text {
-  color: color-mix(in srgb, var(--fg-muted) 72%, var(--accent));
+  color: color-mix(in srgb, var(--fg-faint) 72%, var(--accent));
   font-weight: 540;
 }
 
 .app--creation .composer-run-strip--waiting .composer-run-strip__text,
 :root[data-theme-style] .app--creation .composer-run-strip--waiting .composer-run-strip__text {
-  color: color-mix(in srgb, var(--warn) 64%, var(--fg-muted));
+  color: color-mix(in srgb, var(--warn) 64%, var(--fg-faint));
 }
 
 .app--creation .composer-card,
@@ -32482,6 +33245,21 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg);
   font-size: var(--font-content);
   line-height: 1.55;
+}
+
+.composer__input.composer__input--measure,
+.app--creation .composer__input.composer__input--measure,
+:root[data-theme-style] .app--creation .composer__input.composer__input--measure {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 
 .app--creation .composer__input::placeholder,
@@ -32745,6 +33523,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* popover 卡片 —— 对齐 context-panel__capacity-card 风格（portal 到 body，无 .app--creation 前缀） */
+/*
 /*
  * NOTE (font-scale): this popover is portaled to <body>, so it has no
  * .app--creation prefix, yet it is ONLY rendered in creation layout
@@ -33454,6 +34233,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Creation: hide native chat scrollbar and use a controllable custom rail.
+/* Creation: hide native chat scrollbar and use a controllable custom rail.
    Native WebView2 thumb hover-size is unreliable; custom thumb can snap thick/thin.
    Keep this scrolling layer opaque too: transparent transcript backgrounds can
    leave stale turn-action pixels behind when message nodes are removed (#6359). */
@@ -33975,6 +34755,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ── Creation: 工具信息流 ───────────────────────────────────────────────────
+/* ── Creation: 工具信息流 ───────────────────────────────────────────────────
    状态圆点替代左侧文字图标（done=绿 / error=红 / stopped=橙 / running 无点）；
    圆点置于工具头最右端（折叠箭头之后）。classic/workbench 下圆点默认隐藏，
    左侧文字图标不变，零影响。 */
@@ -34112,6 +34893,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* 工具头与深度思考头对齐：reasoning__head 在 Creation 下 padding:0（flush），
+/* 工具头与深度思考头对齐：reasoning__head 在 Creation 下 padding:0（flush），
    tool__head 默认 padding:3px 8px 会比思考头左右各多 8px，导致层级错位。
    Creation 下统一为 0，与 reasoning__head 同起点。 */
 .app--creation .tool__head,
@@ -34119,6 +34901,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 0;
 }
 
+/* 移除非思考卡片的左侧竖线（思考模式 .reasoning__body 保留）。
 /* 移除非思考卡片的左侧竖线（思考模式 .reasoning__body 保留）。
    readonly-batch__body / turn-collapse__body / tool__body 的 border-left 统一去掉。 */
 .app--creation .tool__body,
@@ -34139,6 +34922,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* 限制工具头标题宽度，给右侧 meta（耗时/箭头/圆点）留出可见空间。
+/* 限制工具头标题宽度，给右侧 meta（耗时/箭头/圆点）留出可见空间。
    Bash 等命令常超长，不限宽会把箭头和圆点挤出视野。仅 Creation 作用域。
    summary 在 Creation 下直接隐藏——它对 bash 只是"N 行"摘要，信息量低，
    留着反而挤占右侧关键元素。 */
@@ -34157,6 +34941,7 @@ body > .mermaid-diagram--fullscreen {
   display: none;
 }
 
+/* Tool and process typography follows the semantic region preferences in every
 /* Tool and process typography follows the semantic region preferences in every
    layout; Creation only changes spacing and color treatment. */
 .app--creation .tool,
@@ -34205,6 +34990,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* 工具卡片内的代码块（命令参数/输出/diff）与 diff 标签、错误/提示统一思源黑体。
+/* 工具卡片内的代码块（命令参数/输出/diff）与 diff 标签、错误/提示统一思源黑体。
    注意：思源黑体为比例字体，代码列对齐会丢失，但字体风格绝对统一。
    Noto Sans SC 是思源黑体的开源同源版本，系统已装。 */
 .app--creation .tool__body .code,
@@ -34223,6 +35009,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* 工具错误信息：Creation 下去掉醒目的红底块（base 用 --del-bg），
+/* 工具错误信息：Creation 下去掉醒目的红底块（base 用 --del-bg），
    改为左对齐纯文本，与命令输出同起点（base 有 30px 左缩进，这里清零）。
    仅 .app--creation 作用域，classic/workbench 的红底错误框保持不变。 */
 .app--creation .tool__err,
@@ -34234,6 +35021,7 @@ body > .mermaid-diagram--fullscreen {
   text-align: left;
 }
 
+/* 工具体内代码块（命令参数/输出/diff）底部的横向滚动条：Creation 下隐藏滑道，
 /* 工具体内代码块（命令参数/输出/diff）底部的横向滚动条：Creation 下隐藏滑道，
    只留一条 4px 细滑块（默认半透明，hover 略加深）。所有工具通用，不只 shell。
    仅作用于 .app--creation .tool__body .code，不碰全局 --scrollbar-* token，
@@ -34495,7 +35283,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   max-width: none;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-start;
   gap: 0;
   padding: 0;
@@ -34507,14 +35295,16 @@ body > .mermaid-diagram--fullscreen {
 
 .app--creation .workbench-dock__tab,
 :root[data-theme-style] .app--creation .workbench-dock__tab {
-  /* Equal columns: 文件 / 改动 each center in their half as dock width changes. */
+  /* Equal columns: 文件 / 改动 each center in their half as dock width changes.
+     Height matches the workbench/classic pill so the selected background reads
+     as the same compact capsule rather than a full-height strip. */
   flex: 1 1 0;
   width: auto;
   min-width: 0;
   max-width: none;
-  height: 40px;
+  height: 28px;
   /* Compact icon+label so default Creation dock (~252) shows text on Windows */
-  padding: 0 4px 1px;
+  padding: 0 4px;
   gap: 4px;
   justify-content: center;
   color: color-mix(in srgb, var(--fg-dim) 72%, transparent);
@@ -34524,8 +35314,22 @@ body > .mermaid-diagram--fullscreen {
   border: 0;
   border-radius: 0;
   background: transparent;
+  transition: background-color var(--dur-fast, 120ms) ease, color var(--dur-fast, 120ms) ease, --label-fade-end var(--dur-fast, 120ms) ease;
 }
 
+/* Creation hover gets the same wash as the selected tab so the pointer and
+   the selection read alike (the active tab is told apart by its stronger
+   text + underline, not by a different background). Exclude the active tab so
+   its stronger text/weight is never overridden by the hover text. */
+.app--creation .workbench-dock__tab:not(.workbench-dock__tab--active):hover,
+:root[data-theme-style] .app--creation .workbench-dock__tab:not(.workbench-dock__tab--active):hover {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  --label-fade-end: color-mix(in srgb, var(--fg) 6%, transparent);
+  border-radius: 8px;
+  color: var(--fg-dim);
+}
+
+/* Emergency only: when the dock is forced below the Creation default (viewport
 /* Emergency only: when the dock is forced below the Creation default (viewport
    squeeze), drop labels. Equal columns remain so icons stay self-centered. */
 @container (max-width: 250px) {
@@ -34550,11 +35354,20 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .app--creation .workbench-dock__tab--active {
   color: var(--fg);
   font-weight: 620;
+  /* Creation strips are backgroundless (transparent tabs over the dock
+     surface), so selection needs a subtle wash to read as "selected" — paired
+     with the underline below. Keep it a faint foreground tint so it stays on
+     the Creation family's low-chroma language. */
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  --label-fade-end: color-mix(in srgb, var(--fg) 6%, transparent);
+  border-radius: 8px;
 }
 
 .app--creation .workbench-dock__tab--active::after,
 :root[data-theme-style] .app--creation .workbench-dock__tab--active::after {
   /* Center a short underline under the icon+label cluster, not the full half. */
+  content: "";
+  background: var(--accent);
   left: 50%;
   right: auto;
   width: 36px;
@@ -34563,6 +35376,7 @@ body > .mermaid-diagram--fullscreen {
   height: 1px;
 }
 
+/* Creation workspace tree — align with left project-tree language.
 /* Creation workspace tree — align with left project-tree language.
    Virtualized rows estimate 24px (WorkspacePanel useVirtualizer); keep row
    height at/near that value so scroll math does not drift. */
@@ -34798,6 +35612,16 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg);
 }
 
+/* The recent-files toggle's opened highlight matches Creation's translucent
+   icon hover instead of the default opaque --bg-soft (the dock surface here
+   is a translucent sidebar blend). */
+.app--creation .workbench-dock .workspace-current-file__recent--open,
+:root[data-theme-style] .app--creation .workbench-dock .workspace-current-file__recent--open {
+  background: color-mix(in srgb, var(--fg-faint) 6%, transparent);
+  color: var(--fg);
+}
+
+/* Creation "Changes" overview: keep the first-line path context, drop the
 /* Creation "Changes" overview: keep the first-line path context, drop the
    second-line breadcrumb meta (duplicate path). Only when no file selected
    (.workspace-panel--changed-overview). File preview keeps normal head/meta. */
@@ -34812,11 +35636,6 @@ body > .mermaid-diagram--fullscreen {
 .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file,
 :root[data-theme-style] .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file {
   gap: 7px;
-}
-
-.app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file__icon,
-:root[data-theme-style] .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file__icon {
-  color: color-mix(in srgb, var(--accent) 78%, var(--fg-faint));
 }
 
 .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file__text,
@@ -34836,7 +35655,7 @@ body > .mermaid-diagram--fullscreen {
 .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file__path,
 :root[data-theme-style] .app--creation .workbench-dock .workspace-panel--changed-overview .workspace-current-file__path {
   color: color-mix(in srgb, var(--fg-faint) 80%, transparent);
-  font-size: calc(11px * var(--font-scale));
+  font-size: calc(12px * var(--font-scale));
 }
 
 /* Recent-files dropdown is not useful on Changes overview. */
@@ -35405,6 +36224,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* When workspace panel is open the workbench-dock covers the right edge, so the
+/* When workspace panel is open the workbench-dock covers the right edge, so the
    topicbar no longer needs the window-controls safe space — use the normal 18px
    padding instead to prevent buttons from being pushed off-screen or overlapping
    the dock. */
@@ -35416,13 +36236,17 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Workbench hides AppChrome, so its dock is also the native title surface.
+/* Workbench hides AppChrome, so its dock is also the native title surface.
    Keep the Windows caption buttons on a dedicated first row and render the
    complete dock tab strip below it, matching Classic's separated chrome. */
 .app--windows-frameless.app--workbench .workbench-dock__tools,
 :root[data-theme-style] .app--windows-frameless.app--workbench .workbench-dock__tools {
   position: relative;
   height: calc(40px + var(--windows-window-controls-height));
-  padding: var(--windows-window-controls-height) 12px 0;
+  /* Windows: reserve the caption strip (min/max/close) plus the dock-toggle
+     that upstream shifts left of it, so the + add button never sits under
+     either when tabs fill the row. */
+  padding: var(--windows-window-controls-height) calc(var(--windows-window-controls-safe) + 48px) 0;
 }
 
 .app--windows-frameless.app--workbench .workbench-dock__tools::before,
@@ -35438,6 +36262,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Workbench keeps its workspace toggle in the fixed top-right dock-toggle
+/* Workbench keeps its workspace toggle in the fixed top-right dock-toggle
    instead of an AppChrome rail; shift it left of the Windows caption strip
    (min/max/close) so it never sits under the window controls. Same safe inset
    as the classic-mode panel toggle. */
@@ -35446,6 +36271,7 @@ body > .mermaid-diagram--fullscreen {
   right: calc(var(--windows-window-controls-safe) + 8px);
 }
 
+/* Creation sets tools padding via shorthand; re-assert the Windows safe
 /* Creation sets tools padding via shorthand; re-assert the Windows safe
    inset with higher specificity so 「文件 / 改动」 cannot sit under min/max/close.
    Tabs fill this free strip; each tab is an equal column that self-centers. */
@@ -35530,6 +36356,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ============================================================================
+/* ============================================================================
    Windows + Creation: Vertical alignment for titlebar elements
    ========================================================================= */
 
@@ -35539,6 +36366,7 @@ body > .mermaid-diagram--fullscreen {
   margin-top: -32px !important;
 }
 
+/* Align topicbar (replaces app-chrome in Creation mode) with Windows controls
 /* Align topicbar (replaces app-chrome in Creation mode) with Windows controls
    without changing the shared macOS/Linux Creation geometry above. */
 .app--windows.app--creation .topicbar,
@@ -35556,6 +36384,7 @@ body > .mermaid-diagram--fullscreen {
   transform: none;
 }
 
+/* Reduce session title font size and weight. The rename input replaces the h1
 /* Reduce session title font size and weight. The rename input replaces the h1
    while editing (App.tsx topicbarEditing), so it must carry the same size or
    entering rename mode visibly jumps back to the 10px Creation default. */
@@ -35583,6 +36412,7 @@ body > .mermaid-diagram--fullscreen {
   transform: translateY(0.5px) scale(0.94) !important;
 }
 
+/* Windows 控制框在 Creation 下默认用 --bg-elev（近纯白），与右侧 workbench-dock
 /* Windows 控制框在 Creation 下默认用 --bg-elev（近纯白），与右侧 workbench-dock
    的统一底色（sidebar-bg 88%）有明显色差。改用相同底色，让控制框与右侧面板连成一片。 */
 .app--windows.app--creation .windows-window-controls,
@@ -35833,6 +36663,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* ==========================================================================
+/* ==========================================================================
    Theme Pack V1 — background layer, scene, library editor
    Overlay CSS variables are injected last by themePack.ts so pack tokens win
    over base style sheets and Creation-local variables.
@@ -35923,12 +36754,29 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /*
+/*
   Background visibility: .layout paints opaque var(--bg) by default, which fully
   covers .theme-bg underneath. When a pack background is active, make the layout
   shell transparent so the image can show through; panes keep their own fills.
 */
 :root[data-theme-has-bg="true"] .app:not(.app--creation) .layout {
   background: transparent;
+}
+
+:root[data-theme-pack][data-theme-has-bg="true"] {
+  --overlay-surface-bg: color-mix(
+    in srgb,
+    var(--bg-elev) var(--theme-pane-overlay-pct, 90%),
+    transparent
+  );
+}
+
+:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] {
+  --overlay-surface-bg: color-mix(
+    in srgb,
+    var(--bg-elev) var(--theme-pane-task-overlay-pct, 100%),
+    transparent
+  );
 }
 
 /* Home: semi-transparent panes so the full-strength image reads through */
@@ -36067,11 +36915,6 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .composer__btn--send.composer__btn--steer:hover {
   background: color-mix(in srgb, var(--control-primary-bg) 24%, var(--bg-elev-2)) !important;
 }
-/* Home: active modebar item hover — mirror send-btn darken pattern */
-:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .composer-modebar__item--active:hover {
-  background: color-mix(in srgb, var(--composer-modebar-active-bg) 88%, #000) !important;
-}
-
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .workspace-change-scope__head {
   background: color-mix(in srgb, var(--bg-soft) var(--theme-pane-shell-pct, 60%), transparent) !important;
 }
@@ -36190,11 +37033,6 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .composer__btn--send.composer__btn--steer:hover {
   background: color-mix(in srgb, var(--control-primary-bg) 24%, var(--bg-elev-2)) !important;
 }
-/* Task: active modebar item hover — mirror send-btn darken pattern */
-:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .composer-modebar__item--active:hover {
-  background: color-mix(in srgb, var(--composer-modebar-active-bg) 88%, #000) !important;
-}
-
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .workspace-change-scope__head {
   background: color-mix(in srgb, var(--bg-soft) var(--theme-pane-task-shell-pct, 78%), transparent) !important;
 }
@@ -36314,10 +37152,6 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .composer__btn--send.composer__btn--steer:hover {
   background: color-mix(in srgb, var(--control-primary-bg) 24%, var(--bg-elev-2)) !important;
 }
-/* Fallback: active modebar item hover — mirror send-btn darken pattern */
-:root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .composer-modebar__item--active:hover {
-  background: color-mix(in srgb, var(--composer-modebar-active-bg) 88%, #000) !important;
-}
 :root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .workspace-change-scope__head {
   background: color-mix(in srgb, var(--bg-soft) 80%, transparent) !important;
 }
@@ -36326,6 +37160,7 @@ body > .mermaid-diagram--fullscreen {
   background: transparent !important;
 }
 
+/*
 /*
   WebView2 can retain stale raster pixels when children are removed from a
   transparent scrolling layer (#6359, #7011). Scope the opaque backing to the
@@ -36344,6 +37179,7 @@ body > .mermaid-diagram--fullscreen {
   background-size: 100% 100%, 100% 100% !important;
 }
 
+/*
 /*
   Background packs normally show a fixed image through translucent panes. The
   two fixed pseudo-layers preserve the existing .theme-bg geometry exactly:
@@ -37424,7 +38260,6 @@ body > .mermaid-diagram--fullscreen {
   position: absolute; right: 0; top: calc(100% + 4px); z-index: var(--z-local-popover);
   min-width: 160px; padding: 6px;
   border: 1px solid var(--border); border-radius: var(--r, 8px);
-  background: var(--panel, var(--bg-elev));
   box-shadow: 0 8px 24px color-mix(in srgb, #000 28%, transparent);
   display: flex; flex-direction: column; gap: 2px;
 }
@@ -37450,7 +38285,7 @@ body > .mermaid-diagram--fullscreen {
   max-height: calc(100vh - 40px);
   max-height: calc(100dvh - 40px);
   overflow: hidden;
-  background: var(--panel); border-radius: var(--r-l, 12px);
+  border-radius: var(--r-l, 12px);
   padding: 0; border: 1px solid var(--border);
   box-shadow: 0 24px 72px color-mix(in srgb, #000 42%, transparent);
   container: theme-editor / inline-size;
@@ -37691,6 +38526,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* The settings navigation consumes part of the window width, so gallery
+/* The settings navigation consumes part of the window width, so gallery
    responsiveness must follow its own content box rather than the viewport. */
 @container theme-gallery (max-width: 760px) {
   .theme-gallery__body,
@@ -37835,7 +38671,6 @@ body > .mermaid-diagram--fullscreen {
   gap: 16px;
   padding: 18px 20px;
   border-bottom: 1px solid var(--border-soft);
-  background: var(--bg-elev);
 }
 .theme-editor__header strong { font-size: var(--text-lg, 1rem); }
 .theme-editor__header p,
@@ -37961,7 +38796,6 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   padding: 18px;
   border-left: 1px solid var(--border-soft);
-  background: var(--bg-elev);
   overflow-y: auto;
 }
 .theme-editor__live-head { margin-bottom: 12px; }
@@ -37972,7 +38806,35 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
   padding: 12px 20px;
   border-top: 1px solid var(--border-soft);
-  background: var(--bg-elev);
+}
+
+/* Operational surfaces share one background recipe, including menus whose
+   component CSS is loaded lazily and popovers portaled directly to body. */
+.anchored-popover,
+.slashmenu,
+.composer-access-menu,
+.jobs-popover,
+.modelsw__menu,
+.workspace-recent-menu,
+.floating-menu,
+.mem-ws-select__menu,
+.menu,
+.sound-select__menu,
+.settings-model-picker__menu,
+.external-opener__menu,
+.context-menu,
+.theme-gallery__menu,
+.theme-gallery__editor,
+.theme-editor__header,
+.theme-editor__live,
+.theme-gallery__editor > .theme-editor__actions,
+.provider-access-more__menu,
+.topicbar__more-menu,
+.topicbar__more-export-menu,
+.heartbeat-filter-menu,
+.heartbeat-project-menu,
+.heartbeat-task-menu {
+  background: var(--overlay-surface-bg);
 }
 .theme-editor__warn ul { margin: 6px 0 0; padding-left: 18px; }
 
@@ -38664,7 +39526,7 @@ body > .mermaid-diagram--fullscreen {
 .remote-switcher__disconnect:hover,
 .remote-switcher__disconnect:focus-visible {
   outline: none;
-  border-color: var(--border-strong);
+  border-color: var(--border-2);
   background: var(--bg-soft);
   color: var(--fg);
 }
@@ -38721,9 +39583,9 @@ body > .mermaid-diagram--fullscreen {
   background: var(--bg-elev-2);
 }
 /* Task Monitor panel. The Codex-style popover keeps the chat composer clear. */
-.taskmonitor-popover { position:absolute; top:calc(100% + 8px); right:0; width:min(440px, calc(100vw - 32px)); max-height:min(72vh, 680px); z-index:var(--z-dock); border:1px solid var(--border,#333); border-radius:10px; background:var(--bg,#111); box-shadow:0 14px 36px rgba(0,0,0,.42); overflow:hidden; }
+.taskmonitor-popover { position:absolute; top:calc(100% + 8px); right:0; width:min(440px, calc(100vw - 32px)); max-height:min(72vh, 680px); z-index:var(--z-dock); border:1px solid var(--border,#333); border-radius:10px; background:var(--overlay-surface-bg, var(--bg,#111)); box-shadow:0 14px 36px rgba(0,0,0,.42); overflow:hidden; }
 .taskmonitor { background:var(--bg,#111); }
-.taskmonitor--popover { max-height:inherit; }
+.taskmonitor--popover { max-height:inherit; background:transparent; }
 .taskmonitor__head { display:flex; align-items:center; gap:6px; width:100%; padding:8px 12px; font-size:13px; }
 .taskmonitor__toggle,.taskmonitor__refresh,.taskmonitor__close { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:0; border-radius:6px; background:none; color:inherit; cursor:pointer; }
 .taskmonitor__toggle:hover,.taskmonitor__refresh:hover,.taskmonitor__close:hover,.taskmonitor__toggle:focus-visible,.taskmonitor__refresh:focus-visible,.taskmonitor__close:focus-visible { background:var(--bg-elev-2); outline:none; }
@@ -38879,6 +39741,7 @@ body > .mermaid-diagram--fullscreen {
 }
 
 /* Terminal-drawer footer compaction (terminal is open + non-Creation layout).
+/* Terminal-drawer footer compaction (terminal is open + non-Creation layout).
    !important is necessary because the footer padding is set by multiple theme /
    media-query rules with varying specificity that are hard to predict.
    Keep the top spacing (composer→statusbar) intact; only reduce the bottom
@@ -38887,6 +39750,7 @@ body > .mermaid-diagram--fullscreen {
   padding-bottom: 4px !important;
 }
 
+/* Classic and Workbench share the same compact four-view strip at the dock's
 /* Classic and Workbench share the same compact four-view strip at the dock's
    minimum width. Creation keeps its equal-column tab treatment. */
 @container (max-width: 420px) {
@@ -38900,6 +39764,7 @@ body > .mermaid-diagram--fullscreen {
   }
 }
 
+/* DingTalk bot channel: the credential row and manual setup form need
 /* DingTalk bot channel: the credential row and manual setup form need
    their own multi-column layout; the shared .bot-secret-row is forced to a
    single column inside .bot-detail-card, which stacks five elements. */
@@ -38921,6 +39786,7 @@ body > .mermaid-diagram--fullscreen {
 .bot-manual-form.bot-manual-form--dingtalk .bot-card-field > div {
   justify-content: flex-start;
 }
+/* 钉钉凭据区与飞书一致：单列竖排（通用 .bot-detail-card .bot-secret-row
 /* 钉钉凭据区与飞书一致：单列竖排（通用 .bot-detail-card .bot-secret-row
    已强制为 1fr；这里不再覆盖为多列横排，避免 5 个元素挤一行放不下）。 */
 
@@ -38962,6 +39828,7 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg);
 }
 
+/* ── Topic bar background ───────────────────────────────────────────
 /* ── Topic bar background ───────────────────────────────────────────
    Unify the chat-pane header with the surrounding chat surface. The
    topic bar defaults to --bg-elev; in light themes that reads as a hard
@@ -39020,7 +39887,7 @@ body > .mermaid-diagram--fullscreen {
   transition: background 0.12s, color 0.12s;
 }
 .instruction-panel__add-btn:hover {
-  background: var(--bg-sub);
+  background: var(--bg-soft);
   color: var(--fg);
 }
 .instruction-panel__empty {
@@ -39063,7 +39930,7 @@ body > .mermaid-diagram--fullscreen {
   background: color-mix(in srgb, var(--bg-soft) 96%, var(--fg));
 }
 .instruction-panel__card-body:active {
-  background: var(--bg-sub);
+  background: var(--bg-soft);
 }
 .instruction-panel__card-header {
   display: flex;
@@ -39119,7 +39986,7 @@ body > .mermaid-diagram--fullscreen {
   transition: background 0.12s, color 0.12s;
 }
 .instruction-panel__icon-btn:hover {
-  background: var(--bg-sub);
+  background: var(--bg-soft);
   color: var(--fg);
 }
 .instruction-panel__icon-btn--danger:hover {
@@ -39175,11 +40042,11 @@ body > .mermaid-diagram--fullscreen {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: transparent;
-  color: var(--fg-soft);
+  color: var(--fg-dim);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.12s;
 }
 .instruction-panel__cancel-btn:hover {
-  background: var(--bg-sub);
+  background: var(--bg-soft);
 }

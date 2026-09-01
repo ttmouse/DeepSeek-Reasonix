@@ -1,7 +1,25 @@
 import type { TranscriptLayoutAnchor } from "./transcriptVirtuosoRecovery";
 import type { TranscriptScrollEvent } from "./transcriptScrollArbiter";
 
-const MIN_REVERSE_JUMP_PX = 96;
+// A downward gesture this close to the physical bottom has no meaningful
+// reader extent to recover from. Export the policy threshold so the scroll
+// arbiter can keep the extent guard out of that wheel path.
+export const MIN_REVERSE_JUMP_PX = 96;
+export const TRANSCRIPT_READER_IDLE_MS = 180;
+export const TRANSCRIPT_READER_SETTLE_MS = 1_000;
+
+export function transcriptReaderIdleDeadlineReached(startedAt: number, now: number): boolean {
+  return now - startedAt >= TRANSCRIPT_READER_IDLE_MS;
+}
+
+export function transcriptReaderDirection(deltaY: number): -1 | 1 | undefined {
+  if (!Number.isFinite(deltaY) || deltaY === 0) return undefined;
+  return deltaY < 0 ? -1 : 1;
+}
+
+export function transcriptReaderTransactionCanReuse(direction: -1 | 1, deltaY: number): boolean {
+  return transcriptReaderDirection(deltaY) === direction;
+}
 const REVERSE_JUMP_VIEWPORT_RATIO = 0.5;
 const EXTENT_REBOUND_VIEWPORT_RATIO = 0.5;
 
@@ -115,8 +133,8 @@ export function transcriptKeyboardScrollDelta(
 
 export function transcriptScrollEventCancelsReaderExtentGuard(type: TranscriptScrollEvent["type"]): boolean {
   return type === "RESET"
-    || type === "USER_SCROLL_INTENT"
     || type === "MANUAL_READING"
+    || type === "NATIVE_SCROLLBAR_BEGIN"
     || type === "VIEWPORT_RESIZED"
     || type === "USER_RESIZE_BEGIN"
     || type === "SELECTION_BEGIN"
