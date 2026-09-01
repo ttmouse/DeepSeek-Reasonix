@@ -2927,7 +2927,7 @@ export default function App() {
     // Expand: if nothing is open yet, open the previously active view so the
     // panel is never empty (matches the legacy open-dock behavior).
     if (dockTabs.length === 0) {
-      const tabType = rightDockMode === "context" ? "context" : rightDockMode === "changed" ? "changed" : rightDockMode === "remote" ? "remote" : "file";
+      const tabType = rightDockMode === "context" ? "context" : rightDockMode === "changed" ? "changed" : rightDockMode === "remote" ? "remote" : rightDockMode === "instructions" ? "instructions" : "file";
       dockOpenEntry(tabType, dockEntryLabel(tabType));
     } else {
       dockSetActivityBarOpen(true);
@@ -2950,7 +2950,7 @@ export default function App() {
       openWorkspacePanel(mode);
       // Keep the tab container in sync: callers like openTurnVerification
       // expect the dock to show the requested view immediately.
-      const tabType = mode === "context" ? "context" : mode === "changed" ? "changed" : mode === "remote" ? "remote" : "file";
+      const tabType = mode === "context" ? "context" : mode === "changed" ? "changed" : mode === "remote" ? "remote" : mode === "instructions" ? "instructions" : "file";
       const label = dockEntryLabel(tabType);
       dockOpenEntry(tabType, label);
     },
@@ -2960,7 +2960,7 @@ export default function App() {
   const handleActivitySelect = useCallback((entryId: string) => {
     const entry = ACTIVITY_BAR_ENTRIES.find((candidate) => candidate.id === entryId);
     if (!entry) return;
-    const mode = entryId === "files" ? "files" : entryId === "changed" ? "changed" : entryId === "remote" ? "remote" : entryId === "context" ? "context" : null;
+    const mode = entryId === "files" ? "files" : entryId === "changed" ? "changed" : entryId === "remote" ? "remote" : entryId === "context" ? "context" : entryId === "instructions" ? "instructions" : null;
     // Keep the legacy rightDockMode in sync for callers that read it (width
     // handling, remote host restore, verification reveal), then open the tab.
     if (mode) setRightDockMode(mode);

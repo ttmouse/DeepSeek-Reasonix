@@ -1,8 +1,8 @@
 // TabAddMenu is the dropdown opened by the + button in the dock's tab bar.
-// It lists the addable tab types (files / changed / overview for now);
+// It lists the addable tab types (files / changed / overview / instructions);
 // selecting one appends that tab and activates it. Every type can be added
 // repeatedly, so the list shows no current-selection checkmark. Other panel
-// types (terminal, browser, remote, instructions) are not exposed yet.
+// types (terminal, browser, remote) are not exposed yet.
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { RefObject } from "react";
@@ -21,6 +21,7 @@ const ADDABLE_TABS: AddableTab[] = [
   { type: "file", labelKey: "workspace.filesTab", icon: FileText },
   { type: "changed", labelKey: "workspace.changedTab", icon: GitBranch },
   { type: "context", labelKey: "rightDock.overview", icon: Activity },
+  { type: "instructions", labelKey: "instruction.title", icon: FileText },
 ];
 
 interface TabAddMenuProps {
