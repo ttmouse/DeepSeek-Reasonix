@@ -223,7 +223,10 @@ for (const path of localeChunks) {
   // reachable-tail recovery copy, the merged chunks measure 58.923 KiB zh and
   // 59.710 KiB zh-TW. Retain the complete copy with the smallest one-decimal
   // ratchet for each dialect.
-  const budget = name.startsWith("zh-TW-") ? 59.8 * 1024 : 59.0 * 1024;
+  // The local merge restores the instructions (快捷) launcher copy, moving the
+  // zh-TW chunk to 60.0 KiB and zh to 59.2 KiB; retain a one-decimal headroom
+  // for each dialect.
+  const budget = name.startsWith("zh-TW-") ? 60.4 * 1024 : 59.6 * 1024;
   assertBudget(`${name} gzip`, gzipBytes(path), budget);
 }
 
