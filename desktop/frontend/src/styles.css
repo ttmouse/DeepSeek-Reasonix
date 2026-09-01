@@ -39912,6 +39912,7 @@ body > .mermaid-diagram--fullscreen {
   gap: 3px;
 }
 .instruction-panel__card {
+  flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
   transition: box-shadow 0.15s;
