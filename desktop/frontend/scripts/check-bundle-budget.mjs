@@ -163,7 +163,10 @@ console.log("\nbundle budgets");
 // The right-sidebar branch's dock surface (tab container, launcher, context
 // menus) plus the rebase-merged App.tsx additions sit on top of this baseline,
 // so keep the ratchet at the larger upstream value.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 458.0 : 458.0;
+// The local merge restores the instructions (快捷) launcher entry and keeps
+// the TabContainer dock surface; the measured production path is 459.4 KiB,
+// so retain 2.6 KiB of bounded build/toolchain headroom.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 462.0 : 462.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 // Render-blocking CSS is intentionally absent: styles.css loads deferred via
