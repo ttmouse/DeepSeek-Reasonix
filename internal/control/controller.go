@@ -1093,18 +1093,6 @@ func (c *Controller) finishGuardedTurn(err error, completion *guardedTurnComplet
 	c.sink.Emit(done)
 }
 
-func turnOutcome(err error) string {
-	var readinessErr *agent.FinalReadinessError
-	if errors.As(err, &readinessErr) {
-		return event.TurnOutcomeFinalReadiness
-	}
-	var pauseErr *agent.RecoveryPauseError
-	if errors.As(err, &pauseErr) {
-		return event.TurnOutcomeRecoveryPaused
-	}
-	return ""
-}
-
 // Send starts a turn with an uncomposed message. The controller applies
 // plan-mode, memory, and background-job framing inside the async turn path.
 func (c *Controller) Send(input string) {
@@ -2039,7 +2027,7 @@ func (c *Controller) runReady(ctx context.Context, input string) (err error) {
 	startMessages := c.messageCount()
 	var marker agent.InFlightTurnMeta
 	defer func() { c.finishInFlightTurn(startMessages, marker) }()
-	c.beginCheckpoint(ctx, input)
+	c.beginCheckpoint(ctx, rawInput)
 	if c.guardianSess != nil {
 		c.guardianSess.ResetTurn()
 	}
@@ -4399,7 +4387,7 @@ func (c *Controller) stripCancelledVisibleTurnMessagesAfterWithFallbackAt(idx in
 		if m.Role != provider.RoleUser {
 			continue
 		}
-		if IsSyntheticUserMessage(m.Content) {
+		if agent.IsHostGeneratedUserMessage(m) {
 			continue
 		}
 		if _, ok := agent.SteerText(m.Content); ok {
@@ -4532,7 +4520,7 @@ func resolveInterruptedTurnStart(msgs []provider.Message, idx int, preserveUser 
 			return false
 		}
 		if preserveUser {
-			if IsSyntheticUserMessage(m.Content) {
+			if agent.IsHostGeneratedUserMessage(m) {
 				return false
 			}
 			if _, ok := agent.SteerText(m.Content); ok {

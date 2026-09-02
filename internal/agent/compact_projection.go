@@ -120,6 +120,7 @@ func splitLegacyCoalescedSummary(msg provider.Message) (provider.Message, provid
 		return provider.Message{}, provider.Message{}, false
 	}
 	summary := msg
+	summary.Origin = provider.MessageOriginHost
 	summary.Content = msg.Content[:i+len(summaryTagClose)]
 	summary.RawContent = ""
 	summary.Images = nil
@@ -128,6 +129,10 @@ func splitLegacyCoalescedSummary(msg provider.Message) (provider.Message, provid
 	summary.ServerSearch = nil
 	summary.CreatedAt = 0
 	user := msg
+	// The legacy coalesced record did not retain the following turn's
+	// provenance. Empty keeps old-session fallback available instead of
+	// asserting that an old host continuation was user-authored.
+	user.Origin = ""
 	user.Content = msg.Content[i+len(separator):]
 	user.RawContent = ""
 	return summary, user, true
@@ -137,7 +142,7 @@ func compressAnchorCandidate(msg provider.Message) bool {
 	if msg.Role != provider.RoleUser || msg.LocalOnly || isCompactionSummary(msg) {
 		return false
 	}
-	return IsUserAuthoredTurn(UserMessageText(msg))
+	return IsUserAuthoredTurnMessage(msg)
 }
 
 func anchorPreview(text string) string {
@@ -373,8 +378,11 @@ func compactionTelemetryFromSummary(trigger, cacheState string, sourceTokens int
 		SourceTokens:      sourceTokens,
 		ProviderRequestID: res.RequestID,
 		FoldTokens:        res.FoldTokens,
-		Spans:             1, // one application-layer summary request per transaction
+		Spans:             res.Spans,
 		SummaryInputMode:  res.InputMode,
+	}
+	if tele.Spans <= 0 {
+		tele.Spans = 1
 	}
 	usage := res.Usage
 	if usage == nil {
@@ -390,6 +398,30 @@ func compactionTelemetryFromSummary(trigger, cacheState string, sourceTokens int
 		tele.RequestCount = 1
 	}
 	return tele
+}
+
+// foldSummaryWithChunkedFallback retries summary size failures through the
+// resilient fragment/tree-reduce path used for over-length sessions.
+func (a *Agent) foldSummaryWithChunkedFallback(ctx context.Context, trigger string, fold []provider.Message, instructions string, sourceTokens int, inputMode string) (foldSummary, CompactionTelemetry, error) {
+	res, tele, err := a.foldSummaryWithTelemetry(ctx, trigger, fold, instructions, sourceTokens, inputMode)
+	if err == nil || (!errors.Is(err, errSummaryOutputTruncated) && !errors.Is(err, ErrCompactionRequired)) {
+		return res, tele, err
+	}
+	chunked, chunkedErr := a.chunkedFoldSummary(ctx, fold, instructions, nil)
+	chunked.Usage = mergeSamplingUsage(res.Usage, chunked.Usage)
+	chunked.Spans += res.Spans
+	if chunked.FoldTokens <= 0 {
+		chunked.FoldTokens = res.FoldTokens
+	}
+	if chunked.RequestID == "" {
+		chunked.RequestID = res.RequestID
+	}
+	if chunkedErr != nil {
+		tele = compactionTelemetryFromSummary(trigger, a.CacheState(), sourceTokens, chunked)
+		tele.Error = fmt.Sprintf("%v (chunked fallback: %v)", err, chunkedErr)
+		return chunked, tele, chunkedErr
+	}
+	return chunked, compactionTelemetryFromSummary(trigger, a.CacheState(), sourceTokens, chunked), nil
 }
 
 // compact writes a context projection; trigger stays "auto"/"manual" for UI cards.
@@ -483,7 +515,7 @@ func (a *Agent) compactToProjectionLocked(ctx context.Context, trigger, instruct
 	if providerVisibleFingerprint(modelInputMessages(fold)) != originalFoldHash {
 		inputMode = SummaryInputExtensionRewritten
 	}
-	res, tele, err := a.foldSummaryWithTelemetry(ctx, trigger, fold, instructions, sourceTokens, inputMode)
+	res, tele, err := a.foldSummaryWithChunkedFallback(ctx, trigger, fold, instructions, sourceTokens, inputMode)
 	if err != nil {
 		a.emitCompactionTelemetry(tele)
 		a.emitCompactionAborted(trigger)
