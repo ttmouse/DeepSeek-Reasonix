@@ -166,6 +166,8 @@ console.log("\nbundle budgets");
 // The local merge restores the instructions (快捷) launcher entry and keeps
 // the TabContainer dock surface; the measured production path is 459.4 KiB,
 // so retain 2.6 KiB of bounded build/toolchain headroom.
+// Session-catalog repair presentation stays in the lazy project-tree chunk;
+// compact shared helpers keep the combined initial path within the same gate.
 const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 462.0 : 462.0;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
