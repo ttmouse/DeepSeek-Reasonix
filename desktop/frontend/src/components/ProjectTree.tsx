@@ -439,6 +439,31 @@ export function ProjectTree({
     }
   }, [applyRuntimeProjection]);
   refreshRef.current = refresh;
+  const handleArchiveInactiveTopics = useCallback(async (olderThanDays: number) => {
+    closeMenu();
+    let confirmed = true;
+    try {
+      confirmed = await app.ConfirmAction({
+        title: t("projectTree.archiveInactive3dTitle"),
+        message: t("projectTree.archiveInactive3dMessage"),
+        confirmLabel: t("projectTree.archiveInactive3dConfirm"),
+        cancelLabel: t("common.cancel"),
+        destructive: true,
+      });
+    } catch {
+      // Native dialog unavailable (e.g. browser dev mock) — proceed directly.
+    }
+    if (!confirmed) return;
+    try {
+      const count = await app.TrashInactiveTopics(olderThanDays);
+      showToast(t("projectTree.archivedInactiveTopics", { count }), "info");
+      await refresh({ reloadAllTopics: true });
+      await onTopicsChanged?.();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), "error", { durationMs: 6000 });
+      await refresh({ reloadAllTopics: true }).catch(() => undefined);
+    }
+  }, [closeMenu, onTopicsChanged, refresh, showToast, t]);
   const { openRemoteProject, openRemoteWindow, remoteSessions, setRemoteSessions, remoteServers, remoteGroupBusy, remoteGroupError, ensureRemoteGroupSessions, refreshRemoteSessions } = useRemoteProjectGroups(tree, showToast, expanded, query);
   const treeWithRemoteSessions = useMemo(() => mergeRemoteSessionsIntoTree(tree, remoteSessions, t), [remoteSessions, t, tree]);
   const remoteSessionActions = useRemoteSessionActions(remoteSessions, refreshRemoteSessions, (error) => showToast(error instanceof Error ? error.message : String(error), "error"));
@@ -1771,6 +1796,14 @@ export function ProjectTree({
       label: t("projectTree.archiveAllConversations"),
       disabled: true,
       onSelect: () => {},
+    },
+    {
+      key: "archive-inactive-3d",
+      icon: <Archive size={13} />,
+      label: t("projectTree.archiveInactive3d"),
+      onSelect: () => {
+        void handleArchiveInactiveTopics(3);
+      },
     },
     { type: "separator", key: "organize-separator" },
     {

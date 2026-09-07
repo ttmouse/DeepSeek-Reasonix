@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,6 +30,76 @@ type topicArchiveTrace struct {
 
 func (a *App) TrashTopic(topicID string) error {
 	return friendlySessionFileError(a.trashTopic(topicID))
+}
+
+// TrashInactiveTopics archives every topic whose most recent session activity
+// is older than olderThanDays days. Topics that are currently open in a tab or
+// fail to archive are skipped; the returned count reflects successful
+// archives only.
+func (a *App) TrashInactiveTopics(olderThanDays int) (int, error) {
+	if olderThanDays <= 0 {
+		olderThanDays = 3
+	}
+	cutoff := time.Now().Add(-time.Duration(olderThanDays) * 24 * time.Hour)
+	inactive := a.inactiveTopicIDs(cutoff)
+	archived := 0
+	var firstErr error
+	for _, topicID := range inactive {
+		if err := a.trashTopic(topicID); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		archived++
+	}
+	return archived, firstErr
+}
+
+// inactiveTopicIDs scans every known session dir and collects the IDs of
+// topics whose newest session snapshot predates cutoff, excluding topics that
+// are currently attached to a runtime tab. The result is sorted for
+// deterministic archiving order.
+func (a *App) inactiveTopicIDs(cutoff time.Time) []string {
+	open := map[string]bool{}
+	a.mu.RLock()
+	for _, tabs := range []map[string]*WorkspaceTab{a.tabs, a.detachedSessions} {
+		for _, tab := range tabs {
+			if tab == nil {
+				continue
+			}
+			if id := strings.TrimSpace(tab.TopicID); id != "" {
+				open[id] = true
+			}
+		}
+	}
+	a.mu.RUnlock()
+	latest := map[string]time.Time{}
+	for _, dir := range a.knownSessionDirs() {
+		index, err := topicSessionIndexForDir(dir)
+		if err != nil {
+			slog.Debug("desktop: inactive topic scan skipped dir", "dir", dir, "error", err)
+			continue
+		}
+		for topicID, matches := range index.byTopic {
+			if open[topicID] {
+				continue
+			}
+			for _, match := range matches {
+				if match.updatedAt.After(latest[topicID]) {
+					latest[topicID] = match.updatedAt
+				}
+			}
+		}
+	}
+	ids := make([]string, 0, len(latest))
+	for topicID, at := range latest {
+		if at.Before(cutoff) {
+			ids = append(ids, topicID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 func (a *App) topicHasActiveRuntimeWork(topicID string) bool {
