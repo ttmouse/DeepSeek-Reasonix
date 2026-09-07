@@ -499,6 +499,15 @@ func (a *App) startup(ctx context.Context) {
 	// lifecycle evidence. This remains correct on Linux where Wails invokes
 	// OnStartup before its DBus single-instance handoff.
 	initializeLifecycleDiagnostics(a)
+	// macOS: make the window background transparent so the frontend can paint
+	// larger rounded corners than the system default (see --app-window-radius
+	// in frontend styles.css). The webview itself is transparent via
+	// mac.Options.WebviewIsTransparent in main.go. Windows keeps an opaque
+	// frameless window, Linux is untouched. Runs while the window is still
+	// hidden (StartHidden), so there is no visible flash.
+	if goruntime.GOOS == "darwin" {
+		runtime.WindowSetBackgroundColour(ctx, 0, 0, 0, 0)
+	}
 	a.startWindowsWebView2StartupFallback(ctx)
 	a.webView2Recovery.startGuidance(ctx)
 	a.desktopShell.coordinator.start(ctx)

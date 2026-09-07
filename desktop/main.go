@@ -176,9 +176,13 @@ func main() {
 		Logger:    newCrashCaptureLogger(app),
 		MinWidth:  760,
 		MinHeight: 480,
-		// Match the dark UI shell so the initial webview background doesn't flash
-		// white before CSS loads — particularly visible on WebKitGTK.
-		BackgroundColour: &options.RGBA{R: 26, G: 26, B: 46, A: 255},
+		// Fully transparent window background (A must be 0 at startup — a
+		// runtime-only WindowSetBackgroundColour is not enough in wails dev,
+		// see wails issue #1805): the frontend paints its own, larger rounded
+		// corners via --app-window-radius. White-flash risk is nil because the
+		// window starts hidden and body paints an opaque var(--bg) on
+		// Windows/Linux; macOS body is transparent by design.
+		BackgroundColour: &options.RGBA{R: 26, G: 26, B: 46, A: 0},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Middleware: assetserver.ChainMiddleware(
@@ -213,6 +217,10 @@ func main() {
 			// Inset traffic-lights over a frameless-feeling header; the frontend
 			// leaves a drag region at the top (CSS --wails-draggable).
 			TitleBar: mac.TitleBarHiddenInset(),
+			// Transparent webview + WindowSetBackgroundColour(…, alpha 0) in
+			// App.startup let the frontend draw its own (larger) window corner
+			// radius via --app-window-radius.
+			WebviewIsTransparent: true,
 			// Follow the OS appearance so the title bar matches light/dark system
 			// preference instead of being locked to dark.
 			Appearance: mac.DefaultAppearance,
