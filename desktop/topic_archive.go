@@ -42,10 +42,12 @@ func (a *App) TrashInactiveTopics(olderThanDays int) (int, error) {
 	}
 	cutoff := time.Now().Add(-time.Duration(olderThanDays) * 24 * time.Hour)
 	inactive := a.inactiveTopicIDs(cutoff)
+	slog.Info("desktop: archive inactive topics", "older_than_days", olderThanDays, "candidates", len(inactive))
 	archived := 0
 	var firstErr error
 	for _, topicID := range inactive {
 		if err := a.trashTopic(topicID); err != nil {
+			slog.Info("desktop: archive inactive topic skipped", "topic", topicID, "error", err)
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -53,6 +55,7 @@ func (a *App) TrashInactiveTopics(olderThanDays int) (int, error) {
 		}
 		archived++
 	}
+	slog.Info("desktop: archive inactive topics done", "archived", archived, "errors", len(inactive)-archived)
 	return archived, firstErr
 }
 
