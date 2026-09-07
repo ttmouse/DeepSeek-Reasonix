@@ -446,6 +446,7 @@ export function ProjectTree({
       confirmed = await app.ConfirmAction({
         title: t("projectTree.archiveInactive3dTitle"),
         message: t("projectTree.archiveInactive3dMessage"),
+        detail: "",
         confirmLabel: t("projectTree.archiveInactive3dConfirm"),
         cancelLabel: t("common.cancel"),
         destructive: true,
