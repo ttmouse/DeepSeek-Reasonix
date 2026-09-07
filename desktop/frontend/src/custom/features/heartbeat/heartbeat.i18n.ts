@@ -75,6 +75,11 @@ export const heartbeatFeatureEn = {
   "heartbeat.precheckSkipped": "skipped",
   "heartbeat.precheckFailed": "failed",
   "heartbeat.viewGrouped": "Group by project",
+  "heartbeat.fieldModel": "Model",
+  "heartbeat.modelDefault": "Default model",
+  "heartbeat.modelCurrent": "current",
+  "heartbeat.modelNoModels": "No models available",
+  "heartbeat.modelHint": "Optional model used to run this task. Empty keeps the topic's current model.",
 } as const;
 
 export type HeartbeatFeatureKey = keyof typeof heartbeatFeatureEn;
@@ -158,6 +163,11 @@ const heartbeatFeatureZh = {
   "heartbeat.precheckSkipped": "跳过",
   "heartbeat.precheckFailed": "失败",
   "heartbeat.viewGrouped": "按项目分组",
+  "heartbeat.fieldModel": "模型",
+  "heartbeat.modelDefault": "默认模型",
+  "heartbeat.modelCurrent": "当前",
+  "heartbeat.modelNoModels": "暂无可用模型",
+  "heartbeat.modelHint": "可选：运行该任务时使用的模型。留空则使用话题当前模型。",
 } satisfies Record<HeartbeatFeatureKey, string>;
 
 const heartbeatFeatureZhTW = {
@@ -234,6 +244,11 @@ const heartbeatFeatureZhTW = {
   "heartbeat.precheckSkipped": "略過",
   "heartbeat.precheckFailed": "失敗",
   "heartbeat.viewGrouped": "按專案分組",
+  "heartbeat.fieldModel": "模型",
+  "heartbeat.modelDefault": "預設模型",
+  "heartbeat.modelCurrent": "目前",
+  "heartbeat.modelNoModels": "暫無可用模型",
+  "heartbeat.modelHint": "可選：執行此任務時使用的模型。留空則沿用話題目前的模型。",
 } satisfies Record<HeartbeatFeatureKey, string>;
 
 export const heartbeatFeatureKeys = Object.keys(heartbeatFeatureEn) as HeartbeatFeatureKey[];

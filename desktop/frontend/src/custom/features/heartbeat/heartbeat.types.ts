@@ -32,4 +32,5 @@ export interface HeartbeatTask {
   lastSkippedAt?: number;   // unix millis when the precheck gate last skipped a run
   lastSkippedReason?: string; // why the last run was skipped
   precheckHistory?: HeartbeatPrecheckRun[]; // recent precheck outcomes (oldest first)
+  model?: string;           // optional "provider/model" ref; empty = keep the topic's current model
 }
