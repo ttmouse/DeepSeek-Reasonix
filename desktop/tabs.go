@@ -1708,10 +1708,6 @@ func (s *tabEventSink) Emit(e event.Event) {
 		if e.Kind == event.TurnDone {
 			s.flushDisplay(e.TurnID, e.Cancelled)
 		}
-		if m := app.metrics.Load(); m != nil {
-			m.observe(e)
-			persistMetricsEvent(app, m, tabID, e)
-		}
 	}
 	s.emitRuntimeEvent(eventChannel, toWireTabWithSubmission(e, tabID, s.runtimeEpochSnapshot(), s.submissionIDSnapshot(), turnStartedAt))
 	if app != nil {

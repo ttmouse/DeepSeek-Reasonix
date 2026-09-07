@@ -52,11 +52,6 @@ func (a *App) setTrayHealth(t *desktopTray, state, reason string) {
 		t.markReady()
 	}
 	if changed {
-		bucket := reason
-		if ready {
-			bucket = "ready"
-		}
-		a.recordDiagnosticMetric("desktop_tray", metricBucket(bucket))
 		if a.desktopShell.coordinator != nil && !a.shuttingDown.Load() && !a.forceQuit.Load() {
 			a.desktopShell.coordinator.trayStateChanged(ready)
 		}

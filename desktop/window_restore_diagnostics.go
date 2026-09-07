@@ -84,7 +84,6 @@ func (a *App) observeIncompleteWindowRestore() {
 		return
 	}
 	_ = writePendingReport(windowRestoreFailureReport("incomplete", state.Source, state.StartedAt), true)
-	a.recordDiagnosticMetric("desktop_restore", "incomplete")
 }
 
 func (a *App) showMainWindowFrom(source string) {
@@ -150,7 +149,6 @@ func awaitWindowRestoreConfirmation(confirmed func() bool, ticks, deadline <-cha
 }
 
 func (a *App) completeWindowRestoreAttempt(attemptID uint64, state windowRestoreState, restored bool) {
-	metric := "success"
 	windowRestoreMu.Lock()
 	if windowRestoreSequence.Load() != attemptID {
 		windowRestoreMu.Unlock()
@@ -159,14 +157,12 @@ func (a *App) completeWindowRestoreAttempt(attemptID uint64, state windowRestore
 	if restored {
 		_ = os.Remove(windowRestoreStatePath())
 	} else {
-		metric = "timeout"
 		if writePendingReport(windowRestoreFailureReport("timeout", state.Source, state.StartedAt), true) {
 			state.TimeoutReported = true
 			_ = writeWindowRestoreState(state)
 		}
 	}
 	windowRestoreMu.Unlock()
-	a.recordDiagnosticMetric("desktop_restore", metric)
 	if !restored {
 		showWindowRestoreFailure(a)
 	}

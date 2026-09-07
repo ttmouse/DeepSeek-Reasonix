@@ -335,8 +335,6 @@ type App struct {
 	// read-only afterwards, so tabEventSink.Emit reads it without a lock.
 	botBridge *botBridgeHub
 
-	metrics atomic.Pointer[metricsAggregator] // non-nil only when desktop.metrics is opted in; swapped live by SetDesktopMetrics
-
 	notificationSenderOnce sync.Once
 	notificationSender     notify.Sender
 
@@ -524,10 +522,6 @@ func (a *App) startup(ctx context.Context) {
 		applyWindowIconsFromExecutable()
 	})
 
-	if cfg, err := config.Load(); err == nil && cfg.DesktopMetrics() && version != "dev" {
-		a.metrics.Store(newMetricsAggregator(config.MemoryUserDir()))
-		a.recordSettingsMetricsSnapshot(cfg)
-	}
 	a.recordPreviousRunDiagnostics()
 	a.observeIncompleteWindowRestore()
 	a.startMainThreadWatchdog()
@@ -546,7 +540,6 @@ func (a *App) startup(ctx context.Context) {
 	a.startSessionCatalog()
 	a.goSafe("refreshBotRuntime", a.refreshBotRuntime)
 	a.goSafe("sendStartupPing", a.sendStartupPing)
-	a.goSafe("flushMetrics", a.flushMetrics)
 	a.goSafe("flushPendingCrash", a.flushPendingCrash)
 	// After restoreOrBuildTabs is launched: the GC's first sweep waits on
 	// tabsRestored so it never observes the pre-restore empty tab map.
@@ -946,12 +939,17 @@ func (a *App) MarkFrontendReady() {
 // processes each URL the same way it handles live runtime events.
 func (a *App) DrainPendingDeepLinks() []string {
 	if a == nil {
-		return nil
+		return []string{}
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	pending := append([]string(nil), a.pendingDeepLinks...)
 	a.pendingDeepLinks = nil
+	if pending == nil {
+		// Wails serializes a nil slice as JSON null, which the frontend then
+		// cannot iterate; return an empty slice instead.
+		return []string{}
+	}
 	return pending
 }
 

@@ -54,26 +54,6 @@ type webView2NativeEvent struct {
 
 var nativeWebView2ObserverInstalled atomic.Bool
 
-const maxWebRuntimeDropMetricBatch = 1_000_000
-
-// recordDroppedWebRuntimeEvents turns bounded-queue pressure into an explicit
-// counter from the background consumer. Native callbacks only increment the
-// atomic and therefore never perform disk or network work.
-func recordDroppedWebRuntimeEvents(app *App, engine string, dropped *atomic.Uint64) {
-	if app == nil || dropped == nil {
-		return
-	}
-	count := dropped.Swap(0)
-	if count == 0 {
-		return
-	}
-	if count > maxWebRuntimeDropMetricBatch {
-		dropped.Add(count - maxWebRuntimeDropMetricBatch)
-		count = maxWebRuntimeDropMetricBatch
-	}
-	app.recordDiagnosticMetricCount("desktop_web_runtime_dropped", engine, int(count))
-}
-
 func webView2NativeObserverInstalled() bool {
 	return nativeWebView2ObserverInstalled.Load()
 }

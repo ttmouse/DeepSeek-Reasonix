@@ -38,9 +38,6 @@ func installWebKitProcessObserver(app *App, enabled bool) {
 				} else if enabled {
 					app.recordWebKitNativeDiagnostic(event)
 				}
-				if enabled {
-					recordDroppedWebRuntimeEvents(app, "webkitgtk", &webKitObserverState.dropped)
-				}
 			}
 		}()
 		C.reasonix_install_webkit_observer()

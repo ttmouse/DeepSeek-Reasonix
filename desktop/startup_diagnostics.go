@@ -13,19 +13,9 @@ func (a *App) recordPreviousRunDiagnostics() {
 	if previous.Abnormal {
 		report := previousRunReport(previous)
 		_ = writePendingReport(report, true)
-		if m := a.metrics.Load(); m != nil {
-			m.inc("desktop_legacy_exit", "abnormal")
-			m.inc("desktop_legacy_exit_phase", metricBucket(previous.Phase))
-			m.persist()
-		}
 	}
 	for _, lifecycle := range a.lifecycle.previousRuns {
 		_ = writePendingReport(desktopLifecycleReport(lifecycle), true)
-		if m := a.metrics.Load(); m != nil {
-			m.inc("desktop_exit", "abnormal")
-			m.inc("desktop_exit_phase", metricBucket(lifecycle.Phase))
-			m.persist()
-		}
 	}
 }
 

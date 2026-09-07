@@ -346,8 +346,6 @@ func (a *App) recordWebKitNativeDiagnostic(event webKitNativeEvent) {
 	if a == nil {
 		return
 	}
-	report, outcome, failureBucket := webKitNativeFailureReport(event)
+	report := webKitNativeFailureReport(event)
 	_ = writePendingReport(report, true)
-	a.recordDiagnosticMetric("desktop_web_runtime_failure", failureBucket)
-	a.recordDiagnosticMetric("desktop_web_runtime_outcome", outcome)
 }

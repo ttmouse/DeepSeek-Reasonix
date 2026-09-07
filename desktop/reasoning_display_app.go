@@ -57,7 +57,7 @@ func (a *App) defaultSettingsView() SettingsView {
 		CloseBehavior: "background", DisplayMode: "standard", ReasoningDisplayMode: "auto",
 		StatusBarStyle: "text", StatusBarItems: config.DefaultDesktopStatusBarItems(),
 		DefaultToolApprovalMode: "auto", CheckUpdates: true, UpdateChannel: "stable",
-		Telemetry: true, Metrics: true, ExpandThinking: false, ConversationWidth: "standard",
+		Telemetry: true, ExpandThinking: false, ConversationWidth: "standard",
 	}
 }
 

@@ -333,7 +333,6 @@ type SettingsView struct {
 	CheckUpdates      bool   `json:"checkUpdates"`
 	UpdateChannel     string `json:"updateChannel"`
 	Telemetry         bool   `json:"telemetry"`
-	Metrics           bool   `json:"metrics"`
 	ExpandThinking    bool   `json:"expandThinking"`
 	ConversationWidth string `json:"conversationWidth,omitempty"`
 	ConfigPath        string `json:"configPath"`
@@ -1053,7 +1052,6 @@ func (a *App) Settings() SettingsView {
 		CheckUpdates:                 cfg.DesktopCheckUpdates(),
 		UpdateChannel:                cfg.DesktopUpdateChannel(),
 		Telemetry:                    cfg.DesktopTelemetry(),
-		Metrics:                      cfg.DesktopMetrics(),
 		ExpandThinking:               cfg.Desktop.ExpandThinking,
 		ConversationWidth:            cfg.DesktopConversationWidth(),
 		ConfigPath:                   cfgPath,
@@ -3593,24 +3591,6 @@ func (a *App) SetDesktopUpdateChannel(channel string) error {
 // SetDesktopTelemetry sets whether the desktop sends the anonymous launch ping.
 func (a *App) SetDesktopTelemetry(enabled bool) error {
 	return a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopTelemetry(enabled) })
-}
-
-// SetDesktopMetrics sets whether the desktop sends aggregate desktop metrics,
-// starting or stopping the live aggregator so the toggle takes effect immediately.
-func (a *App) SetDesktopMetrics(enabled bool) error {
-	if err := a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopMetrics(enabled) }); err != nil {
-		return err
-	}
-	switch {
-	case enabled && a.metrics.Load() == nil && version != "dev":
-		a.metrics.Store(newMetricsAggregator(config.MemoryUserDir()))
-		if cfg, err := config.Load(); err == nil {
-			a.recordSettingsMetricsSnapshot(cfg)
-		}
-	case !enabled:
-		a.metrics.Store(nil)
-	}
-	return nil
 }
 
 // SetExpandThinking sets whether reasoning text is expanded by default on

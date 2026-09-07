@@ -89,7 +89,6 @@ func (a *App) CheckUpdate(selectedChannel string) (*UpdateInfo, error) {
 	profile := detectInstallProfile()
 	c, err := httpClient()
 	if err != nil {
-		a.recordUpdateError(err)
 		return &UpdateInfo{
 			Current:           version,
 			Channel:           selectedChannel,
@@ -107,7 +106,6 @@ func (a *App) CheckUpdate(selectedChannel string) (*UpdateInfo, error) {
 	v4, _ := httpClientIPv4()
 	m, err := fetchManifest(ctx, c, v4, selectedChannel)
 	if err != nil {
-		a.recordUpdateError(err)
 		return &UpdateInfo{
 			Current:           version,
 			Channel:           selectedChannel,
@@ -355,7 +353,6 @@ func (a *App) installDebUpdate(requestID string, meta *cachedUpdate) error {
 	if isAuthCancelled(err) {
 		// User dismissed the Polkit dialog: keep the verified cache and return to
 		// the downloaded state so they can retry. Do not count as an update error.
-		a.recordUpdateEvent("authorization_cancelled")
 		a.emitProgress(requestID, meta.Channel, meta.Version, "downloaded", meta.Size, meta.Size, "")
 		return nil
 	}
@@ -542,7 +539,6 @@ func (a *App) emitProgress(requestID, selectedChannel, expectedVersion, phase st
 
 // failUpdate emits an error progress event and returns the error to the caller.
 func (a *App) failUpdate(requestID, selectedChannel, expectedVersion string, err error) error {
-	a.recordUpdateError(err)
 	a.emitProgress(requestID, selectedChannel, expectedVersion, "error", 0, 0, err.Error())
 	return err
 }
@@ -560,29 +556,6 @@ func (a *App) requireManualUpdate(requestID, selectedChannel, expectedVersion st
 func manualUpdateRequiredError(profile installProfile) error {
 	reason := firstNonEmptyStr(profile.ManualReason, manualUpdateReason(), "automatic update is unavailable for this install")
 	return fmt.Errorf("%w: %s", errUpdateManualRequired, reason)
-}
-
-func (a *App) recordUpdateError(err error) {
-	if err == nil || version == "dev" {
-		return
-	}
-	if isAuthCancelled(err) {
-		// Cancellation is an expected user action, not a failure rate signal.
-		return
-	}
-	if m := a.metrics.Load(); m != nil {
-		m.inc("updater_error", errorClass(err.Error()))
-	}
-}
-
-// recordUpdateEvent records a non-failure updater signal (e.g. auth cancelled).
-func (a *App) recordUpdateEvent(bucket string) {
-	if version == "dev" {
-		return
-	}
-	if m := a.metrics.Load(); m != nil {
-		m.inc("updater_event", bucket)
-	}
 }
 
 func firstNonEmptyStr(values ...string) string {

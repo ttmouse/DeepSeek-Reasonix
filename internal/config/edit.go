@@ -449,12 +449,6 @@ func (c *Config) SetDesktopTelemetry(enabled bool) error {
 	return nil
 }
 
-// SetDesktopMetrics sets whether the desktop sends aggregate desktop metrics.
-func (c *Config) SetDesktopMetrics(enabled bool) error {
-	c.Desktop.Metrics = &enabled
-	return nil
-}
-
 // SetCLITelemetryMode sets the user-global content-free CLI metrics policy.
 func (c *Config) SetCLITelemetryMode(mode string) error {
 	switch strings.ToLower(strings.TrimSpace(mode)) {

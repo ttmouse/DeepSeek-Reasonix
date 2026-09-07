@@ -67,7 +67,6 @@ func (l *crashCaptureLogger) captureWebView2Failure(message string) {
 	if !ok {
 		return
 	}
-	l.app.recordDiagnosticMetric("desktop_web_runtime_failure", "webview2."+webView2ProcessKindBucket(kind)+".unknown")
 	occurrence, shouldReport := l.webView2Failures.observe(kind, time.Now())
 	if !shouldReport {
 		return

@@ -43,7 +43,7 @@ func webKitRecoveryBucket(recovery int) string {
 	}
 }
 
-func webKitNativeFailureReport(event webKitNativeEvent) (crashReport, string, string) {
+func webKitNativeFailureReport(event webKitNativeEvent) crashReport {
 	// The native state machine owns generation matching; retaining it in the
 	// queued value prevents callbacks from consulting mutable native state.
 	_ = event.generation
@@ -90,5 +90,5 @@ runtime version: %s
 GPU mode: %s
 compatibility mode: %t
 recovery: %s`, reason, runtimeVersion, gpuMode, compatibilityMode, recovery), maxCrashDetailBytes)
-	return report, outcome, strings.Join([]string{"webkitgtk", "web_process", reason}, ".")
+	return report
 }

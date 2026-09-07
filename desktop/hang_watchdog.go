@@ -116,11 +116,6 @@ func (a *App) watchMainThreadHeartbeat(ctx context.Context) {
 func (a *App) recordMainThreadHang(age time.Duration, lastHeartbeat, observedAt time.Time) {
 	report := mainThreadHangReport(age, lastHeartbeat, observedAt)
 	wrote := writePendingReport(report, true)
-	if m := a.metrics.Load(); m != nil {
-		m.inc("desktop_hang", mainThreadMetricBucket())
-		m.inc("desktop_hang_age", hangAgeBucket(age))
-		m.persist()
-	}
 	slog.Warn("desktop: native UI thread heartbeat stalled",
 		"age", age.Round(time.Millisecond).String(),
 		"lastHeartbeat", lastHeartbeat.Format(time.RFC3339),
