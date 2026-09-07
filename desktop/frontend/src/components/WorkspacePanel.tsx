@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   CSSProperties,
@@ -1240,6 +1240,37 @@ export function WorkspacePanel({
     overscan: 10,
     directDomUpdates: true,
   });
+  // Collapsing or expanding a directory changes the tree's total height. When
+  // a collapse shrinks it below the current scroll position, the browser
+  // clamps scrollTop — and WKWebView does not always fire the scroll event
+  // for that clamp (same WebKit quirk the transcript reader works around, see
+  // __tests__/transcript-reader-extent-race.test.tsx). The virtualizer's
+  // logical offset then stays at the pre-clamp value while the element's real
+  // scrollTop is lower, so the mounted window is positioned away from the
+  // actual viewport and the tree paints blank bands at the top and bottom
+  // until the next real scroll. After every commit, re-read the element's
+  // actual scrollTop; if it diverges from the virtualizer's belief, re-dispatch
+  // a scroll event so the offset observer resyncs. The event is untrusted, so
+  // the scroll-persistence hook ignores it (its isTrusted guard exists exactly
+  // for programmatic scrolls).
+  useLayoutEffect(() => {
+    const element = treeRef.current;
+    if (!open || !element) return;
+    // The react-virtual adapter writes the sizer height from a totalSize read
+    // that runs BEFORE the virtualizer rebuilds its measurements for the new
+    // row count, so after a collapse the stale height can survive the commit
+    // (and no re-render is guaranteed to follow). Sync it here from the
+    // virtualizer's own fresh total, or the browser never shrinks the
+    // scrollable extent and thus never clamps scrollTop.
+    const sizer = element.firstElementChild as HTMLElement | null;
+    const total = virtualizer.getTotalSize();
+    if (sizer && Math.abs((Number.parseFloat(sizer.style.height) || 0) - total) >= 1) {
+      sizer.style.height = `${total}px`;
+    }
+    const actual = element.scrollTop; // read forces layout: post-clamp value
+    if (virtualizer.scrollOffset == null || Math.abs(virtualizer.scrollOffset - actual) < 1) return;
+    element.dispatchEvent(new Event("scroll"));
+  }); // no dep array: the stale-height commit can be the only one (see above)
   // Restore the persisted scroll position once the tree has grown tall enough
   // to actually reach it. The tree loads asynchronously layer by layer: the
   // first render usually has only the top-level rows, so scrolling then would
