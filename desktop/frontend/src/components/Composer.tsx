@@ -3598,6 +3598,10 @@ export function Composer({
   // Legacy tests that pass pendingApprovalLabel without suspendedByDecision
   // still keep the approval bar usable mid-prompt.
   const approvalBarDisabled = Boolean(disabled) && !(pendingApprovalLabel && !suspendedByDecision);
+  // Mode controls stay live during a turn: the backend applies approval, task
+  // and effort switches to the running controller, so only a real composer lock
+  // (decision surface, runtime transition) may disable them.
+  const modeControlsDisabled = Boolean(disabled);
   const approvalModeLabelKey = toolApprovalMode === "ask" ? "composer.modeAsk" : toolApprovalMode === "auto" ? "composer.modeNormal" : "composer.modeYolo";
   // Waiting on the user is not model work. Approval/ask wait is owned by the
   // per-tab controller (turnWaitAccumMs + promptWaitStartedAt) so background
@@ -3815,7 +3819,7 @@ export function Composer({
         }}
       />
       <AnchoredPopover
-        open={contentMenuOpen && !disabled && !readOnly && !running}
+        open={contentMenuOpen && !disabled && !readOnly}
         anchorRef={contentMenuAnchorRef}
         onClose={() => setContentMenuOpen(false)}
         className="composer-access-menu composer-content-menu"
@@ -3829,7 +3833,7 @@ export function Composer({
         />
       </AnchoredPopover>
       <AnchoredPopover
-        open={moreMenuOpen && !disabled && !running}
+        open={moreMenuOpen && !disabled}
         closing={moreMenuClosing}
         anchorRef={moreMenuAnchorRef}
         onClose={() => closeMoreMenu()}
@@ -3848,7 +3852,7 @@ export function Composer({
                   aria-selected={level === currentEffort}
                   className={`composer-more-menu__item${level === currentEffort ? " composer-more-menu__item--active" : ""}`}
                   onClick={() => chooseEffortLevel(level)}
-                  disabled={running}
+                  disabled={modeControlsDisabled}
                 >
                   <Gauge size={14} />
                   <span>{level}</span>
@@ -3861,7 +3865,7 @@ export function Composer({
       </AnchoredPopover>
       {/* Main consolidated menu */}
       <AnchoredPopover
-        open={mainMenuOpen && !disabled && !readOnly && !running}
+        open={mainMenuOpen && !disabled && !readOnly}
         anchorRef={composerWrapRef}
         onClose={() => setMainMenuOpen(false)}
         className="composer-access-menu composer-main-menu"
@@ -3915,7 +3919,7 @@ export function Composer({
             aria-checked={planModeOn}
             className={`composer-access-menu__item composer-main-menu__item${planModeOn ? " composer-access-menu__item--active" : ""}`}
             onClick={() => { chooseTaskMode("plan"); setMainMenuOpen(false); }}
-            disabled={disabled || running}
+            disabled={modeControlsDisabled}
           >
             <List size={16} />
             <span className="composer-access-menu__copy">
@@ -3930,7 +3934,7 @@ export function Composer({
             aria-checked={goalModeOn}
             className={`composer-access-menu__item composer-main-menu__item${goalModeOn ? " composer-access-menu__item--active" : ""}`}
             onClick={() => { chooseTaskMode("goal"); setMainMenuOpen(false); }}
-            disabled={disabled || running}
+            disabled={modeControlsDisabled}
             title={activeGoal || undefined}
           >
             <Target size={16} />
@@ -4019,7 +4023,7 @@ export function Composer({
       </AnchoredPopover>
       {/* Approval popup menu (opens upward) */}
       <AnchoredPopover
-        open={approvalPopupOpen && !disabled && !running}
+        open={approvalPopupOpen && !disabled}
         anchorRef={approvalPopupAnchorRef}
         onClose={() => setApprovalPopupOpen(false)}
         className="composer-access-menu composer-approval-popup"
@@ -4548,7 +4552,7 @@ export function Composer({
                     type="button"
                     className={`composer-menu-trigger${mainMenuOpen ? " composer-menu-trigger--open" : ""}`}
                     onClick={() => setMainMenuOpen((v) => !v)}
-                    disabled={disabled || readOnly || running}
+                    disabled={modeControlsDisabled || readOnly}
                     aria-haspopup="menu"
                     aria-expanded={mainMenuOpen}
                     aria-label={t("composer.menuLabel")}
@@ -4654,7 +4658,7 @@ export function Composer({
             </div>
             {!heroMode && hasEffort && (
               <div className="composer-meta__control composer-meta__control--effort">
-                <EffortSwitcher effort={effort} disabled={running} onPick={onSetEffort} />
+                <EffortSwitcher effort={effort} disabled={modeControlsDisabled} onPick={onSetEffort} />
               </div>
             )}
             {!heroMode && hasEffort && (
@@ -4665,7 +4669,7 @@ export function Composer({
                     type="button"
                     className={`composer-more-trigger composer-more-trigger--effort${currentEffort !== "auto" ? " composer-more-trigger--explicit" : ""}${moreMenuOpen || moreMenuClosing ? " composer-more-trigger--open" : ""}`}
                     onClick={() => (moreMenuOpen || moreMenuClosing ? closeMoreMenu() : openMoreMenu())}
-                    disabled={disabled || running}
+                    disabled={modeControlsDisabled}
                     aria-haspopup="menu"
                     aria-expanded={moreMenuOpen && !moreMenuClosing}
                     aria-label={compactEffortTitle}
@@ -4681,7 +4685,7 @@ export function Composer({
             <div className="composer-meta__control composer-meta__control--send">
               <Tooltip label={submitTooltip}>
                 <button
-                  className={`composer__btn composer__btn--send${running && !submitEmpty ? " composer__btn--steer" : ""}`}
+                  className={`composer__btn composer__btn--send${running && submitEmpty ? " composer__btn--stopping" : ""}${running && !submitEmpty ? " composer__btn--steer" : ""}`}
                   onClick={() => { if (running && submitEmpty) void handleCancel(); else submit(); }}
                   disabled={running && submitEmpty ? cancelSettlingDraftsRef.current.has(draftKey) : submitBlocked}
                   aria-label={submitTooltip}
