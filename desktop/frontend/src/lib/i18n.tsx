@@ -151,9 +151,13 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     setPrefState(normalizeLangPref(next));
   }, []);
 
+  // Translate against the locale resolved once per provider render. Calling
+  // detectLocale() here instead re-read `navigator.language` (and allocated a
+  // lowercased string) on every single t() call — thousands per tree render,
+  // which showed up as a sampled long-task frame.
   const tt = useCallback<Translator>(
-    (key, vars) => translate(detectLocale(pref), key, vars),
-    [dictionaryVersion, pref],
+    (key, vars) => translate(locale, key, vars),
+    [dictionaryVersion, locale],
   );
 
   return <I18nContext.Provider value={{ locale, pref, setPref, t: tt }}>{children}</I18nContext.Provider>;
