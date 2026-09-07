@@ -24,6 +24,8 @@ type TopicShortcutEntry = {
   workspaceRoot: string;
   topicId: string;
   sessionPath?: string;
+  /** True when the topic has unread activity; used by Cmd/Ctrl+G navigation. */
+  unread?: boolean;
 };
 
 type TopicShortcutKeyboardEvent = Pick<globalThis.KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "defaultPrevented" | "target">;

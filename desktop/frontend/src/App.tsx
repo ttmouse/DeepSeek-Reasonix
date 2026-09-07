@@ -55,7 +55,7 @@ const ExtensionFormDialog = lazy(() => import("./components/ExtensionFormDialog"
 const MCPInteractionCard = lazy(() => import("./components/MCPInteractionCard").then((module) => ({ default: module.MCPInteractionCard })));
 /** Footer decision surface kinds. Runtime blockers are explicit recovery choices. */
 type DecisionSurfaceKind = MockDecisionSurfaceKind | "extension_form";
-import { StatusBar } from "./components/StatusBar";
+import { RemoteSwitcher } from "./components/RemoteSwitcher";
 import { RemoteHostKeyDialog } from "./components/RemoteHostKeyDialog";
 import { RemoteSecretDialog } from "./components/RemoteSecretDialog";
 import { RemoteConnectionTimeoutError, useRemoteStore, waitForRemoteConnection } from "./store/remote";
@@ -173,8 +173,6 @@ import {
 } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
 import { hydrateDisplayMode } from "./lib/displayMode";
-import { recordFrontendDiagnostic } from "./lib/frontendDiagnosticBridge";
-import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems, type StatusBarItemId } from "./lib/statusBarItems";
 import { paletteSessionDisplayTitle, paletteSessionHint, paletteSessionKeywords, sessionActivityTime } from "./lib/session";
 import { enqueueNavigationRequest, type PendingNavigationRequest } from "./lib/openTopicCoalescing";
 import {
@@ -1141,10 +1139,6 @@ export default function App() {
   useEffect(() => {
     startTerminalEventBridge();
     const unsub = onEvent((e) => {
-      recordFrontendDiagnostic("runtime", "runtime.event", {
-        action: e.kind,
-        status: e.err ? "error" : "ok",
-      });
       if (e.kind === "turn_done") {
         setDockRefreshKey((v) => v + 1);
       }
@@ -1160,7 +1154,6 @@ export default function App() {
     // the first prompt after a rebuild. agent:ready fires when a (re)build
     // completes; clear that tab's keys (or all, for tab-less ready events).
     const unsubReady = onReady((readyTabId) => {
-      recordFrontendDiagnostic("runtime", "runtime.ready", { ready: true, hasActiveTab: Boolean(readyTabId) });
       clearAttentionChimeKeys(attentionChimeEvents.current, readyTabId);
       if (!readyTabId || readyTabId === workspaceScopeActiveTabRef.current) {
         setWorkspaceControllerEpoch((value) => value + 1);
@@ -1170,7 +1163,6 @@ export default function App() {
     // controller WITHOUT an agent:ready — they signal runtime:rebuilt instead
     // (a ready here would trigger a full session reload the UI already did).
     const unsubRebuilt = onRuntimeRebuilt((rebuiltTabId) => {
-      recordFrontendDiagnostic("runtime", "runtime.rebuilt", { ready: true, hasActiveTab: Boolean(rebuiltTabId) });
       clearAttentionChimeKeys(attentionChimeEvents.current, rebuiltTabId);
       if (!rebuiltTabId || rebuiltTabId === workspaceScopeActiveTabRef.current) {
         setWorkspaceControllerEpoch((value) => value + 1);
@@ -1182,13 +1174,6 @@ export default function App() {
       unsubRebuilt();
     };
   }, []);
-
-  useEffect(() => {
-    recordFrontendDiagnostic("app", "app.surface", {
-      hasActiveTab: Boolean(activeTabId),
-      tabCount: tabMetas.length,
-    });
-  }, [activeTabId, tabMetas.length]);
 
   const [workspacePanelResizing, setWorkspacePanelResizing] = useState(false);
   const [liveWorkspacePanelRenderWidth, setLiveWorkspacePanelRenderWidth] = useState<number | null>(null);
@@ -1242,8 +1227,6 @@ export default function App() {
   const windowsFramelessChrome = desktopPlatform === "windows";
   const [mainWindowMaximised, syncMainWindowMaximised] = useWindowsMaximised(windowsFramelessChrome);
   useWailsResizeFix(windowsFramelessChrome, mainWindowMaximised);
-  const [statusBarStyle, setStatusBarStyle] = useState<"icon" | "text">("text");
-  const [statusBarItems, setStatusBarItems] = useState<StatusBarItemId[]>(() => [...DEFAULT_STATUS_BAR_ITEMS]);
   const [renamingTopicId, setRenamingTopicId] = useState<string | null>(null);
   const [topicTitleDraft, setTopicTitleDraft] = useState("");
   const topicExportOpen = useOverlayStore((s) => s.topicExportOpen);
@@ -1421,7 +1404,7 @@ export default function App() {
   }, []);
 
   const applyDesktopPreferences = useCallback(
-    (settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopTerminalTheme" | "desktopLayoutStyle" | "desktopLanguage" | "checkUpdates" | "statusBarStyle" | "statusBarItems" | "conversationWidth"> & { reasoningDisplayMode?: string; reasoningDisplayModeExplicit?: boolean }) => {
+    (settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopTerminalTheme" | "desktopLayoutStyle" | "desktopLanguage" | "checkUpdates" | "conversationWidth"> & { reasoningDisplayMode?: string; reasoningDisplayModeExplicit?: boolean }) => {
       const nextTheme = normalizeThemePreference(settings.desktopTheme);
       const nextStyle = normalizeThemeStyleForTheme(settings.desktopThemeStyle, nextTheme);
       applyConfiguredBaseAppearance(nextTheme, nextStyle);
@@ -1433,8 +1416,6 @@ export default function App() {
       applyLayoutStyleDefaults("workbench");
       setLocalePref(normalizeLangPref(settings.desktopLanguage));
       setStartupUpdateChecksEnabled(settings.checkUpdates !== false);
-      setStatusBarStyle(settings.statusBarStyle === "text" ? "text" : "icon");
-      setStatusBarItems(normalizeStatusBarItems(settings.statusBarItems));
       hydrateReasoningDisplayMode(settings.reasoningDisplayMode, settings.reasoningDisplayModeExplicit === true);
     },
     [setLocalePref],
@@ -1719,15 +1700,6 @@ export default function App() {
     !state.backendActivationPending &&
     !runtimeTransitioning;
 
-  useEffect(() => {
-    recordFrontendDiagnostic("app", "app.runtime-state", {
-      ready: controllerReady,
-      running: state.running,
-      hydrating: state.hydrating,
-      runtimeTransitioning,
-      contentRevision: state.historyLayoutRevision,
-    });
-  }, [controllerReady, runtimeTransitioning, state.hydrating, state.historyLayoutRevision, state.running]);
   // Single footer decision surface. Composer stays mounted underneath and is
   // only visually/a11y-hidden so per-session draft caches survive.
   const decisionSurface = useMemo((): DecisionSurfaceKind | null => {
@@ -1810,7 +1782,6 @@ export default function App() {
     }
     drainExtensionNotifications();
   }, [state.extensionNotifications, showToast, drainExtensionNotifications]);
-  const extensionStatusList = useMemo(() => Object.values(state.extensionStatuses ?? {}), [state.extensionStatuses]);
   const patchActiveComposerProfile = useCallback(
     (patch: Partial<Omit<ComposerProfile, "pending">>, pendingFields: ComposerProfileField[]) => {
       if (!activeTabId) return;
@@ -2964,7 +2935,13 @@ export default function App() {
     // handling, remote host restore, verification reveal), then open the tab.
     if (mode) setRightDockMode(mode);
     openWorkspacePanel();
-    if (entryId === "remote" && remoteHosts.length > 0) {
+    if (entryId === "remote") {
+      // No configured host means the remote panel has nothing to show; send
+      // the user to the host-management page instead of opening a blank tab.
+      if (remoteHosts.length === 0) {
+        setSettingsTarget("remote");
+        return;
+      }
       const fallback = remoteHosts.find((host) => {
         const state = useRemoteStore.getState().statuses[host.id]?.state;
         return state === "connected" || state === "degraded";
@@ -2975,7 +2952,7 @@ export default function App() {
       if (hostId) requestRemoteExplorer(hostId);
     }
     dockOpenEntry(entry.defaultTab, dockEntryLabel(entry.defaultTab));
-  }, [dockEntryLabel, dockOpenEntry, openWorkspacePanel, remoteExplorerHostId, remoteHosts, requestRemoteExplorer, setRightDockMode]);
+  }, [dockEntryLabel, dockOpenEntry, openWorkspacePanel, remoteExplorerHostId, remoteHosts, requestRemoteExplorer, setRightDockMode, setSettingsTarget]);
 
   const verificationRevealSequenceRef = useRef(0);
   const [verificationRevealRequest, setVerificationRevealRequest] = useState<WorkspaceVerificationRevealRequest | null>(null);
@@ -3276,10 +3253,9 @@ export default function App() {
       return remaining.map((tab) => ({ ...tab, active: tab.id === nextActiveId }));
     });
     await refreshTabMetas(undefined, { afterMutation: true });
-    await refreshBackgroundRuntimes();
     setTabRevealSignal((signal) => signal + 1);
     return true;
-  }, [activeTabId, closeTab, closeTransientOverlays, refreshBackgroundRuntimes, refreshTabMetas, showToast, t]);
+  }, [activeTabId, closeTab, closeTransientOverlays, refreshTabMetas, showToast, t]);
 
   const handleTabClose = useCallback(async (id: string) => {
     try {
@@ -3915,7 +3891,9 @@ export default function App() {
         target.workspaceRoot || "",
         target.topicID,
         target.sessionPath || "",
-      );
+      ).catch((err) => {
+        console.warn("Failed to open deep-link topic", err);
+      });
     });
   }, [handleOpenTopic]);
 
@@ -3933,28 +3911,32 @@ export default function App() {
       const workspaceRoot = target.workspaceRoot || "";
       const goal = (target.goal || "").trim();
       void (async () => {
-        await openBlankSession(scope, workspaceRoot);
-        if (!goal) return;
-        // openBlankSession resolves after the tab is seeded; the controller
-        // may still be building. Poll tab metas until the fresh tab is ready
-        // before committing the goal, mirroring what commitThenSend enforces.
-        const tabId = activeTabIdRef.current;
-        if (!tabId) return;
-        for (let attempt = 0; attempt < 30; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          const metas = await refreshTabMetas().catch(() => []);
-          const tab = metas.find((candidate) => candidate.id === tabId);
-          if (tab?.ready && (!tab.runtime || tab.runtime.phase === "ready") && !tab.startupErr) {
-            void commitThenSend(tabId, goal, goal, undefined, {
-              goal,
-              collaborationMode: "normal",
-              toolApprovalMode: tab.toolApprovalMode || "ask",
-            }).catch((err) => {
-              console.warn("Failed to submit deep-link goal", err);
-            });
-            return;
+        try {
+          await openBlankSession(scope, workspaceRoot);
+          if (!goal) return;
+          // openBlankSession resolves after the tab is seeded; the controller
+          // may still be building. Poll tab metas until the fresh tab is ready
+          // before committing the goal, mirroring what commitThenSend enforces.
+          const tabId = activeTabIdRef.current;
+          if (!tabId) return;
+          for (let attempt = 0; attempt < 30; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const metas = await refreshTabMetas().catch(() => []);
+            const tab = metas.find((candidate) => candidate.id === tabId);
+            if (tab?.ready && (!tab.runtime || tab.runtime.phase === "ready") && !tab.startupErr) {
+              void commitThenSend(tabId, goal, goal, undefined, {
+                goal,
+                collaborationMode: "normal",
+                toolApprovalMode: tab.toolApprovalMode || "ask",
+              }).catch((err) => {
+                console.warn("Failed to submit deep-link goal", err);
+              });
+              return;
+            }
+            if (tab?.startupErr) return;
           }
-          if (tab?.startupErr) return;
+        } catch (err) {
+          console.warn("Failed to open deep-link session", err);
         }
       })();
     });
@@ -3969,42 +3951,53 @@ export default function App() {
     void (async () => {
       await app.MarkFrontendReady().catch(() => undefined);
       if (cancelled) return;
-      const pending = await app.DrainPendingDeepLinks().catch(() => [] as string[]);
+      const pending = ((await app.DrainPendingDeepLinks().catch(() => [] as string[])) ?? []) as string[];
       if (cancelled || !pending.length) return;
       for (const url of pending) {
         if (cancelled) return;
-        const parsed = new URL(url);
-        const query = parsed.searchParams;
-        if (parsed.host === "new") {
-          await openBlankSession(
-            query.get("workspace") ? "project" : "global",
-            query.get("workspace") || "",
-          );
-          const goal = (query.get("prompt") || "").trim();
-          if (goal) {
-            const tabId = activeTabIdRef.current;
-            if (tabId) {
-              void commitThenSend(tabId, goal, goal, undefined, {
-                goal,
-                collaborationMode: "normal",
-                toolApprovalMode: "ask",
-              }).catch((err) => {
-                console.warn("Failed to submit drained deep-link goal", err);
-              });
+        try {
+          const parsed = new URL(url);
+          const query = parsed.searchParams;
+          // Deep links sent by the taskboard use "path" for the workspace
+          // root; accept either spelling so a queued link still opens.
+          const workspace = query.get("workspace") || query.get("path") || "";
+          if (parsed.host === "new") {
+            await openBlankSession(
+              workspace ? "project" : "global",
+              workspace,
+            );
+            const goal = (query.get("prompt") || "").trim();
+            if (goal) {
+              const tabId = activeTabIdRef.current;
+              if (tabId) {
+                void commitThenSend(tabId, goal, goal, undefined, {
+                  goal,
+                  collaborationMode: "normal",
+                  toolApprovalMode: "ask",
+                }).catch((err) => {
+                  console.warn("Failed to submit drained deep-link goal", err);
+                });
+              }
+            }
+          } else if (parsed.host === "threads") {
+            const topicID = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+            if (topicID) {
+              await handleOpenTopic(
+                workspace ? "project" : "global",
+                workspace,
+                topicID,
+              );
             }
           }
-        } else if (parsed.host === "threads") {
-          const topicID = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
-          if (topicID) {
-            await handleOpenTopic(
-              query.get("workspace") ? "project" : "global",
-              query.get("workspace") || "",
-              topicID,
-            );
-          }
+        } catch (err) {
+          console.warn("Failed to process drained deep link", url, err);
         }
       }
-    })();
+    })().catch((err) => {
+      // Last-resort guard: a rejection here would otherwise surface as an
+      // unhandled promise rejection on every cold start.
+      console.warn("Failed to drain deep links", err);
+    });
     return () => {
       cancelled = true;
     };
@@ -4114,6 +4107,17 @@ export default function App() {
     document.addEventListener("keydown", onKeydown);
     return () => document.removeEventListener("keydown", onKeydown);
   }, [sidebarCollapsed, desktopPlatform, handleNavigateTopic]);
+
+  // Register Cmd/Ctrl+G to jump to the next unread topic.
+  useGlobalShortcut(
+    "topic.nextUnread",
+    () => {
+      const unreadEntry = visibleTopicsRef.current.find((topic) => topic.unread);
+      if (unreadEntry) handleNavigateTopic(unreadEntry);
+    },
+    [handleNavigateTopic],
+    !sidebarCollapsed,
+  );
 
   // Widget sendPrompt bridge: listen for CustomEvent from StreamWidget
   useEffect(() => {
@@ -4489,7 +4493,7 @@ export default function App() {
           sidebarWorkbench ? "layout--workbench" : "",
           workbenchChromeHidden ? "layout--workbench-chrome-hidden" : "",
           sidebarCreation ? "layout--creation-chrome-hidden" : "",
-          sidebarImDetailConnection ? "layout--statusbar-hidden" : "",
+          "layout--statusbar-hidden",
           sidebarCollapsed ? "layout--sidebar-collapsed" : "",
           sidebarResizing ? "layout--resizing layout--sidebar-resizing" : "",
           surfaceWorkspacePanelGridOpen ? "layout--workspace-open" : "",
@@ -4553,6 +4557,46 @@ export default function App() {
                 >
                   <MessageSquare size={18} aria-hidden="true" />
                   <span>{t("topbar.newSession")}</span>
+                </button>
+                <RemoteSwitcher
+                  variant="action"
+                  hosts={remoteHosts}
+                  statuses={remoteStatuses}
+                  onOpen={requestRemoteExplorer}
+                  onOpenWorkspace={openRemoteWorkspaceFromStatus}
+                  onConnect={connectAndOpenRemoteWorkspace}
+                  onDisconnect={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
+                  onManage={() => {
+                    closeTransientOverlays();
+                    setSettingsTarget("remote");
+                  }}
+                />
+                <button
+                  className="sidebar__quick-action"
+                  type="button"
+                  onClick={() => void openTrash()}
+                >
+                  <Trash2 size={18} aria-hidden="true" />
+                  <span>{t("sidebar.trash")}</span>
+                </button>
+                <button
+                  className="sidebar__quick-action"
+                  type="button"
+                  onClick={() => setMainView("automation")}
+                >
+                  <AlarmClock size={18} aria-hidden="true" />
+                  <span>{t("sidebar.automation")}</span>
+                </button>
+                <button
+                  className="sidebar__quick-action"
+                  type="button"
+                  onClick={() => {
+                    closeTransientOverlays();
+                    setSettingsTarget("general");
+                  }}
+                >
+                  <SettingsIcon size={18} aria-hidden="true" />
+                  <span>{t("topbar.settings")}</span>
                 </button>
               </div>
             </>
@@ -4651,45 +4695,7 @@ export default function App() {
               /></Suspense>
           </section>
 
-          {sidebarWorkbench ? (
-            <nav className="sidebar__nav sidebar__nav--footer">
-              <div className="sidebar__utility-row" aria-label={t("sidebar.utilityActions")}>
-                <Tooltip label={t("sidebar.trash")} fill side="top">
-                  <button
-                    className="sidebar__utility-button"
-                    type="button"
-                    onClick={() => void openTrash()}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                    <span className="sr-only">{t("sidebar.trash")}</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label={t("heartbeat.scheduler")} fill side="top">
-                  <button
-                    className="sidebar__utility-button"
-                    type="button"
-                    onClick={() => setMainView("automation")}
-                  >
-                    <AlarmClock size={16} aria-hidden="true" />
-                    <span className="sr-only">{t("sidebar.automation")}</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label={t("topbar.settings")} fill side="top">
-                  <button
-                    className="sidebar__utility-button"
-                    type="button"
-                    onClick={() => {
-                      closeTransientOverlays();
-                      setSettingsTarget("general");
-                    }}
-                  >
-                    <SettingsIcon size={16} aria-hidden="true" />
-                    <span className="sr-only">{t("topbar.settings")}</span>
-                  </button>
-                </Tooltip>
-              </div>
-            </nav>
-          ) : (
+          {sidebarWorkbench ? null : (
             <nav className="sidebar__nav">
               {sidebarCreation && (
                 <Tooltip label={t("projectTree.searchPlaceholder")} fill side="right" disabled={sidebarNavTooltipDisabled}>
@@ -5371,6 +5377,12 @@ export default function App() {
                     sessionGen={visibleRuntimeState.sessionGen}
                     refreshKey={dockRefreshKey + visibleRuntimeState.contextPanelSeq}
                     usageSeq={visibleRuntimeState.usageSeq}
+                    gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch}
+                    jobs={visibleRuntimeState.jobs}
+                    onCancelJob={remoteSurfaceActive ? remoteSession.cancelJob : cancelJob}
+                    backgroundRuntimes={remoteSurfaceActive ? [] : backgroundRuntimes}
+                    onCancelRuntimeJob={cancelRuntimeJob}
+                    onRevealRuntime={revealBackgroundRuntime}
 />
                   </Suspense>
                 ) : tab.type === "terminal" ? (
@@ -5477,44 +5489,6 @@ export default function App() {
           />
         </>
 
-        {!sidebarImDetailConnection && (
-          <StatusBar
-            context={visibleRuntimeState.context}
-            usage={visibleRuntimeState.usage}
-            balance={visibleRuntimeState.balance}
-            running={visibleRuntimeState.running || (!remoteSurfaceActive && rewindCommitting)}
-            jobs={visibleRuntimeState.jobs}
-            onCancelJob={remoteSurfaceActive ? remoteSession.cancelJob : cancelJob}
-            backgroundRuntimes={remoteSurfaceActive ? [] : backgroundRuntimes}
-            onCancelRuntimeJob={cancelRuntimeJob}
-            onRevealRuntime={revealBackgroundRuntime}
-            sessionTurns={sessionTurns}
-            sessionTokens={visibleRuntimeState.sessionTokens}
-            turnTokens={visibleRuntimeState.turnTotalTokens}
-            lastTurnOutputTokens={visibleRuntimeState.lastTurnOutputTokens}
-            lastTurnModelMs={visibleRuntimeState.lastTurnModelMs}
-            lastTurnOutputEstimated={visibleRuntimeState.lastTurnOutputEstimated}
-            lastRequestTps={visibleRuntimeState.lastRequestTps}
-            turnCost={visibleRuntimeState.turnCost}
-            turnRateBand={visibleRuntimeState.turnRateBand}
-            cost={visibleRuntimeState.sessionCost}
-            currency={visibleRuntimeState.sessionCurrency}
-            modelLabel={remoteSurfaceActive ? remoteSession.modelLabel || activeTab?.label : state.meta?.label}
-            labelStyle={statusBarStyle}
-            items={statusBarItems}
-            extensionStatuses={extensionStatusList}
-            workspacePath={remoteSurfaceActive ? activeTab?.remote?.workspace : state.meta?.workspacePath || state.meta?.workspaceRoot || state.meta?.cwd}
-            workspaceName={remoteSurfaceActive ? activeTab?.workspaceName : state.meta?.workspaceName}
-            gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch}
-            onConnectRemote={connectAndOpenRemoteWorkspace}
-            onDisconnectRemote={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
-            onManageRemote={() => setSettingsTarget("remote")}
-            onOpenRemote={requestRemoteExplorer}
-            onOpenRemoteWorkspace={openRemoteWorkspaceFromStatus}
-            remoteHosts={remoteHosts}
-            remoteStatuses={remoteStatuses}
-          />
-        )}
       </div>
 
       {histView !== null && (

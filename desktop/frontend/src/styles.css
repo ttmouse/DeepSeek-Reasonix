@@ -7589,6 +7589,17 @@ body > .mermaid-diagram--fullscreen {
 .composer__btn--send.composer__btn--steer:not(:disabled):hover {
   background: color-mix(in srgb, var(--control-primary-bg) 24%, var(--bg-elev-2));
 }
+/* Stop affordance: steady 90° step rotation on the stop square while a turn
+   is running (ported from the custom-skin stop button animation). */
+.composer__btn--stopping:not(:disabled) svg {
+  animation: stop-step 1s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes stop-step {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(90deg); }
+  100% { transform: rotate(90deg); }
+}
 .composer__btn--send:disabled {
   background: var(--control-disabled-bg);
   color: var(--control-disabled-fg);
@@ -16070,22 +16081,12 @@ body > .mermaid-diagram--fullscreen {
   background: var(--accent);
 }
 
-.settings-center__navitem span,
-.settings-center__navitem small {
+.settings-center__navitem span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.settings-center__navitem span {
   font-size: var(--font-control);
   font-weight: 650;
-}
-
-.settings-center__navitem small {
-  color: var(--fg-dim);
-  font-size: var(--text-2xs);
-  font-family: inherit;
 }
 
 .settings-center__content {
@@ -26723,6 +26724,15 @@ body > .mermaid-diagram--fullscreen {
   scrollbar-gutter: stable;
 }
 
+.context-panel__meta-rows {
+  margin-top: 6px;
+}
+
+.context-panel__section-head .statusbar__jobs {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
 .context-panel__overview {
   display: flex;
   flex-direction: column;
@@ -31141,20 +31151,17 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .sidebar--workbench .sidebar__head,
-.sidebar--workbench .sidebar__quick-actions,
-.sidebar--workbench .sidebar__utility-row {
+.sidebar--workbench .sidebar__quick-actions {
   --wails-draggable: no-drag;
 }
 
-.sidebar--workbench .sidebar__quick-action,
-.sidebar--workbench .sidebar__utility-button {
+.sidebar--workbench .sidebar__quick-action {
   min-width: 0;
   border: 0;
   font: inherit;
 }
 
-.sidebar--workbench .sidebar__quick-action,
-.sidebar--workbench .sidebar__utility-button {
+.sidebar--workbench .sidebar__quick-action {
   display: flex;
   align-items: center;
 }
@@ -31939,36 +31946,8 @@ body > .mermaid-diagram--fullscreen {
   background: var(--sidebar-workbench-fill-strong);
 }
 
-.sidebar--workbench .sidebar__utility-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.sidebar--workbench .sidebar__utility-row .tooltip-trigger {
-  min-width: 0;
-}
-
-.sidebar--workbench .sidebar__utility-button {
-  width: 100%;
-  height: 32px;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--fg-faint);
-  transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
-}
-
-.sidebar--workbench .sidebar__utility-button:hover {
-  border-color: var(--sidebar-workbench-border);
-  background: var(--sidebar-hover);
-  color: var(--fg);
-}
-
-.sidebar--workbench .sidebar__utility-button svg {
-  flex: 0 0 auto;
-  stroke-width: 1.9;
+.sidebar--workbench .sidebar__quick-action-wrap {
+  display: contents;
 }
 
 .project-tree__group {
@@ -32319,13 +32298,6 @@ body > .mermaid-diagram--fullscreen {
 :root[data-theme-style] .app--creation .settings-center__navitem span {
   font-size: calc(12px * var(--font-scale));
   font-weight: 600;
-}
-
-.app--creation .settings-center__navitem small,
-:root[data-theme-style] .app--creation .settings-center__navitem small {
-  color: color-mix(in srgb, var(--fg-dim) 76%, transparent);
-  font-size: calc(10px * var(--font-scale));
-  line-height: 1.25;
 }
 
 .app--creation .settings-center__content,
@@ -36627,97 +36599,6 @@ body > .mermaid-diagram--fullscreen {
   gap: 8px;
   min-width: 0;
 }
-.diag-section__body--frontend {
-  padding-top: 12px;
-}
-.diag-frontend-recording__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.diag-frontend-recording__copy strong {
-  font-size: 14px;
-}
-.diag-frontend-recording__copy span {
-  color: var(--text-muted, #888);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.diag-page .frontend-diagnostics--embedded {
-  --wails-draggable: no-drag;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  min-height: 32px;
-  padding: 4px;
-  border: 1px solid var(--border, rgba(127,127,127,.25));
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--bg-elev, #fff) 94%, transparent);
-  box-shadow: var(--shadow-2);
-  color: var(--fg-dim, #777);
-  font-size: var(--font-caption, 12px);
-}
-.diag-page .frontend-diagnostics--embedded button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.diag-page .frontend-diagnostics--embedded button:hover {
-  background: var(--bg-hover, rgba(127,127,127,.12));
-  color: var(--fg, inherit);
-}
-.diag-page .frontend-diagnostics--embedded button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-.diag-page .frontend-diagnostics--embedded button:disabled {
-  opacity: .55;
-  cursor: wait;
-}
-.diag-page .frontend-diagnostics--embedded .frontend-diagnostics__toggle {
-  border: 1px solid var(--border, rgba(127,127,127,.25));
-  background: var(--bg-elev, #fff);
-  color: var(--fg-dim, #777);
-  white-space: nowrap;
-}
-.diag-page .frontend-diagnostics--embedded .frontend-diagnostics__toggle--on {
-  border-color: color-mix(in srgb, var(--accent, #4af) 48%, var(--border, rgba(127,127,127,.25)));
-  background: var(--accent-soft, rgba(68,136,255,.12));
-  color: var(--accent, #4af);
-}
-.diag-page .frontend-diagnostics--embedded .scroll-diagnostics__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 6px;
-  white-space: nowrap;
-}
-.diag-page .frontend-diagnostics--embedded .scroll-diagnostics__dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--danger, #e35);
-}
-.diag-page .frontend-diagnostics--embedded.scroll-diagnostics--stopped .scroll-diagnostics__dot {
-  background: var(--success, #2a6);
-}
-.diag-page .frontend-diagnostics--embedded .scroll-diagnostics__export {
-  background: var(--accent-soft, rgba(68,136,255,.12));
-  color: var(--accent, #4af);
-  white-space: nowrap;
-}
 .diag-issue-group h4 {
   margin: 8px 0 4px;
   font-size: 12px;
@@ -36986,7 +36867,6 @@ body > .mermaid-diagram--fullscreen {
 
 /* Home: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .sidebar__navitem:hover,
-:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) var(--theme-pane-child-pct, 80%), transparent) !important;
 }
 
@@ -37105,7 +36985,6 @@ body > .mermaid-diagram--fullscreen {
 
 /* Task: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .sidebar__navitem:hover,
-:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) var(--theme-pane-task-child-pct, 98%), transparent) !important;
 }
 
@@ -37223,7 +37102,6 @@ body > .mermaid-diagram--fullscreen {
 
 /* Fallback: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .sidebar__navitem:hover,
-:root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) 80%, transparent) !important;
 }
 
@@ -39842,10 +39720,6 @@ body > .mermaid-diagram--fullscreen {
     flex: 0 0 auto;
     width: auto;
     padding: 8px 10px;
-  }
-
-  .settings-center__navitem small {
-    display: none;
   }
 
   .settings-center__navitem--active::before {

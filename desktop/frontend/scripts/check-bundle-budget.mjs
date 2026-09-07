@@ -168,7 +168,9 @@ console.log("\nbundle budgets");
 // so retain 2.6 KiB of bounded build/toolchain headroom.
 // Session-catalog repair presentation stays in the lazy project-tree chunk;
 // compact shared helpers keep the combined initial path within the same gate.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 462.0 : 462.0;
+// Cmd/Ctrl+G next-unread + deep-link topic activation add routing to the
+// initial controller path; the measured gzip is 462.0 KiB, so retain 0.1 KiB.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 462.1 : 462.1;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 // Render-blocking CSS is intentionally absent: styles.css loads deferred via
@@ -292,6 +294,12 @@ const rawInitialBytes = [...initialJS, ...initialCSS, ...appShellCSS]
 // The stranded-tail recovery transition plus the WebView2 reachable-tail clamp
 // bring the measured initial payload to 2447.953 KiB. Retain 0.047 KiB with
 // the smallest one-decimal ratchet.
-const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_465.0 : 2_465.0;
+// The streamable widget renderer (opaque-origin srcdoc sandbox, host confirm
+// bridge, SHELL_CSS) adds its initial dictionary payload; the merged path
+// measures 2469.3 KiB, so retain 0.7 KiB of bounded build/toolchain headroom.
+// The session overview header (ContextSessionHeader + shared BackgroundJobsChip,
+// git branch / turns / cost / balance + jobs popover in the context panel)
+// moves status-bar data into the overview; the merged path measures 2471.7 KiB.
+const rawInitialBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 2_472.0 : 2_472.0;
 assertBudget("initial raw JavaScript and CSS", rawInitialBytes, rawInitialBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk raw", largestInitialJSRaw, 1_000 * 1024);

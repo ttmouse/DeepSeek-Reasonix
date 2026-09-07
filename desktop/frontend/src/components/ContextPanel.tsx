@@ -9,9 +9,10 @@ import { formatMoneyLocalized } from "../lib/money";
 import { formatTokens, formatOptionalTokens } from "../lib/format";
 import { appendRateBand, normalizeRateBand, rateBandLabel, type DisplayRateBand } from "../lib/costRateBand";
 import type { DictKey } from "../locales/en";
-import type { BalanceInfo, ContextInfo, ContextPanelInfo, UsageSourceStats, WireUsage } from "../lib/types";
+import type { BackgroundRuntimeView, BalanceInfo, ContextInfo, ContextPanelInfo, JobView, UsageSourceStats, WireUsage } from "../lib/types";
 import { contextSessionCache } from "../lib/contextSessionCache";
 import { ContextBudgetCard, resolveContextBudget } from "./ContextBudgetCard";
+import { BackgroundJobsChip } from "./BackgroundJobsChip";
 import type { Item } from "../lib/useController";
 export { contextSessionCache } from "../lib/contextSessionCache";
 const McpListLayers = lazy(() => import("./McpListLayers").then((module) => ({ default: module.McpListLayers })));
@@ -34,6 +35,14 @@ interface ContextPanelProps {
   // The executor-gated `usage` prop freezes during sub-agent runs, which used
   // to pin 会话指标/用量分析 for minutes; this keeps the snapshot ticking.
   usageSeq?: number;
+  // Overview header strip: git branch, background jobs and session counters
+  // (turns / cost / balance) that used to live in the status bar.
+  gitBranch?: string;
+  jobs?: JobView[];
+  onCancelJob?: (jobID: string) => Promise<boolean>;
+  backgroundRuntimes?: BackgroundRuntimeView[];
+  onCancelRuntimeJob?: (tabID: string, jobID: string) => Promise<boolean>;
+  onRevealRuntime?: (tabID: string) => Promise<void>;
 }
 
 function fmtDuration(ms: number, t: Translator): string {
@@ -391,6 +400,7 @@ export function ContextPanel({
   sessionTokens,
   sessionCost,
   sessionCurrency,
+  sessionTurns,
   turnTokens,
   turnCost,
   turnRateBand,
@@ -398,6 +408,12 @@ export function ContextPanel({
   sessionGen,
   refreshKey,
   usageSeq,
+  gitBranch,
+  jobs = [],
+  onCancelJob,
+  backgroundRuntimes = [],
+  onCancelRuntimeJob,
+  onRevealRuntime,
 }: ContextPanelProps) {
   const { locale, t } = useI18n();
   const [info, setInfo] = useState<ContextPanelInfo | null>(null);
@@ -517,6 +533,7 @@ export function ContextPanel({
   const sessionRateBandBadge = sessionRateBand
     ? { label: rateBandLabel(sessionRateBand, t) ?? sessionRateBand, tone: sessionRateBand, title: sessionRateBandTitle }
     : undefined;
+  const sessionTurnsLabel = typeof sessionTurns === "number" && sessionTurns >= 0 ? String(sessionTurns) : "-";
   const totalTokensTitle = totalTokensMetric.exact === "-" ? "-" : t("context.tokensValue", { value: totalTokensMetric.exact });
   const usedLabel = formatTokens(usedTokens);
   const windowLabel = formatTokens(windowTokens);
@@ -596,7 +613,15 @@ export function ContextPanel({
       <div className="context-panel__body">
         <section className="context-panel__overview">
           <section className="context-panel__usage">
-            <SectionHeading title={t("context.windowTitle")} />
+            <SectionHeading title={t("context.windowTitle")}>
+              <BackgroundJobsChip
+                jobs={jobs}
+                onCancelJob={onCancelJob}
+                runtimes={backgroundRuntimes}
+                onCancelRuntimeJob={onCancelRuntimeJob}
+                onRevealRuntime={onRevealRuntime}
+              />
+            </SectionHeading>
             <div className={`context-panel__capacity-card context-panel__capacity-card--${windowStatus.tone}`}>
               <div className="context-panel__capacity-top">
                 <span className="context-panel__capacity-status">{t(windowStatus.key)}</span>
@@ -632,7 +657,12 @@ export function ContextPanel({
                 <MiniStat label={t("context.sessionCost")} value={sessionCostLabel} title={sessionRateBandTitle} badge={sessionRateBandBadge} />
                 <MiniStat label={t("context.time")} value={fmtDuration(elapsed, t)} />
                 <MiniStat label={t("context.requests")} value={requestCount > 0 ? String(requestCount) : "-"} />
-                <MiniStat label={t("context.sessionTokensShort")} value={markEstimated(totalTokensMetric.display, sessionEstimated)} title={totalTokensTitle} wide />
+                <MiniStat label={t("context.sessionTurns")} value={sessionTurnsLabel} />
+                <MiniStat label={t("context.sessionTokensShort")} value={markEstimated(totalTokensMetric.display, sessionEstimated)} title={totalTokensTitle} />
+              </div>
+              <div className="context-panel__summary-rows context-panel__meta-rows">
+                {gitBranch ? <MiniStat label={t("status.gitBranchTitle")} value={gitBranch} /> : null}
+                <MiniStat label={t("status.balanceTitle")} value={balanceLabel} title={balance?.detail} />
               </div>
             </div>
           </section>
