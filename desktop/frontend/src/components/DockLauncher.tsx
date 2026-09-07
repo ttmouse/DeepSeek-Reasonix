@@ -50,9 +50,11 @@ function isValidBranchName(name: string): boolean {
 // transcript surface is wide enough, an icon-only rail when it would start
 // crowding the history column, and hidden entirely when the surface is too
 // narrow for even the rail. The launcher must never fight the transcript for
-// width — it overlays the history area, so it yields first.
-const FULL_MODE_MIN_WIDTH = 680;
-const ICONS_MODE_MIN_WIDTH = 480;
+// width — the history column runs the full surface width, so the card starts
+// overlapping real text well before narrow widths; thresholds err on the side
+// of yielding early.
+const FULL_MODE_MIN_WIDTH = 1040;
+const ICONS_MODE_MIN_WIDTH = 760;
 
 type SpaceMode = "full" | "icons" | "hidden";
 

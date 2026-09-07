@@ -26417,10 +26417,8 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  /* Long branch names fade out instead of stretching the card or showing an
-     ellipsis; short labels never reach the faded zone. */
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  /* Long text clips flat at the row edge (reference: pill chips cut at the
+     window margin) — no ellipsis, no pre-edge fade. */
 }
 
 .dock-launcher__entry-chevron {
@@ -26611,10 +26609,7 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  /* Same fade-out as launcher rows: long branch names dissolve instead of
-     stretching the menu. */
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  /* Clip flat at the menu edge, same as launcher rows. */
 }
 
 .dock-launcher__branch-item svg {
