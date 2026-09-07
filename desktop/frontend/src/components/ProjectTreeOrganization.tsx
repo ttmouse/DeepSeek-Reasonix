@@ -323,6 +323,7 @@ export function ProjectTreeGroupRows({
   depth,
   section,
   visible,
+  hideEmptyGroups = false,
   organization,
   renderNode,
   t,
@@ -332,6 +333,7 @@ export function ProjectTreeGroupRows({
   depth: number;
   section: "pinned" | "projects";
   visible: boolean;
+  hideEmptyGroups?: boolean;
   organization: ProjectTreeOrganizationController;
   renderNode: (node: ProjectNode, depth: number, section: "pinned" | "projects", visible: boolean) => ReactNode;
   t: Translator;
@@ -352,6 +354,8 @@ export function ProjectTreeGroupRows({
     {groups.map((group) => {
       const collapsed = organization.groupCollapsed(key, group.id);
       const members = children.filter((child) => group.topicIds?.includes(child.topicId ?? ""));
+      // While filtering (search/time range), hide a group whose members are all filtered out.
+      if (hideEmptyGroups && members.length === 0) return null;
       const canDrop = organization.canDropTopicInto(key);
       return <div key={group.id} className={`project-tree__group${collapsed ? " project-tree__group--collapsed" : ""}`}>
         <div

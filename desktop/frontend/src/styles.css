@@ -25152,7 +25152,7 @@ body > .mermaid-diagram--fullscreen {
   padding: 6px 8px 2px;
   color: var(--fg-faint);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.35;
   letter-spacing: 0;
 }
@@ -31503,7 +31503,7 @@ body > .mermaid-diagram--fullscreen {
   min-height: 32px;
   padding: 0 0 0 8px;
   color: var(--fg-dim);
-  font-size: 15px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 

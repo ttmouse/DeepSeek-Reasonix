@@ -916,12 +916,11 @@ export function ProjectTree({
         .map(filterNode)
         .filter((child): child is ProjectNode => child !== null);
       if (isFolder) {
-        if (cutoff !== null && children.length === 0 && !matchesQuery(node) && q === "") return null;
-        if (children.length > 0 || matchesQuery(node)) return { ...node, children };
-        if (q) return null;
-        // With only time filter, show folder if it has any child that matches the time.
-        const hasTimeMatch = asArray(node.children).some((c) => topicMatchesTime(c));
-        return hasTimeMatch ? { ...node, children: asArray(node.children).filter(topicMatchesTime) } : null;
+        if (children.length > 0) return { ...node, children };
+        // With no filter, keep the folder visible so its structure stays browsable.
+        if (q === "" && cutoff === null) return node;
+        // While filtering (search or time range), hide a folder left with no visible conversation.
+        return null;
       }
       if (!q && cutoff === null) return node;
       if (cutoff !== null && !topicMatchesTime(node)) return null;
@@ -1654,7 +1653,7 @@ export function ProjectTree({
       return (
         <div className={`project-tree__children${isExpanded ? " project-tree__children--expanded" : ""}`}>
           <div className="project-tree__children-inner">
-            <ProjectTreeGroupRows folder={node} children={windowedChildren} depth={depth + 1} section={section} visible={isVisible && isExpanded} organization={organization} renderNode={renderNode} t={t} />
+            <ProjectTreeGroupRows folder={node} children={windowedChildren} depth={depth + 1} section={section} visible={isVisible && isExpanded} hideEmptyGroups={filtering} organization={organization} renderNode={renderNode} t={t} />
             {windowToggleVisible && (
               <button
                 type="button"
