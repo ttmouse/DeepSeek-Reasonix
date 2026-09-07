@@ -96,3 +96,10 @@ site/.generated/
 # Committed pointer at REASONIX.md; overrides a global CLAUDE.md ignore rule.
 !/CLAUDE.md
 .alma-snapshots
+
+# Local tooling / binaries (not for the repo)
+.mcp.json
+.playwright-mcp/
+/remote-panel
+company-gateway/company-gateway
+tools/remote-panel/bin/
