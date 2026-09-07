@@ -335,12 +335,14 @@ const MermaidDiagram = memo(function MermaidDiagram({ definition }: MermaidDiagr
   const [tab, setTab] = useState<DiagramTab>("preview");
   const [fullscreen, setFullscreen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+  const [diagramActive, setDiagramActive] = useState(false);
   const theme = useMermaidTheme();
   const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "-");
   const svgId = `mermaid-${instanceId}`;
   const previewRef = useRef<HTMLDivElement>(null);
   const panZoomRef = useRef<PanZoomInstance | null>(null);
   const mountedRef = useRef(true);
+  const diagramRef = useRef<HTMLDivElement>(null);
   const source = useMemo(() => definition.replace(/\n$/, ""), [definition]);
 
   useEffect(() => {
@@ -458,6 +460,38 @@ const MermaidDiagram = memo(function MermaidDiagram({ definition }: MermaidDiagr
     return () => window.cancelAnimationFrame(raf);
   }, [fullscreen]);
 
+  // Click inside diagram preview → activate wheel zoom.
+  useEffect(() => {
+    const preview = previewRef.current;
+    if (!preview || state.status !== "rendered") return;
+    const onActivate = () => {
+      const instance = panZoomRef.current;
+      if (instance && !instance.isActive) {
+        instance.activate();
+        setDiagramActive(true);
+      }
+    };
+    preview.addEventListener("click", onActivate);
+    return () => preview.removeEventListener("click", onActivate);
+  }, [state]);
+
+  // Click outside the diagram container → deactivate.
+  useEffect(() => {
+    if (!diagramActive) return;
+    const onDeactivate = (event: MouseEvent) => {
+      const container = diagramRef.current;
+      if (container && !container.contains(event.target as Node)) {
+        const instance = panZoomRef.current;
+        if (instance && instance.isActive) {
+          instance.deactivate();
+          setDiagramActive(false);
+        }
+      }
+    };
+    document.addEventListener("click", onDeactivate, true);
+    return () => document.removeEventListener("click", onDeactivate, true);
+  }, [diagramActive]);
+
   const toggleFullscreen = useCallback(() => {
     setFullscreen((current) => {
       const next = !current;
@@ -493,10 +527,13 @@ const MermaidDiagram = memo(function MermaidDiagram({ definition }: MermaidDiagr
   );
 
   const content = (
-    <div className={[
+    <div
+      ref={diagramRef}
+      className={[
       "mermaid-diagram",
       state.status === "error" ? "mermaid-diagram--error" : "",
       fullscreen ? "mermaid-diagram--fullscreen" : "",
+      diagramActive ? "mermaid-diagram--active" : "",
     ].filter(Boolean).join(" ")}>
       <MermaidToolbar
         tab={tab}

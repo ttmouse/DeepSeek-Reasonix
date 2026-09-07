@@ -22,6 +22,9 @@ export interface MermaidPanZoomInstance {
   zoomIn(): void;
   zoomOut(): void;
   reset(): void;
+  activate(): void;
+  deactivate(): void;
+  readonly isActive: boolean;
 }
 
 const VIEWPORT_ATTR = "data-mermaid-pan-zoom-viewport";
@@ -79,6 +82,7 @@ export function createMermaidPanZoom(svg: SVGSVGElement, options: MermaidPanZoom
   let scale = 1;
   let panX = 0;
   let panY = 0;
+  let active = false;
 
   // Rounded to 0.1px/0.01% precision so long zoom chains keep clean transforms.
   const num = (n: number) => Math.round(n * 1e4) / 1e4;
@@ -112,6 +116,7 @@ export function createMermaidPanZoom(svg: SVGSVGElement, options: MermaidPanZoom
     event.preventDefault();
     zoomAt(event.clientX, event.clientY, scale * (event.deltaY < 0 ? 1 + sensitivity : 1 / (1 + sensitivity)));
   };
+  let wheelBound = false;
 
   let drag: { pointerId: number; x: number; y: number; panX: number; panY: number } | null = null;
   const onPointerDown = (event: PointerEvent) => {
@@ -137,7 +142,20 @@ export function createMermaidPanZoom(svg: SVGSVGElement, options: MermaidPanZoom
     zoomAt(event.clientX, event.clientY, scale * (1 + sensitivity));
   };
 
-  svg.addEventListener("wheel", onWheel, { passive: false });
+  // Wheel listener is attached lazily — only when activate() is called.
+  // This prevents the diagram from stealing page scroll while the user is
+  // scrolling through chat history. See R87850A56D62-5.
+  const attachWheel = () => {
+    if (wheelBound) return;
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    wheelBound = true;
+  };
+  const detachWheel = () => {
+    if (!wheelBound) return;
+    svg.removeEventListener("wheel", onWheel);
+    wheelBound = false;
+  };
+
   svg.addEventListener("pointerdown", onPointerDown);
   svg.addEventListener("pointermove", onPointerMove);
   svg.addEventListener("pointerup", onPointerEnd);
@@ -146,7 +164,7 @@ export function createMermaidPanZoom(svg: SVGSVGElement, options: MermaidPanZoom
 
   return {
     destroy() {
-      svg.removeEventListener("wheel", onWheel);
+      detachWheel();
       svg.removeEventListener("pointerdown", onPointerDown);
       svg.removeEventListener("pointermove", onPointerMove);
       svg.removeEventListener("pointerup", onPointerEnd);
@@ -181,6 +199,19 @@ export function createMermaidPanZoom(svg: SVGSVGElement, options: MermaidPanZoom
       panX = 0;
       panY = 0;
       apply();
+    },
+    activate() {
+      if (active) return;
+      active = true;
+      attachWheel();
+    },
+    deactivate() {
+      if (!active) return;
+      active = false;
+      detachWheel();
+    },
+    get isActive() {
+      return active;
     },
   };
 }

@@ -165,6 +165,7 @@ function installDom() {
   panZoom.fit();
   eq(viewport()?.getAttribute("transform"), "translate(0 0) scale(1)", "fit keeps the browser meet mapping at unit scale");
 
+  panZoom.activate();
   svg.dispatchEvent(new dom.window.WheelEvent("wheel", { clientX: 320, clientY: 180, deltaY: -120, bubbles: true, cancelable: true }));
   eq(viewport()?.getAttribute("transform"), "translate(-24 -12) scale(1.3)", "wheel zooms in around the cursor");
 
@@ -543,6 +544,9 @@ console.log("\nmermaid rendering");
     zoomIn: () => { panZoomCalls.push("zoomIn"); },
     zoomOut: () => { panZoomCalls.push("zoomOut"); },
     reset: () => { panZoomCalls.push("reset"); },
+    activate: () => { panZoomCalls.push("activate"); },
+    deactivate: () => { panZoomCalls.push("deactivate"); },
+    get isActive() { return false; },
   }));
 
   const rootEl = document.getElementById("root");
