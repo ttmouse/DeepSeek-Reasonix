@@ -416,14 +416,14 @@ eq(
   "C3: no preview-width dual system that would resize the sidebar on tab switch",
 );
 
-// Opened files surface as a tab strip above the preview body: each tab shows
-// the file's base name, the active tab is highlighted, and closing a tab falls
-// back to the last remaining one.
+// The preview's secondary tab strip (workspace-file-tabs) was removed: the
+// breadcrumb header already names the open file, so no per-file tab row is
+// rendered and its styles are gone.
 eq(
-  /\.workspace-file-tabs \{[\s\S]*?\.workspace-file-tabs__tab--active/.test(stylesSource)
-    && /className="workspace-file-tabs"[\s\S]*?basename\(path\)[\s\S]*?closePreviewTab\(path\)/.test(workspacePanelSource),
-  true,
-  "opened files render as named tabs with an active state and per-tab close",
+  /\.workspace-file-tabs/.test(stylesSource)
+    || /workspace-file-tabs/.test(workspacePanelSource),
+  false,
+  "no secondary file-tab strip above the preview body",
 );
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);

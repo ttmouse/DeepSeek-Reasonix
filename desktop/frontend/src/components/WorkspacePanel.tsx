@@ -1430,21 +1430,6 @@ export function WorkspacePanel({
     setTreeVisible(true);
   }, [changeRevealRequest, openTabs, revealPathRequest, selectedFilePath, viewMode]);
 
-  // Close a single file tab. Closing the active tab falls back to the last
-  // remaining tab; closing the last one leaves the preview area entirely.
-  const closePreviewTab = useCallback((path: string) => {
-    const next = openTabs.filter((tab) => tab !== path);
-    setOpenTabs(next);
-    if (path === selectedFilePath) {
-      if (next.length > 0) {
-        setSelectedFilePath(next[next.length - 1]);
-      } else {
-        setSelectedFilePath(null);
-        setPreviewResource(emptyKeyedResource());
-      }
-    }
-  }, [openTabs, selectedFilePath]);
-
   const setSavedTreeWidth = useCallback(
     (width: number) => {
       const next = clampWorkspaceTreeWidth(width, panelWidth);
@@ -1795,34 +1780,6 @@ export function WorkspacePanel({
             </div>
           </AnchoredPopover>
         </header>
-
-        {previewVisible && !changedMode && (openTabs.length > 0 || selectedFilePath) && (
-          <div className="workspace-file-tabs" role="tablist" aria-label={t("workspace.currentFile")}>
-            {(openTabs.length > 0 ? openTabs : selectedFilePath ? [selectedFilePath] : []).map((path) => {
-              const active = path === selectedPath;
-              return (
-                <div key={path} className={`workspace-file-tabs__tab${active ? " workspace-file-tabs__tab--active" : ""}`} role="tab" aria-selected={active}>
-                  <Tooltip label={path}>
-                    <button className="workspace-file-tabs__select" type="button" onClick={() => setSelectedFilePath(path)}>
-                      <FileText size={12} />
-                      <span>{basename(path)}</span>
-                    </button>
-                  </Tooltip>
-                  <Tooltip label={t("workspace.closePreview")}>
-                    <button
-                      className="workspace-file-tabs__close"
-                      type="button"
-                      aria-label={t("workspace.closePreview")}
-                      onClick={() => closePreviewTab(path)}
-                    >
-                      <X size={11} />
-                    </button>
-                  </Tooltip>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         <div
           className={`workspace-preview__body${codePreviewLayoutActive ? " workspace-preview__body--code" : ""}`}

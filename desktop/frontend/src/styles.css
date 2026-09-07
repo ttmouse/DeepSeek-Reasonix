@@ -16,14 +16,6 @@
   initial-value: transparent;
 }
 
-@font-face {
-  font-family: "Reasonix Seti";
-  src: url("./assets/file-icons/seti/seti.woff") format("woff");
-  font-style: normal;
-  font-weight: normal;
-  font-display: block;
-}
-
 :root {
   color-scheme: dark;
 
@@ -3480,7 +3472,10 @@ a[href] {
   min-height: 0;
   height: 100%;
   display: flex;
-  flex-direction: column;
+  /* Row layout so the dock launcher (rendered before the content) occupies
+     the right edge and PUSHES the transcript history left into the remaining
+     space — the two never overlap. */
+  flex-direction: row;
 }
 .transcript-navigation-content {
   position: relative;
@@ -10452,67 +10447,6 @@ body > .mermaid-diagram--fullscreen {
   gap: 6px;
   padding: 0 8px 0 10px;
 }
-.workspace-file-tabs {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 5px 10px 0;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border-soft);
-  background: var(--bg);
-}
-.workspace-file-tabs__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 220px;
-  padding: 3px 4px 3px 8px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  color: var(--fg-dim);
-}
-.workspace-file-tabs__tab--active {
-  background: var(--bg-elev);
-  border-color: var(--border-soft);
-  color: var(--fg);
-}
-.workspace-file-tabs__select {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 1px 2px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.workspace-file-tabs__select span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.workspace-file-tabs__close {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--fg-faint);
-  cursor: pointer;
-}
-.workspace-file-tabs__close:hover {
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--fg);
-}
 .workspace-current-file {
   flex: 1 1 auto;
   min-width: 0;
@@ -11683,25 +11617,17 @@ body > .mermaid-diagram--fullscreen {
 }
 .workspace-file-icon {
   width: 14px;
-  height: 16px;
+  height: 14px;
   flex: 0 0 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--workspace-file-icon-dark, var(--fg-faint));
-  font-family: "Reasonix Seti";
-  font-size: 16px;
-  font-style: normal;
-  font-weight: normal;
-  line-height: 1;
+  display: block;
+  color: var(--workspace-file-icon-color, var(--fg-faint));
 }
-:root[data-theme="light"] .workspace-file-icon {
-  color: var(--workspace-file-icon-light, var(--fg-faint));
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) .workspace-file-icon {
-    color: var(--workspace-file-icon-light, var(--fg-faint));
-  }
+.workspace-file-icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 .workspace-tree__row--active .workspace-tree__icon,
 .workspace-tree__row--active .workspace-tree__icon--dir {
@@ -26349,15 +26275,19 @@ body > .mermaid-diagram--fullscreen {
   border-left: none;
 }
 
-/* --- Dock launcher: floating popover card over the transcript while the
-   dock is collapsed (the panel replaces it once expanded). Rounded card
-   with a title header, icon rows and trailing chevrons. --- */
+/* --- Dock launcher: workspace panel docked to the RIGHT of the transcript.
+   It is a layout sibling of the transcript content (not an overlay): it
+   consumes the right margin and the history column flows in the remaining
+   space. Rounded card with a title header, icon rows and trailing chevrons;
+   hides entirely when the surface is too narrow. --- */
 .dock-launcher {
   --wails-draggable: no-drag;
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  position: relative;
   z-index: var(--z-local-popover);
+  order: 2;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: 8px 8px 0 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -26454,31 +26384,14 @@ body > .mermaid-diagram--fullscreen {
   margin-left: 2px;
 }
 
-/* Icon-rail fallback: when the transcript surface is too narrow for the full
-   card, collapse to a single icon column instead of covering the history. */
-.dock-launcher--icons {
-  width: 40px;
-  padding: 4px;
-  align-items: center;
-}
-
-.dock-launcher--icons .dock-launcher__header,
-.dock-launcher--icons .dock-launcher__entry-label,
-.dock-launcher--icons .dock-launcher__entry-stats,
-.dock-launcher--icons .dock-launcher__entry-chevron,
-.dock-launcher--icons .dock-launcher__divider {
-  display: none;
-}
-
-.dock-launcher--icons .dock-launcher__entry {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  justify-content: center;
-}
-
-.dock-launcher--icons .dock-launcher__branch-wrap {
-  width: 32px;
+/* The docked launcher consumes the transcript's right edge, so the composer
+   reserves the same inset and its box lines up exactly with the history
+   bubbles: footer keeps its 32px left pad, rows keep their 32px inline pad,
+   and the host mirrors the launcher's width+margin (232+8) on the right.
+   Applied as margin on the composer host — NOT footer padding — because
+   later .footer shorthand rules would reset padding-right. */
+html[data-dock-launcher="full"] .composer-decision-host:not(.composer-decision-host--creation-hero) {
+  margin-right: 240px;
 }
 
 /* Branch row: click to open the inline branch switcher. */
@@ -40322,4 +40235,19 @@ body > .mermaid-diagram--fullscreen {
 }
 .instruction-panel__cancel-btn:hover {
   background: var(--bg-soft);
+}
+
+/*
+  macOS window corners: the NSWindow background is transparent
+  (mac.Options.WebviewIsTransparent + WindowSetBackgroundColour(…, 0) in
+  App.startup), so the shell paints its own corner radius — larger than the
+  system default. Body overflow:hidden + border-radius clips all children
+  (layout, chrome, overlays) to the rounded shell. Windows/Linux keep opaque
+  square windows and are unaffected.
+*/
+:root[data-platform="darwin"] body {
+  --app-window-radius: 16px;
+  background: transparent;
+  border-radius: var(--app-window-radius);
+  overflow: hidden;
 }
