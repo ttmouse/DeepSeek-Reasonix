@@ -472,6 +472,7 @@ export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganiza
   WorkspaceChangeDetail(tabID: string, path: string): Promise<WorkspaceChangeDetailView>;
   GitBranches(): Promise<string[]>;
   GitCheckout(branch: string): Promise<void>;
+  GitCreateBranch(name: string): Promise<void>;
   WorkspaceGitHistory(tabID: string, path: string): Promise<GitCommitView[]>;
   WorkspaceGitCommitDetail(tabID: string, hash: string, path: string): Promise<GitCommitDetailView>;
   OpenWorkspacePath(rel: string): Promise<void>;
@@ -4149,6 +4150,9 @@ function makeMockApp(): AppBindings {
     },
     async GitCheckout(_branch: string) {
       console.info("mock GitCheckout", _branch);
+    },
+    async GitCreateBranch(name: string) {
+      console.info("mock GitCreateBranch", name);
     },
     async WorkspaceGitHistory(_tabID: string, path: string) {
       return [

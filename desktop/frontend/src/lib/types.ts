@@ -1137,6 +1137,9 @@ export interface WorkspaceChangesView {
   gitAvailable: boolean;
   gitErr?: string;
   gitBranch?: string;
+  /** Whole-tree diff line totals (+N / -N) for the launcher badge. */
+  added?: number;
+  removed?: number;
 }
 
 export interface WorkspaceChangeDetailView {

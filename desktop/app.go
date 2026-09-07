@@ -10536,6 +10536,8 @@ type WorkspaceChangesView struct {
 	GitAvailable bool                  `json:"gitAvailable"`
 	GitErr       string                `json:"gitErr,omitempty"`
 	GitBranch    string                `json:"gitBranch,omitempty"`
+	Added        int                   `json:"added,omitempty"`
+	Removed      int                   `json:"removed,omitempty"`
 }
 
 type WorkspaceChangeDetailView struct {

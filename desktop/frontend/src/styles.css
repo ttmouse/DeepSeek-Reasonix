@@ -2866,6 +2866,9 @@ a[href] {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 .chat-pane {
+  /* 聊天主列（历史消息 + 输入区）内容最大宽度。覆盖全局 --maxw(960px)，
+     transcript 行、composer、todobar、prompt-shelf 等全部引用该变量。 */
+  --maxw: 740px;
   position: relative;
   grid-row: 2;
   grid-column: 2;
@@ -7126,15 +7129,15 @@ body > .mermaid-diagram--fullscreen {
   border-radius: 999px;
   background: color-mix(in srgb, var(--fg-faint) 38%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 82%, transparent);
-  opacity: 0.72;
+  opacity: 0;
   transition: background 0.12s, box-shadow 0.12s, opacity 0.12s;
 }
+/* Handle pill is never rendered visually — drag affordance is the
+   ns-resize cursor on the 18px hot zone only. */
 .composer-resize-handle:hover::before,
 .composer-resize-handle:focus-visible::before,
 .composer-card--resizing .composer-resize-handle::before {
-  background: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
-  opacity: 0.95;
+  opacity: 0;
 }
 /* Hide the resize handle while the input is focused — the user is typing,
 /* Hide the resize handle while the input is focused — the user is typing,
@@ -26358,14 +26361,11 @@ body > .mermaid-diagram--fullscreen {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  min-width: 180px;
+  width: 232px;
   padding: 6px;
   border-radius: 14px;
   background: var(--bg-elev);
   border: 1px solid var(--border-soft);
-  box-shadow:
-    0 8px 24px color-mix(in srgb, var(--shadow-color) 14%, transparent),
-    0 2px 6px color-mix(in srgb, var(--shadow-color) 8%, transparent);
 }
 
 .dock-launcher__header {
@@ -26416,7 +26416,11 @@ body > .mermaid-diagram--fullscreen {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Long branch names fade out instead of stretching the card or showing an
+     ellipsis; short labels never reach the faded zone. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
 }
 
 .dock-launcher__entry-chevron {
@@ -26428,6 +26432,215 @@ body > .mermaid-diagram--fullscreen {
 .dock-launcher__entry:hover .dock-launcher__entry-chevron,
 .dock-launcher__entry:focus-visible .dock-launcher__entry-chevron {
   opacity: 1;
+}
+
+.dock-launcher__entry-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dock-launcher__entry-stats-added {
+  color: var(--ok);
+}
+
+.dock-launcher__entry-stats-removed {
+  color: var(--danger);
+}
+
+.dock-launcher__entry-stats + .dock-launcher__entry-chevron {
+  margin-left: 2px;
+}
+
+/* Icon-rail fallback: when the transcript surface is too narrow for the full
+   card, collapse to a single icon column instead of covering the history. */
+.dock-launcher--icons {
+  width: 40px;
+  padding: 4px;
+  align-items: center;
+}
+
+.dock-launcher--icons .dock-launcher__header,
+.dock-launcher--icons .dock-launcher__entry-label,
+.dock-launcher--icons .dock-launcher__entry-stats,
+.dock-launcher--icons .dock-launcher__entry-chevron,
+.dock-launcher--icons .dock-launcher__divider {
+  display: none;
+}
+
+.dock-launcher--icons .dock-launcher__entry {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.dock-launcher--icons .dock-launcher__branch-wrap {
+  width: 32px;
+}
+
+/* Branch row: click to open the inline branch switcher. */
+.dock-launcher__branch-wrap {
+  position: relative;
+}
+
+/* The wrap is a plain block, so the button inside shrink-to-fits and stops
+   short of the card edge — force it full width or the chevron floats far
+   from the right border. */
+.dock-launcher__branch-wrap > .dock-launcher__entry {
+  width: 100%;
+}
+
+.dock-launcher__entry--open {
+  background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+}
+
+.dock-launcher__entry-chevron--down {
+  margin-left: auto;
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+/* The switcher opens to the LEFT of the launcher (ChatGPT reference), not
+   below it: the launcher hugs the window's right edge, so leftward is where
+   the room is. Top-aligned with the branch row. */
+.dock-launcher__branch-menu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 6px);
+  z-index: var(--z-local-popover);
+  width: 248px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+}
+
+.dock-launcher__branch-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  margin-bottom: 4px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+  color: var(--fg-faint);
+}
+
+.dock-launcher__branch-search:focus-within {
+  border-color: var(--border);
+}
+
+.dock-launcher__branch-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.dock-launcher__branch-search input::placeholder {
+  color: var(--fg-faint);
+}
+
+.dock-launcher__branch-section {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--fg-faint);
+  user-select: none;
+}
+
+.dock-launcher__branch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.dock-launcher__branch-create {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.dock-launcher__branch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.dock-launcher__branch-item:hover:not(:disabled) {
+  background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+}
+
+.dock-launcher__branch-item:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.dock-launcher__branch-item--active {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.dock-launcher__branch-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  /* Same fade-out as launcher rows: long branch names dissolve instead of
+     stretching the menu. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+}
+
+.dock-launcher__branch-item svg {
+  color: var(--ok);
+  flex: 0 0 auto;
+}
+
+.dock-launcher__branch-menu-note {
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--fg-faint);
+}
+
+.dock-launcher__branch-menu-note--err {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.dock-launcher__branch-menu-spinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-soft);
+  border-top-color: var(--fg-dim);
+  animation: spin 0.8s linear infinite;
 }
 
 /* --- Tab container (right dock redesign) --- */

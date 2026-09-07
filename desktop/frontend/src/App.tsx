@@ -71,7 +71,8 @@ import { AppChrome } from "./components/AppChrome";
 import { ShortcutsCheatsheet } from "./components/ShortcutsCheatsheet";
 import { WorktreeBadge } from "./components/WorktreeBadge";
 import { CopyButton } from "./components/CopyButton";
-import { ExternalOpener, shouldMountExternalOpener } from "./components/ExternalOpener";
+// ExternalOpener（顶栏「用外部应用打开」图标）暂时隐藏，恢复时取消下面注释并在 topicbar__actions 中挂回 <ExternalOpener />
+// import { ExternalOpener, shouldMountExternalOpener } from "./components/ExternalOpener";
 import { TopicbarMoreMenu } from "./components/TopicbarMoreMenu";
 import { startTerminalEventBridge } from "./lib/terminalEvents";
 import { applyTerminalThemePreference } from "./lib/terminalTheme";
@@ -4881,9 +4882,11 @@ export default function App() {
                   <Search size={15} />
                 </button>
               </Tooltip>
+              {/* ExternalOpener 暂时隐藏（待调整）：需要时挂回
               {shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
               )}
+              */}
               {!sidebarImDetailConnection && (
                 <TopicbarMoreMenu
                   sessionHasContent={sessionHasContent}

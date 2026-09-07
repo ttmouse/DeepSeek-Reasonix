@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -106,6 +107,7 @@ func (a *App) WorkspaceChanges(tabID string) WorkspaceChangesView {
 		out.GitAvailable = false
 		out.GitErr = gitErr.Error()
 	}
+	var untracked []string
 	for _, entry := range gitEntries {
 		acc := add(entry.Path)
 		if acc == nil {
@@ -114,6 +116,9 @@ func (a *App) WorkspaceChanges(tabID string) WorkspaceChangesView {
 		acc.hasGit = true
 		acc.view.GitStatus = entry.Status
 		acc.view.OldPath = normalizeWorkspaceRelPath(base, entry.OldPath)
+		if entry.Status == "??" {
+			untracked = append(untracked, entry.Path)
+		}
 	}
 
 	out.Files = make([]WorkspaceChangeView, 0, len(changes))
@@ -140,7 +145,71 @@ func (a *App) WorkspaceChanges(tabID string) WorkspaceChangesView {
 		}
 		return strings.ToLower(a.Path) < strings.ToLower(b.Path)
 	})
+	if out.GitAvailable {
+		out.Added, out.Removed = workspaceGitDiffTally(base, untracked)
+	}
 	return out
+}
+
+// workspaceDiffTallyFileLimit bounds how much of each untracked file is read
+// for line counting; a generated multi-MB file must not make the launcher's
+// poll spin the disk.
+const workspaceDiffTallyFileLimit = 1 << 20
+
+// workspaceGitDiffTally totals the +added/-removed line counts for the whole
+// working tree: `git diff --numstat HEAD` covers staged plus unstaged edits to
+// tracked files, untracked files are line-counted directly with a bounded read
+// (binary files contribute nothing). When HEAD is unborn the numstat probe
+// falls back to index-vs-worktree so at least unstaged edits are counted.
+func workspaceGitDiffTally(base string, untracked []string) (added, removed int) {
+	args := []string{"-C", base, "diff", "--numstat", "--no-textconv", "HEAD"}
+	raw, err := workspaceGitOutputWithTimeout(3*time.Second, args...)
+	if err != nil {
+		raw, err = workspaceGitOutputWithTimeout(3*time.Second, "-C", base, "diff", "--numstat", "--no-textconv")
+	}
+	if err == nil {
+		for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) < 2 {
+				continue
+			}
+			if n, convErr := strconv.Atoi(fields[0]); convErr == nil {
+				added += n
+			}
+			if n, convErr := strconv.Atoi(fields[1]); convErr == nil {
+				removed += n
+			}
+		}
+	}
+	for _, rel := range untracked {
+		added += workspaceCountFileLines(filepath.Join(base, filepath.FromSlash(rel)))
+	}
+	return added, removed
+}
+
+// workspaceCountFileLines counts newline bytes in path, stopping at
+// workspaceDiffTallyFileLimit; files containing NUL bytes (binary) count as 0.
+func workspaceCountFileLines(path string) int {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	buf := make([]byte, 64*1024)
+	count, total := 0, 0
+	for {
+		n, readErr := f.Read(buf)
+		chunk := buf[:n]
+		if total == 0 && bytes.IndexByte(chunk, 0) >= 0 {
+			return 0
+		}
+		total += n
+		count += bytes.Count(chunk, []byte{'\n'})
+		if readErr != nil || total >= workspaceDiffTallyFileLimit {
+			break
+		}
+	}
+	return count
 }
 
 func (a *App) workspaceChangesTarget(tabID string) (string, control.SessionAPI, bool) {
@@ -571,6 +640,42 @@ func (a *App) GitCheckout(branch string) error {
 	if err != nil {
 		if len(out) > 0 {
 			return fmt.Errorf("git checkout: %s", strings.TrimSpace(string(out)))
+		}
+		return err
+	}
+	return nil
+}
+
+// gitRefInvalidChars collects characters git forbids in a ref plus the ones
+// that would be read as CLI options; the create action is user-typed input so
+// it must never reach `git checkout -b` unvalidated.
+const gitRefInvalidChars = " ~^:?*[\\" + "\t\n"
+
+func validGitBranchName(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.HasPrefix(name, "-") || strings.Contains(name, "..") ||
+		strings.HasSuffix(name, "/") || strings.HasSuffix(name, ".") || strings.Contains(name, "@{") {
+		return false
+	}
+	return !strings.ContainsAny(name, gitRefInvalidChars)
+}
+
+// GitCreateBranch creates a new branch at HEAD and checks it out in the
+// active workspace's repo (the launcher's "create and check out new branch").
+func (a *App) GitCreateBranch(name string) error {
+	name = strings.TrimSpace(name)
+	if !validGitBranchName(name) {
+		return fmt.Errorf("invalid branch name %q", name)
+	}
+	base, err := a.activeWorkspaceBase()
+	if err != nil {
+		return err
+	}
+	cmd := workspaceGit("-C", base, "checkout", "-b", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if len(out) > 0 {
+			return fmt.Errorf("git checkout -b: %s", strings.TrimSpace(string(out)))
 		}
 		return err
 	}
