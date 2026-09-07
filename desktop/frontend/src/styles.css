@@ -30297,12 +30297,11 @@ body > .mermaid-diagram--fullscreen {
 
 :root[data-theme-style] .settings-center__navitem {
   border-radius: 8px;
-  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
 
 :root[data-theme-style] .settings-center__navitem:hover {
   background: var(--bg-soft);
-  transform: translateX(2px);
 }
 
 :root[data-theme-style] .settings-center__navitem--active {
