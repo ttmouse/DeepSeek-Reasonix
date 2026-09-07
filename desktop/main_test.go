@@ -108,7 +108,6 @@ func TestMain(m *testing.M) {
 	// replace the relevant endpoint with an httptest.Server explicitly.
 	crashEndpoint = "http://127.0.0.1:0/v1/report"
 	pingEndpoint = "http://127.0.0.1:0/v1/ping"
-	metricsEndpoint = "http://127.0.0.1:0/v1/metrics"
 	// Neutralize the Wails runtime-event bridge for the whole test binary:
 	// outside a running Wails app, runtime.EventsEmit log.Fatals on the plain
 	// contexts tests use, killing the process from any emitting code path.
@@ -122,9 +121,8 @@ func TestMain(m *testing.M) {
 
 func TestDesktopTestTelemetryEndpointsAreFailClosed(t *testing.T) {
 	for name, endpoint := range map[string]string{
-		"crash":   crashEndpoint,
-		"ping":    pingEndpoint,
-		"metrics": metricsEndpoint,
+		"crash": crashEndpoint,
+		"ping":  pingEndpoint,
 	} {
 		if strings.Contains(endpoint, "crash.reasonix.io") {
 			t.Fatalf("%s test endpoint targets production: %s", name, endpoint)

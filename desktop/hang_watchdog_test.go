@@ -1,13 +1,9 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"reasonix/internal/config"
 )
 
 func TestHangAgeBucket(t *testing.T) {
@@ -98,13 +94,11 @@ func TestWatchdogResetsHeartbeatAfterSleepGap(t *testing.T) {
 	}
 }
 
-func TestRecordMainThreadHangWritesPendingReportAndMetrics(t *testing.T) {
+func TestRecordMainThreadHangWritesPendingReport(t *testing.T) {
 	t.Cleanup(func() {
 		removeAllPendingCrashes()
-		os.Remove(filepath.Join(config.MemoryUserDir(), metricsPendingFile))
 	})
 	app := NewApp()
-	app.metrics.Store(newMetricsAggregator(config.MemoryUserDir()))
 
 	last := time.Now().Add(-20 * time.Second)
 	app.recordMainThreadHang(20*time.Second, last, time.Now())
@@ -116,13 +110,5 @@ func TestRecordMainThreadHangWritesPendingReportAndMetrics(t *testing.T) {
 	wantLabel, _, _, _ := mainThreadDiagnosticIdentity()
 	if r.Kind != "performance" || r.Source != "native.watchdog" || r.Label != wantLabel {
 		t.Fatalf("pending report = %+v", r)
-	}
-	c := readCounters(filepath.Join(config.MemoryUserDir(), metricsPendingFile))
-	metricBucket := mainThreadMetricBucket()
-	if got := c["desktop_hang"][metricBucket]; got != 1 {
-		t.Fatalf("desktop_hang/%s = %d, want 1", metricBucket, got)
-	}
-	if got := c["desktop_hang_age"]["s_15_30"]; got != 1 {
-		t.Fatalf("desktop_hang_age/s_15_30 = %d, want 1", got)
 	}
 }

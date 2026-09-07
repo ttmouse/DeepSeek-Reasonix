@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
