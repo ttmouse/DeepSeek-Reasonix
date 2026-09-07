@@ -124,7 +124,6 @@ ok(switchFolderSource.includes("beginNavigationSurface(navigationIntentSeq)"), "
 ok(switchFolderSource.includes("pickWorkspace(navigationIntentSeq)"), "folder-pick navigation carries the shared intent into the controller");
 ok(switchFolderSource.includes("switchWorkspace(path, navigationIntentSeq)"), "direct workspace navigation carries the shared intent into the controller");
 ok(switchFolderSource.includes("settleNavigationSurface(navigationIntentSeq)"), "workspace request completion advances the target under its surface mask");
-ok(surfaceHookSource.includes("navigation.paint-ready"), "surface settlement is diagnosed only from target paint readiness");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

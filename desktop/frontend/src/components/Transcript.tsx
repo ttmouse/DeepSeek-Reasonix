@@ -1,4 +1,4 @@
-import { lazy, Suspense, type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Virtuoso } from "react-virtuoso";
 import type { ControllerLiveStore, HistoryLoadTrigger, HistoryMutation, Item, LiveStream } from "../lib/useController";
 import type { CheckpointMeta, WireCompletionSummary } from "../lib/types";
@@ -61,7 +61,6 @@ import { useTranscriptLayoutIntegrity } from "../lib/useTranscriptLayoutIntegrit
 import { TranscriptLayoutIntentProvider, TranscriptScrollWriteProvider } from "./TranscriptLayoutIntentContext";
 import { MarkdownImageTabContext } from "./MarkdownImageContext";
 import { recordTranscriptScrollDiagnostic } from "../lib/transcriptScrollProbe";
-import { recordFrontendDiagnostic } from "../lib/frontendDiagnosticBridge";
 import { useTranscriptQuestionJump, useTranscriptQuestions } from "../lib/useTranscriptQuestionNavigation";
 import { useTranscriptHistoryAutoFill, useTranscriptPagingAuthorization, useTranscriptSurfaceCommit } from "../lib/useTranscriptNavigationSurface";
 import { useTranscriptGeometryLifecycle } from "../lib/useTranscriptGeometryLifecycle";
@@ -80,14 +79,6 @@ const QUESTION_NAV_MIN_COUNT = 2;
 const EMPTY_CHECKPOINTS: CheckpointMeta[] = [];
 const EMPTY_INVOCATION_METADATA: InvocationMetadataMap = {};
 const NO_HELD_ROWS: readonly TranscriptRow[] = [];
-const SHOW_FRONTEND_DIAGNOSTICS = typeof __BUILD_CHANNEL__ === "undefined"
-  || __BUILD_CHANNEL__ === "test"
-  || __BUILD_CHANNEL__ === "preview"
-  || __BUILD_CHANNEL__ === "canary"
-  || Boolean(import.meta.env?.DEV);
-const FrontendDiagnosticsPanel = SHOW_FRONTEND_DIAGNOSTICS
-  ? lazy(() => import("./FrontendDiagnosticsPanel"))
-  : null;
 const VIRTUAL_OVERSCAN_ROWS = 8;
 const READER_MOUNT_CORRIDOR_ROWS = 112;
 const READER_MOUNT_CORRIDOR_VIEWPORTS = 7;
@@ -211,12 +202,6 @@ export function Transcript({
       staticEstimate,
     });
   }, [measuredSizes]);
-  useEffect(() => {
-    recordFrontendDiagnostic("transcript", "transcript.surface", {
-      hasActiveTab: Boolean(tabId),
-      totalRows: items.length,
-    });
-  }, [items.length, layoutSurfaceKey, tabId]);
   const [layoutWidth, setLayoutWidth] = useState<number>();
   const [geometryBootstrapComplete, setGeometryBootstrapComplete] = useState(false);
   const geometryBootstrapRevisionRef = useRef<string | null>(null);
@@ -1045,7 +1030,6 @@ export function Transcript({
           <span>{t("common.loading")}</span>
         </div>
       )}
-      {FrontendDiagnosticsPanel && <Suspense fallback={null}><FrontendDiagnosticsPanel scrollElement={scrollElement} totalRows={virtualRows.length} /></Suspense>}
     </div>
     </TranscriptScrollWriteProvider>
     </TranscriptLayoutIntentProvider>

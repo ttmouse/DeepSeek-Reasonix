@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Item } from "./useController";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import {
   beginNavigationSurfaceState,
   markNavigationTargetMasked,
@@ -37,7 +36,6 @@ export function useNavigationSurface(target: {
   );
 
   const begin = useCallback((nextIntent: number) => {
-    recordFrontendDiagnostic("navigation", "navigation.begin", { intent: nextIntent, phase: "begin" });
     const rendered = renderedRef.current;
     flushSync(() => {
       setPreserved(rendered?.items.length ? rendered : null);
@@ -47,30 +45,15 @@ export function useNavigationSurface(target: {
   const maskTarget = useCallback((completedIntent: number) => {
     setSurface((current) => markNavigationTargetMasked(current, completedIntent));
   }, []);
-  const settle = useCallback((completedIntent: number, outcome: "ready" | "degraded" | "failed") => {
-    if (outcome !== "failed") recordFrontendDiagnostic("navigation", "navigation.paint-ready", { intent: completedIntent, outcome });
-    recordFrontendDiagnostic("navigation", "navigation.terminal", { intent: completedIntent, outcome });
-    recordFrontendDiagnostic("navigation", "navigation.settle", {
-      intent: completedIntent,
-      phase: outcome === "failed" ? "data-failed" : "paint-ready",
-      outcome,
-    });
+  const settle = useCallback((completedIntent: number, _outcome: "ready" | "degraded" | "failed") => {
     setSurface((current) => settleNavigationSurfaceState(current, completedIntent));
   }, []);
   const commitPaint = useCallback((completedIntent: number, outcome: "ready" | "degraded") => {
     settle(completedIntent, outcome);
   }, [settle]);
 
-  const dataReadyIntentRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!dataReady || intent === null || dataReadyIntentRef.current === intent) return;
-    dataReadyIntentRef.current = intent;
-    recordFrontendDiagnostic("navigation", "navigation.target-mounted", { intent });
-    recordFrontendDiagnostic("navigation", "navigation.data-ready", { intent, outcome: "ready" });
-  }, [dataReady, intent]);
   useEffect(() => {
     if (!failed || intent === null) return;
-    recordFrontendDiagnostic("navigation", "navigation.data-ready", { intent, outcome: "failed" });
     settle(intent, "failed");
   }, [failed, intent, settle]);
   useEffect(() => {

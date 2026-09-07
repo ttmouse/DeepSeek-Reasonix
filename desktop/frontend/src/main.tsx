@@ -21,6 +21,12 @@ import appShellStylesheetURL from "./styles.css?url";
 // featureless webview background, with the recent console trail attached.
 installWailsNonFileDragErrorSuppression();
 installGlobalCrashHandlers();
+// Temporary diagnostics: surface the raw reason/stack of any unhandled
+// rejection so startup promise failures are identifiable in the dev console.
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("[unhandledrejection] reason:", event.reason);
+  if (event.reason instanceof Error) console.error("[unhandledrejection] stack:", event.reason.stack);
+});
 installBreadcrumbConsoleHook();
 installPerformancePressureMonitor();
 installPerfDebugHook();

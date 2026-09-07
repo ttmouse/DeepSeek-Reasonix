@@ -1,6 +1,5 @@
 import { asArray } from "./array";
 import { app } from "./bridge";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import type { TurnEventEnvelope, TurnEventReplayView, WireEvent } from "./types";
 
 type WireHandler = (event: WireEvent) => void;
@@ -80,10 +79,9 @@ export class TurnEventProjector {
     }
     const generation = this.generationByTab.get(tabId) ?? 0;
     const repair = this.replayGap(tabId, afterSeq, runtimeEpoch, generation)
-      .catch((error) => recordFrontendDiagnostic("runtime", "turn-events-gap-repair-failed", {
-        afterSeq: this.sequenceByTab.get(tabId) ?? afterSeq,
-        error: error instanceof Error ? error.message : String(error),
-      }))
+      // Repair failures are tolerated: the pending-repair retry in finally
+      // re-attempts on a later project-tree revision.
+      .catch(() => undefined)
       .finally(() => {
         if (this.repairByTab.get(tabId) !== repair) return;
         this.repairByTab.delete(tabId);
@@ -151,9 +149,6 @@ export class TurnEventProjector {
       if (remaining.length === 0) return;
       this.gapQueueByTab.set(tabId, remaining);
     }
-    recordFrontendDiagnostic("runtime", "turn-events-gap-repair-incomplete", {
-      afterSeq: this.sequenceByTab.get(tabId) ?? cursor,
-    });
   }
 
   private projectEnvelope(tabId: string, envelope: TurnEventEnvelope, runtimeEpoch?: string) {

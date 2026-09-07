@@ -25,7 +25,8 @@ console.log("\nsettings navigation contract");
 
 ok(/useEffect\(\(\) => \{[\s\S]*?content\.scrollTop = 0;[\s\S]*?content\.scrollLeft = 0;[\s\S]*?\}, \[tab\]\);/.test(panel), "switching settings pages resets both content scroll axes");
 ok(navigation.includes('aria-current={activeTab === id ? "page" : undefined}'), "the active settings page is exposed semantically");
-ok(navigation.includes('item.meta && (activeTab === id || query.trim())'), "navigation metadata stays limited to the active or searched items");
+ok(!navigation.includes("<small"), "settings navigation renders a single-line item with no secondary metadata");
+ok(navigation.includes("item.meta"), "navigation metadata still feeds search matching without being displayed");
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
 if (failed > 0) process.exit(1);

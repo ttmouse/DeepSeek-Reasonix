@@ -22,8 +22,6 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeBadge } from "./WorktreeBadge";
 import { useProjectCreation } from "./useProjectCreation";
 import { useProjectTreeRuntimeProjection } from "../lib/useProjectTreeRuntimeProjection";
-import { useProjectTreeFrontendDiagnostics, type ProjectTreeDiagnosticSnapshot } from "../lib/useProjectTreeFrontendDiagnostics";
-import { summarizeProjectTreeSessions } from "../lib/projectTreeDiagnostics";
 import { GLOBAL_PROJECT_ORDER_KEY, ProjectTreeFolderActivity, ProjectTreeGroupRows, applyProjectOrder, projectTreeProjectRoots, reorderedProjectRoots, useProjectTreeOrganization, type ProjectDropPosition } from "./ProjectTreeOrganization";
 import { ProjectTreeSessionArchiveMenu } from "./ProjectTreeSessionArchiveMenu";
 import { ProjectTreeHeaderAddControl, ProjectTreeRemoteAction, projectTreeHeaderAddItems } from "./ProjectTreeAddControls";
@@ -1048,44 +1046,6 @@ export function ProjectTree({
     });
   }, [activeAncestorKeys, manuallyCollapsed]);
 
-  const projectTreeDiagnosticSnapshot = useMemo<ProjectTreeDiagnosticSnapshot>(() => {
-    const sessionSummary = summarizeProjectTreeSessions({
-      tree,
-      visibleTree,
-      expanded,
-      showAllTopics,
-      classicTruncationActive,
-      queryActive: query.trim().length > 0,
-      timeFilterActive: timeFilter !== "all",
-      projectNodeKey,
-      isActive: (node) => topicIsActive(node, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath),
-      isUnread: (node) => projectTreeTopicHasUnreadActivity(node, readActivity, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, readBaselineAt),
-    });
-    return {
-      ...sessionSummary,
-      directoryState: catalogStatus.state,
-      scope: activeScope === "global" ? "global" : activeScope ? "project" : "unknown",
-      variant,
-      timeFilter,
-      queryActive: query.trim().length > 0,
-      timeFilterActive: timeFilter !== "all",
-      catalogPartial: catalogStatus.state !== "ready"
-        || (catalogStatus.repairActive ?? 0) > 0
-        || (catalogStatus.unindexedTargetCount ?? 0) > 0
-        || Boolean(catalogStatus.lastError),
-      catalogRebuilding: catalogStatus.state === "rebuilding",
-      catalogRevision: catalogStatus.revision,
-      catalogIndexed: catalogStatus.indexed,
-      catalogTotal: catalogStatus.total,
-      unloadedSessions: Math.max(0, catalogStatus.total - sessionSummary.workspaceSessions),
-      repairPending: catalogStatus.repairPending,
-      treeRevision: latestRevisionRef.current,
-      organizationRevision,
-    };
-  }, [activeScope, activeSessionPath, activeTopicId, activeWorkspaceRoot, catalogStatus, classicTruncationActive, expanded, organizationRevision, query, readActivity, readBaselineAt, showAllTopics, timeFilter, tree, variant, visibleTree]);
-
-  useProjectTreeFrontendDiagnostics(projectTreeDiagnosticSnapshot);
-
   const renderNode = (node: ProjectNode | null | undefined, depth: number, section: "pinned" | "projects" = "projects", isVisible = true) => {
     if (!node) return null;
     const key = projectNodeKey(node, depth);
@@ -1150,7 +1110,10 @@ export function ProjectTree({
         setMenuNodeKey(key);
         setConfirmArchiveTarget(null);
       };
-      const topicMenuItems: ContextMenuItem[] = [
+      // Built on demand. Materializing this array (and its icon elements) for
+      // every row on every render dominated the tree's element-creation cost,
+      // yet only the single row with an open menu ever reads it.
+      const buildTopicMenuItems = (): ContextMenuItem[] => [
         ...organization.topicMenuItems(node, t),
         ...(projectTreeTopicMenuOffersPin(variant)
           ? [
@@ -1218,6 +1181,7 @@ export function ProjectTree({
           workspaceRoot: openRequest.workspaceRoot,
           topicId: openRequest.topicId,
           sessionPath: openRequest.sessionPath,
+          unread,
         });
       }
       const topicDrag = organization.topicRow(node, section === "pinned" || isSessionNode || Boolean(query || menuNodeKey || editingTopic || dragProjectRoot || creatingProject));
@@ -1366,11 +1330,11 @@ export function ProjectTree({
               </Tooltip>
             </span>
           )}
-          {isSessionNode ? (
+          {topicMenuOpen && (isSessionNode ? (
             <ProjectTreeSessionArchiveMenu
-              open={topicMenuOpen} point={menuPoint} sessionPath={sessionPath} blocked={archiveBlocked || topicTrashing} busy={sessionTrashing} confirmed={confirmArchiveTarget === archiveTargetKey}
+              open point={menuPoint} sessionPath={sessionPath} blocked={archiveBlocked || topicTrashing} busy={sessionTrashing} confirmed={confirmArchiveTarget === archiveTargetKey}
               onConfirm={() => setConfirmArchiveTarget(archiveTargetKey)} onTrash={() => { setConfirmArchiveTarget(null); void trashSession(sessionPath); }} onClose={closeMenu} />
-          ) : <ContextMenu open={topicMenuOpen} point={menuPoint} items={topicMenuItems} minWidth={178} ariaLabel={t("projectTree.topicActions")} onClose={closeMenu} />}
+          ) : <ContextMenu open point={menuPoint} items={buildTopicMenuItems()} minWidth={178} ariaLabel={t("projectTree.topicActions")} onClose={closeMenu} />)}
           {shortcutIndex > 0 && (
             <span className="project-tree__topic-shortcut" aria-hidden="true">
               {topicShortcutLabel(shortcutIndex, shortcutPlatform)}
@@ -1475,8 +1439,10 @@ export function ProjectTree({
           onSelect: () => { void handleCreateIsolatedWorktree(projectRoot); },
         }]
       : [];
-    const remoteProjectMenuItems = node.remote ? buildRemoteProjectMenuItems({ ref: node.remote, t, closeMenu, openRemoteProject, openRemoteWindow, setRemoteSessions, refresh, showToast }) : [];
-    const projectMenuItems: ContextMenuItem[] = [
+    // Same lazy shape as the topic menu: a folder only ever renders one menu,
+    // so building all three variants per row per render was pure waste.
+    const buildRemoteMenuItems = (): ContextMenuItem[] => node.remote ? buildRemoteProjectMenuItems({ ref: node.remote, t, closeMenu, openRemoteProject, openRemoteWindow, setRemoteSessions, refresh, showToast }) : [];
+    const buildProjectMenuItems = (): ContextMenuItem[] => [
       {
         key: "new-group",
         icon: <FolderPlus size={13} />,
@@ -1543,7 +1509,7 @@ export function ProjectTree({
           ]
         : []),
     ];
-    const workbenchProjectMenuItems: ContextMenuItem[] = [
+    const buildWorkbenchProjectMenuItems = (): ContextMenuItem[] => [
       ...(scope === "project"
         ? [
             {
@@ -1782,14 +1748,16 @@ export function ProjectTree({
               {compactTopics ? <Plus size={15} aria-hidden="true" /> : <Plus size={12} aria-hidden="true" />}
             </button>
           </Tooltip>}
-          <ContextMenu
-            open={projectMenuOpen}
-            point={menuPoint}
-            items={node.remote ? remoteProjectMenuItems : compactTopics ? workbenchProjectMenuItems : projectMenuItems}
-            minWidth={compactTopics ? 206 : 212}
-            ariaLabel={t("projectTree.projectActions")}
-            onClose={closeMenu}
-          />
+          {projectMenuOpen && (
+            <ContextMenu
+              open
+              point={menuPoint}
+              items={node.remote ? buildRemoteMenuItems() : compactTopics ? buildWorkbenchProjectMenuItems() : buildProjectMenuItems()}
+              minWidth={compactTopics ? 206 : 212}
+              ariaLabel={t("projectTree.projectActions")}
+              onClose={closeMenu}
+            />
+          )}
         </div>
         {renderFolderChildren()}
       </div>

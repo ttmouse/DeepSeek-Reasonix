@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { HistoryLoadTrigger, Item } from "./useController";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import { advanceSurfacePaintCommit, type SurfacePaintProgress } from "./navigationSurfaceTransition";
 import {
   activeQuestionTurn,
@@ -172,7 +171,6 @@ export function useTranscriptQuestionJump({
     pendingQuestionRef.current = next;
     setPendingQuestion((value) => settleQuestionJumpSurfaceState(value, token, next));
     finishQuestionJump(token);
-    recordFrontendDiagnostic("transcript", "transcript.question-jump-terminal", { intent: token, outcome });
   }, [finishQuestionJump]);
   const requestOlderHistory = useCallback(async (targetTurn?: number, retry = false, trigger: HistoryLoadTrigger = "retry"): Promise<boolean> => {
     if (!hasOlderHistory || loadingOlderHistory || running || !onLoadOlderHistory || (!retry && olderHistoryError)) return false;
@@ -230,7 +228,6 @@ export function useTranscriptQuestionJump({
     // the first prepend. Intermediate history windows remain an implementation
     // detail of one surface transaction.
     flushSync(() => replacePendingQuestion(pending));
-    recordFrontendDiagnostic("transcript", "transcript.question-jump-begin", { intent: pending.token });
     beginQuestionJump(pending.token);
     if (loaded) jumpToLoadedQuestion(question, "auto");
     else requestQuestionHistory(pending, true, "question-jump");

@@ -6,8 +6,6 @@
  * tests and diagnostics can observe who wrote, what kind of write, and where
  * it landed, without intercepting the DOM.
  */
-import { isFrontendDiagnosticsBuild } from "./frontendDiagnosticsBuild";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import { isStableCompactTranscriptVariant, isTranscriptRowLayoutVariant } from "./transcriptRowGeometry";
 
 export type TranscriptScrollWriteRecord = {
@@ -37,14 +35,16 @@ export type TranscriptScrollWriteRecord = {
 
 type DiagnosticSink = (type: string, fields: Record<string, unknown>) => void;
 let diagnosticSink: DiagnosticSink | undefined;
-const CAPTURE_SCROLL_DIAGNOSTIC_DETAILS = isFrontendDiagnosticsBuild(
+export function isTranscriptScrollDiagnosticsBuild(channel: string, development: boolean): boolean {
+  // Preview/canary are the repository's non-stable test artifact channels;
+  // stable builds must never expose a recorder entry in the product UI.
+  return development || channel === "test" || channel === "preview" || channel === "canary";
+}
+
+const CAPTURE_SCROLL_DIAGNOSTIC_DETAILS = isTranscriptScrollDiagnosticsBuild(
   typeof __BUILD_CHANNEL__ === "string" ? __BUILD_CHANNEL__ : "development",
   Boolean(import.meta.env?.DEV),
 );
-
-export function isTranscriptScrollDiagnosticsBuild(channel: string, development: boolean): boolean {
-  return isFrontendDiagnosticsBuild(channel, development);
-}
 
 export function setTranscriptScrollDiagnosticSink(sink: DiagnosticSink): void {
   diagnosticSink = sink;
@@ -52,9 +52,6 @@ export function setTranscriptScrollDiagnosticSink(sink: DiagnosticSink): void {
 
 export function recordTranscriptScrollDiagnostic(type: string, fields: Record<string, unknown> = {}): void {
   diagnosticSink?.(type, fields);
-  // Keep the legacy scroll trace intact while forwarding the same content-free
-  // geometry into the broader frontend interaction timeline.
-  recordFrontendDiagnostic("transcript", `transcript.${type}`, fields);
   // The bench harness (desktop/frontend/bench) installs this page-side hook to
   // attach the diagnostic stream to replay failure output.
   if (typeof window !== "undefined") window.__REASONIX_TRANSCRIPT_SCROLL_DIAGNOSTIC__?.(type, fields);

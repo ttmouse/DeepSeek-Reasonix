@@ -24,7 +24,6 @@ import { aliasActivationRequest, noteActivationRequested, noteActivationSettled,
 import { applyLiveSegments, coalesceStreamDeltas, completeLiveReasoning, type StreamDeltaEntry, type StreamSegment } from "./streamDeltaBatch";
 import { assistantHasContent, ensureActiveAssistant, ensureAssistant, removeEmptyAssistantItems } from "./assistantItems";
 import { getTranscriptStore } from "./transcriptStore";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import { uiPerfTracker } from "./uiPerf";
 import { getLocale, t } from "./i18n";
 import {
@@ -2765,13 +2764,6 @@ export function useController() {
     const unsubscribe = getTranscriptStore().subscribe(tabId, (change) => {
       if (!statesRef.current.has(tabId)) return;
       dispatchTo(tabId, { type: "history_items_patch", patches: change.patches });
-      const patchCount = Object.keys(change.patches).length;
-      if (patchCount > 0) {
-        recordFrontendDiagnostic("history", "history.items-patch", {
-          patchCount,
-          contentRevision: statesRef.current.get(tabId)?.historyLayoutRevision,
-        });
-      }
     });
     transcriptSubscriptions.current.set(tabId, unsubscribe);
   }, [dispatchTo]);
@@ -3147,9 +3139,6 @@ export function useController() {
     const pageBudget = historyPageRequestBudget(state.historyStartTurn, state.historyTotalTurns, targetTurn);
     const requestSeq = (historyOlderSeq.current.get(targetTabId) ?? 0) + 1;
     historyOlderSeq.current.set(targetTabId, requestSeq);
-    recordFrontendDiagnostic("history", "history.older-request", {
-      trigger, intent: activeNavigationSeqRef.current, targeted: targetTurn !== undefined,
-    });
     ensureTranscriptSubscription(targetTabId);
     dispatchTo(targetTabId, { type: "history_older_start" });
     const startedAt = Date.now();

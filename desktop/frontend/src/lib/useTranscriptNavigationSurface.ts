@@ -8,7 +8,6 @@ import {
   type TouchEvent as ReactTouchEvent,
   type WheelEvent as ReactWheelEvent,
 } from "react";
-import { recordFrontendDiagnostic } from "./frontendDiagnosticBridge";
 import { advanceSurfacePaintCommit, type SurfacePaintProgress } from "./navigationSurfaceTransition";
 import { hasTranscriptScrollableRange, nativeTranscriptDistanceFromBottom, TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX } from "./useTranscriptScrollArbiter";
 import type { HistoryLoadTrigger } from "./useController";
@@ -62,7 +61,6 @@ export function useTranscriptPagingAuthorization(input: {
     // same viewport request. Do not let them leave a permit behind for the
     // prepend-triggered startReached callback.
     const next = advanceViewportPagePermit(permitRef.current, 0);
-    if (next !== permitRef.current) recordFrontendDiagnostic("history", "history.viewport-permit");
     permitRef.current = next;
   }, []);
   const onWheelIntent = useCallback((event: ReactWheelEvent<HTMLElement>) => {
@@ -165,9 +163,6 @@ export function useTranscriptSurfaceCommit(input: {
     const finish = (outcome: "ready" | "degraded") => {
       if (cancelled || terminalTokenRef.current === token) return;
       terminalTokenRef.current = token;
-      recordFrontendDiagnostic("transcript", "transcript.initial-placement-terminal", {
-        intent: Number(/^navigation-(\d+)-/.exec(token)?.[1] ?? 0), outcome,
-      });
       setReadySurfaceKey(layoutSurfaceKey);
       onReady(token, outcome);
     };

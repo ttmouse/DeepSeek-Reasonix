@@ -109,7 +109,6 @@ export function SettingsNavigation({
                       {settingsTabIcon(id)}
                       <span>{item.label}</span>
                     </span>
-                    {item.meta && (activeTab === id || query.trim()) && <small>{item.meta}</small>}
                   </button>
                 );
               })}

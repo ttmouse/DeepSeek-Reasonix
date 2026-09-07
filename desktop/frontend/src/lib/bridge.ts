@@ -611,7 +611,6 @@ export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganiza
   SetDesktopCheckUpdates(enabled: boolean): Promise<void>;
   SetDesktopUpdateChannel(channel: string): Promise<void>;
   SetDesktopTelemetry(enabled: boolean): Promise<void>;
-  SetDesktopMetrics(enabled: boolean): Promise<void>;
   SetExpandThinking(on: boolean): Promise<void>;
   SetDesktopConversationWidth(width: string): Promise<void>;
   MigrateDesktopPreferences(language: string, theme: string, style: string): Promise<void>;
@@ -1891,7 +1890,6 @@ function makeMockApp(): AppBindings {
     checkUpdates: true,
     updateChannel: "stable",
     telemetry: true,
-    metrics: true,
     configPath: "~/.reasonix/config.toml",
     shadowedByPath: "~/projects/reasonix/reasonix.toml",
     providerKinds: ["openai", "anthropic"],
@@ -4989,8 +4987,9 @@ function makeMockApp(): AppBindings {
         async PickThemeBackground() {
           return "";
         },
-        async SetDesktopLayoutStyle(style: string) {
-          settings.desktopLayoutStyle = style === "workbench" || style === "creation" ? style : "classic";
+        async SetDesktopLayoutStyle(_style: string) {
+          // The classic and creation layouts were removed locally; every value resolves to workbench.
+          settings.desktopLayoutStyle = "workbench";
         },
         async SetDesktopZoomFactor(factor: number) {
           mockDesktopZoomFactor = Math.min(2.0, Math.max(0.5, Number.isFinite(factor) ? factor : 1.0));
@@ -5016,9 +5015,6 @@ function makeMockApp(): AppBindings {
         },
         async SetDesktopTelemetry(enabled: boolean) {
           settings.telemetry = enabled;
-        },
-        async SetDesktopMetrics(enabled: boolean) {
-          settings.metrics = enabled;
         },
     async SetDesktopConversationWidth(width: string) { settings.conversationWidth = width; },
     async SetReasoningDisplayMode(mode: "hidden" | "summary" | "auto" | "expanded") { if (!(["hidden", "summary", "auto", "expanded"] as string[]).includes(mode)) throw new Error("invalid reasoning display mode"); settings.reasoningDisplayMode = mode; settings.reasoningDisplayModeExplicit = true; },

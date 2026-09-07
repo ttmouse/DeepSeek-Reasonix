@@ -3,10 +3,9 @@ import type {
   TranscriptScrollEvent,
   TranscriptScrollState,
 } from "./transcriptScrollArbiter";
-import { isFrontendDiagnosticsBuild } from "./frontendDiagnosticsBuild";
-import { recordTranscriptScrollDiagnostic } from "./transcriptScrollProbe";
+import { isTranscriptScrollDiagnosticsBuild, recordTranscriptScrollDiagnostic } from "./transcriptScrollProbe";
 
-export const CAPTURE_TRANSCRIPT_SCROLL_DIAGNOSTICS = isFrontendDiagnosticsBuild(
+export const CAPTURE_TRANSCRIPT_SCROLL_DIAGNOSTICS = isTranscriptScrollDiagnosticsBuild(
   typeof __BUILD_CHANNEL__ === "string" ? __BUILD_CHANNEL__ : "development",
   Boolean(import.meta.env?.DEV),
 );

@@ -23,7 +23,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 3px;
-  min-height: 48px;
+  min-height: 40px;
   padding: 7px 10px;
 }
 
@@ -146,8 +146,7 @@
   text-align: center;
 }
 
-.settings-center__navitem-main > span,
-.settings-center__navitem small {
+.settings-center__navitem-main > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -173,13 +172,6 @@
 .settings-center__navitem-main > span {
   font-size: var(--font-control);
   font-weight: 650;
-}
-
-.settings-center__navitem small {
-  padding-left: 26px;
-  color: var(--fg-dim);
-  font-size: var(--text-2xs);
-  font-family: inherit;
 }
 
 .settings-field__copy--icon {
@@ -550,10 +542,6 @@
     width: auto;
     min-height: 38px;
     padding: 7px 10px;
-  }
-
-  .settings-center__navitem small {
-    display: none;
   }
 
   .settings-center__navitem--active::before {

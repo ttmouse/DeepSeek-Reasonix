@@ -430,7 +430,6 @@ export function SettingsPanel({
                       shadowedByPath={s.shadowedByPath}
                       checkUpdates={s.checkUpdates}
                       telemetry={s.telemetry !== false}
-                      metrics={s.metrics !== false}
                       settingsBusy={busy}
                       applySettings={apply}
                     />
@@ -7954,7 +7953,6 @@ function UpdatesSection({
   shadowedByPath,
   checkUpdates,
   telemetry,
-  metrics,
   settingsBusy,
   applySettings,
 }: {
@@ -7962,7 +7960,6 @@ function UpdatesSection({
   shadowedByPath?: string;
   checkUpdates: boolean;
   telemetry: boolean;
-  metrics: boolean;
   settingsBusy: boolean;
   applySettings: (fn: () => Promise<void>) => Promise<boolean>;
 }) {
@@ -8206,17 +8203,6 @@ function UpdatesSection({
               value={telemetry}
               disabled={settingsBusy}
               onChange={(enabled) => void applySettings(() => app.SetDesktopTelemetry(enabled))}
-            />
-          </SettingsField>
-          <SettingsField
-            className="settings-field--wide-copy"
-            label={t("settings.metricsLabel")}
-            hint={t("settings.metricsHint")}
-          >
-            <ToggleSegment
-              value={metrics}
-              disabled={settingsBusy}
-              onChange={(enabled) => void applySettings(() => app.SetDesktopMetrics(enabled))}
             />
           </SettingsField>
           {configPath && (

@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isSupportedFrontendDiagnosticSchemaVersion } from "../lib/frontendDiagnostics";
 
 type Fixture = {
   schemaVersion: number;
@@ -14,11 +13,16 @@ type Fixture = {
   expected: { stableHeight?: number; minimumCollapse?: number; minimumCorrection?: number; maximumReverse: number };
 };
 
+// Replay fixtures produced by the (removed) recorder remain valid geometry
+// inputs; v1 and v2 are the only schemas ever written.
+const SUPPORTED_SCHEMA_VERSIONS = new Set([1, 2]);
+const isSupportedSchemaVersion = (value: number): boolean => SUPPORTED_SCHEMA_VERSIONS.has(value);
+
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "../__fixtures__/transcript-scroll");
 const names = ["reader-reverse-jump-v1.json", "reasoning-extent-cycle-v1.json", "false-bottom-collapse-v2.json"];
 for (const name of names) {
   const fixture = JSON.parse(readFileSync(join(fixtureDir, name), "utf8")) as Fixture;
-  assert.equal(isSupportedFrontendDiagnosticSchemaVersion(fixture.schemaVersion), true, `${fixture.name} uses a supported replay schema`);
+  assert.equal(isSupportedSchemaVersion(fixture.schemaVersion), true, `${fixture.name} uses a supported replay schema`);
   const heights = fixture.samples.map((sample) => sample.height);
   const tops = fixture.samples.map((sample) => sample.top);
   const collapse = Math.max(...heights) - Math.min(...heights);

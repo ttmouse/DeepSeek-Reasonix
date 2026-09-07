@@ -9,8 +9,7 @@ import {
 } from "./transcriptVirtuosoRecovery";
 import { createTranscriptStateGeometry, resolveTranscriptStateSnapshot, type TranscriptStateSnapshot } from "./transcriptStateSnapshot";
 import type { TranscriptScrollArbiterRecoveryApi } from "./useTranscriptScrollArbiter";
-import { recordTranscriptScrollDiagnostic } from "./transcriptScrollProbe";
-import { isFrontendDiagnosticsBuild } from "./frontendDiagnosticsBuild";
+import { recordTranscriptScrollDiagnostic, isTranscriptScrollDiagnosticsBuild } from "./transcriptScrollProbe";
 import type { TranscriptGeometryEnvironment } from "./transcriptRowGeometry";
 
 const BLANK_RECOVERY_COOLDOWN_MS = 2_000;
@@ -19,7 +18,7 @@ const BLANK_RECOVERY_COOLDOWN_MS = 2_000;
 // size tree. Resets wait for the scroll to go quiet; only a blank that
 // survives into idle earns a rebuild.
 const USER_SCROLL_IDLE_MS = 320;
-const CAPTURE_SCROLL_DIAGNOSTICS = isFrontendDiagnosticsBuild(
+const CAPTURE_SCROLL_DIAGNOSTICS = isTranscriptScrollDiagnosticsBuild(
   typeof __BUILD_CHANNEL__ === "string" ? __BUILD_CHANNEL__ : "development",
   Boolean(import.meta.env?.DEV),
 );
