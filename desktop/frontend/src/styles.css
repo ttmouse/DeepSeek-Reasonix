@@ -3445,7 +3445,7 @@ a[href] {
      lays them out in the content box. Horizontal padding here therefore makes
      right-aligned bubbles extend under the workspace dock. Keep only vertical
      inset on the scroller; rows own --transcript-inline-pad. */
-  --transcript-inline-pad: 32px;
+  --transcript-inline-pad: 16px;
   position: relative;
   /* Virtuoso owns the logical anchor. Browser scroll anchoring reacts to
      asynchronous Markdown boxes before Virtuoso receives their size and can
@@ -3572,14 +3572,13 @@ a[href] {
   margin-left: 0;
   margin-right: 0;
   /* Virtuoso's inline style pins only top (position:absolute; top:0;
-     width:100%). With the scroller's horizontal padding, width:100%
-     resolves against the padding box and starts at padding-left, so the
-     right edge overflows past the content box and gets clipped by
-     overflow-x:hidden. Pin left/right to the content box edges instead
-     (following --transcript-pad-x) so rows keep the scroller's padding
-     on both sides and never overflow. */
-  left: var(--transcript-pad-x, 32px);
-  right: var(--transcript-pad-x, 32px);
+     width:100%). The scroller keeps NO horizontal padding (rows own
+     --transcript-inline-pad), so the viewport must span the scroller's
+     full padding box: pin left/right to 0. A non-zero inset here would
+     add a hidden 32px per side on top of the rows' own padding and make
+     messages narrower than the composer below. */
+  left: 0;
+  right: 0;
   /* Virtuoso sets width:100% inline; without !important the inline width
      wins over left/right and right-edge clipping returns. */
   width: auto !important;
@@ -4123,16 +4122,19 @@ a[href] {
 
 /* ── ChatHistorySidebar (conversation history hover panel) ──────────────────── */
 .ch-sidebar {
-  position: absolute;
+  /* Fixed to the WINDOW's right edge, just inside the custom scrollbar rail
+     (10px wide at right: 0) — same column as the scrollbar instead of
+     floating at the scroller seam next to the docked launcher panel. */
+  position: fixed;
   top: 50%;
-  right: 0;
+  right: 14px;
   z-index: var(--z-inline-sticky);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   width: 40px;
   padding: 0 12px 0 8px;
-  transform: translate(4px, -50%);
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
   animation: jump-bar-in 0.18s ease-out 0.08s forwards;
@@ -26383,13 +26385,56 @@ body > .mermaid-diagram--fullscreen {
   margin-left: 2px;
 }
 
-/* The docked launcher consumes the transcript's right edge, so the composer
-   reserves the same inset and its box lines up exactly with the history
-   bubbles: footer keeps its 32px left pad, rows keep their 32px inline pad,
-   and the host mirrors the launcher's width+margin (232+8) on the right.
-   Applied as margin on the composer host — NOT footer padding — because
-   later .footer shorthand rules would reset padding-right. */
-html[data-dock-launcher="full"] .composer-decision-host:not(.composer-decision-host--creation-hero) {
+/* Transcript scrollbar: the native one is hidden so the custom rail can pin
+   to the WINDOW's right edge (the scroller's own right edge is occupied by
+   the docked launcher panel). */
+.transcript {
+  scrollbar-width: none;
+}
+
+.transcript::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.transcript__scrollbar--window {
+  position: fixed;
+  right: 0;
+  bottom: auto;
+  /* Self-contained: the base rail/thumb rules are scoped to .app--creation,
+     so the window variant carries its own chrome. */
+  width: 10px;
+  pointer-events: auto;
+  --wails-draggable: no-drag;
+  z-index: var(--z-inline-sticky);
+  /* top/height are set inline from the scroller's rect. */
+}
+
+.transcript__scrollbar--window .transcript__scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  width: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg-faint) 42%, transparent);
+  cursor: grab;
+}
+
+.transcript__scrollbar--window.transcript__scrollbar--hot .transcript__scrollbar-thumb,
+.transcript__scrollbar--window .transcript__scrollbar-thumb:active {
+  /* Mild thicken only: 3 → 5. */
+  width: 5px;
+}
+
+/* The docked launcher consumes the transcript's right edge, so EVERY footer
+   panel (composer, todo bar, rewind banner, decision cards) reserves the same
+   inset and lines up with the history bubbles: footer keeps its 32px left
+   pad, rows keep their 32px inline pad, and children mirror the launcher's
+   width+margin (232+8) on the right. Applied as margin on the children — NOT
+   footer padding — because later .footer shorthand rules would reset
+   padding-right. Creation-hero layout is centered and excluded. */
+html[data-dock-launcher="full"] .footer > *:not(.composer-decision-host--creation-hero) {
   margin-right: 240px;
 }
 
@@ -28661,7 +28706,7 @@ html[data-dock-launcher="full"] .composer-decision-host:not(.composer-decision-h
 }
 
 .footer {
-  padding: 12px 32px 6px;
+  padding: 12px var(--transcript-inline-pad, 16px) 6px;
   background: color-mix(in srgb, var(--chat-bg) 96%, var(--bg-elev));
 }
 

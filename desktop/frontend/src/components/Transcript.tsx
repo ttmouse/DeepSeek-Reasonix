@@ -266,7 +266,10 @@ export function Transcript({
     onThumbPointerDown: handleCreationScrollbarThumbPointerDown,
     onRailPointerDown: handleCreationScrollbarRailPointerDown,
   } = useCreationTranscriptScrollbar({
-    enabled: creationMode,
+    // Always on: the custom rail replaces the native scrollbar so it can pin
+    // to the window's right edge instead of the scroller's (the docked
+    // launcher panel owns the scroller's right edge).
+    enabled: true,
     contentRevision: items.length,
     scrollRef,
     onScroll: () => {},
@@ -584,10 +587,10 @@ export function Transcript({
     deliverScroll();
     noteScrollActivity();
     pagingAuthorization.noteScrollPosition();
-    if (creationMode) handleCreationScroll();
+    handleCreationScroll();
     scheduleActiveQuestionSync();
     scheduleBlankViewportCheck();
-  }, [creationMode, deliverScroll, handleCreationScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
+  }, [deliverScroll, handleCreationScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
   const [handleJumpToQuestion, handleEarlierHistoryReached, retryOlderHistory, questionJumpSurface] = useTranscriptQuestionJump({
     questions, loadedByTurn, layoutSurfaceKey, rowIndexByKey,
     hasOlderHistory, loadingOlderHistory, olderHistoryError, running, scrollElement, scheduleRecovery: scheduleBlankViewportCheck,
@@ -991,19 +994,29 @@ export function Transcript({
         </LiveStreamContext.Provider>
       )}
 
-      {creationMode && creationScrollbar.visible && (
-        <div
-          className={`transcript__scrollbar${creationScrollbar.hot ? " transcript__scrollbar--hot" : ""}`}
-          onPointerDown={handleCreationScrollbarRailPointerDown}
-          aria-hidden="true"
-        >
+      {creationScrollbar.visible && (() => {
+        // Fixed rail pinned to the window's right edge, vertically spanning
+        // the scroller's rect so the thumb math (relative to rail height ==
+        // scroller clientHeight) stays valid. Rect is re-read on every
+        // scrollbar state change (scroll / resize / content growth all flow
+        // through the hook's state updates).
+        const scroller = scrollRef.current;
+        const rect = scroller?.getBoundingClientRect();
+        return (
           <div
-            className="transcript__scrollbar-thumb"
-            style={{ top: creationScrollbar.thumbTop, height: creationScrollbar.thumbHeight } as CSSProperties}
-            onPointerDown={handleCreationScrollbarThumbPointerDown}
-          />
-        </div>
-      )}
+            className={`transcript__scrollbar transcript__scrollbar--window${creationScrollbar.hot ? " transcript__scrollbar--hot" : ""}`}
+            style={rect ? { top: rect.top, height: rect.height } as CSSProperties : undefined}
+            onPointerDown={handleCreationScrollbarRailPointerDown}
+            aria-hidden="true"
+          >
+            <div
+              className="transcript__scrollbar-thumb"
+              style={{ top: creationScrollbar.thumbTop, height: creationScrollbar.thumbHeight } as CSSProperties}
+              onPointerDown={handleCreationScrollbarThumbPointerDown}
+            />
+          </div>
+        );
+      })()}
 
       {!empty && showQuestionNav && (
         <ChatHistorySidebar questions={questions} onJump={handleJumpToQuestion} />

@@ -46,11 +46,12 @@ function isValidBranchName(name: string): boolean {
   return !/[\s~^:?*[\\\t\n]/.test(trimmed);
 }
 
-// Space tiers for the docked launcher: it pushes the transcript left instead
-// of overlaying it, so there is no overlap at any width. When the surface is
-// too narrow to spare the panel's width, the panel yields the space entirely —
-// no intermediate collapsed state.
-const HIDE_BELOW_WIDTH = 760;
+// Space priority for the docked launcher: the panel yields FIRST. The panel
+// only appears when the surface is at least 1010px wide (history keeps ~770px
+// of the 800px comfort target while the panel is docked); below that the
+// panel hides and the history stretches/compresses to fill the whole window —
+// the panel never squeezes the history while visible.
+const HIDE_BELOW_WIDTH = 1010;
 
 type SpaceMode = "full" | "hidden";
 
