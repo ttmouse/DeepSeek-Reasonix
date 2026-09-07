@@ -32,7 +32,8 @@ ok(
 );
 
 ok(
-  messageSource.includes("text.trim() && <CopyButton text={text} label={t(\"msg.copy\")} />"),
+  messageSource.includes("text.trim() && (") &&
+    messageSource.includes('<CopyButton text={text} label={t("msg.copy")} showInlineLabel={false} hideTitle />'),
   "empty interrupted turns do not render a misleading empty copy action",
 );
 
@@ -59,23 +60,30 @@ function ruleBody(selector: string): string {
 }
 
 const turnActionInlineLabelRule = ruleBody(".turn-actions__label-inline");
+const turnActionBtnRule = ruleBody(".turn-actions__btn");
+const turnActionCopyRule = ruleBody(".turn-actions .copybtn");
 const turnActionInlineLabelCount = messageSource.match(/className="turn-actions__label-inline"/g)?.length ?? 0;
 
 ok(
   turnActionInlineLabelCount === 3 &&
     /max-width:\s*0;/.test(turnActionInlineLabelRule) &&
     /overflow:\s*hidden;/.test(turnActionInlineLabelRule) &&
-    /transition:\s*max-width 0\.12s;/.test(turnActionInlineLabelRule),
-  "fork, compress, and rewind labels share the copy action's collapsed inline-label contract",
+    !/transition/.test(turnActionInlineLabelRule),
+  "fork, compress, and rewind labels share the collapsed inline-label contract without an expand transition",
 );
 
 ok(
-  styles.includes(".turn-actions__btn:hover .turn-actions__label-inline,") &&
-    styles.includes(".turn-actions__btn:focus-visible .turn-actions__label-inline,") &&
-    styles.includes(".turn-actions__group--open .turn-actions__label-inline,") &&
+  !styles.includes(".turn-actions__btn:hover .turn-actions__label-inline") &&
     styles.includes(".turn-actions__btn--confirm .turn-actions__label-inline {") &&
     styles.includes("max-width: 240px;"),
-  "turn action labels expand on hover and keyboard focus and stay visible for open or confirming actions",
+  "turn action labels stay collapsed on hover (tooltips describe actions) and only expand for focus, open, or confirming actions",
+);
+
+ok(
+  /border:\s*none;/.test(turnActionBtnRule) &&
+    !/transition/.test(turnActionBtnRule) &&
+    /border:\s*none;/.test(turnActionCopyRule),
+  "turn action buttons render borderless without hover transitions; tooltips describe them instead",
 );
 
 const windowsPrimaryTranscriptSelector =

@@ -6404,20 +6404,25 @@ body > .mermaid-diagram--fullscreen {
   position: relative;
   display: inline-flex;
 }
+/* Hover shows the Tooltip; buttons stay borderless with no hover animation.
+   Labels only expand for keyboard focus, open menus, or the confirm state. */
+.turn-actions .copybtn {
+  border: none;
+  transition: none;
+}
 .turn-actions__btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   min-height: 24px;
   background: var(--bg-elev-2);
-  border: 1px solid var(--border);
+  border: none;
   color: var(--fg-faint);
   border-radius: 6px;
   padding: 3px 7px;
   font: inherit;
   font-size: 11px;
   line-height: 1.25;
-  transition: color 0.12s, border-color 0.12s, background 0.12s, gap 0.12s;
 }
 .turn-actions__label-inline {
   display: inline-flex;
@@ -6426,29 +6431,24 @@ body > .mermaid-diagram--fullscreen {
   max-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  transition: max-width 0.12s;
 }
 .turn-actions__label-inline > span,
 .turn-actions__label-inline > svg {
   flex-shrink: 0;
 }
-.turn-actions__btn:hover .turn-actions__label-inline,
 .turn-actions__btn:focus-visible .turn-actions__label-inline,
 .turn-actions__group--open .turn-actions__label-inline,
 .turn-actions__btn--confirm .turn-actions__label-inline {
   max-width: 240px;
 }
-.turn-actions__btn:hover,
 .turn-actions__btn:focus-visible,
 .turn-actions__group--open .turn-actions__btn,
 .turn-actions__btn--confirm {
   gap: 6px;
 }
-.turn-actions__btn:hover:not(:disabled),
 .turn-actions__btn:focus-visible:not(:disabled),
 .turn-actions__group--open .turn-actions__btn {
   color: var(--fg);
-  border-color: var(--fg-faint);
   background: var(--bg-elev);
 }
 .turn-actions__btn:disabled {
@@ -6457,7 +6457,6 @@ body > .mermaid-diagram--fullscreen {
 }
 .turn-actions__btn--confirm {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-elev-2));
 }
 .turn-actions__menu {

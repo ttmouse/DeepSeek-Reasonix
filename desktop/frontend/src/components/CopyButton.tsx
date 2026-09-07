@@ -60,12 +60,14 @@ export function CopyButton({
   className,
   label,
   showInlineLabel = true,
+  hideTitle = false,
 }: {
   text?: string;
   getText?: () => string | Promise<string>;
   className?: string;
   label?: string;
   showInlineLabel?: boolean;
+  hideTitle?: boolean;
 }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -102,7 +104,7 @@ export function CopyButton({
       ].filter(Boolean).join(" ")}
       onClick={copy}
       aria-label={stateLabel}
-      title={actionLabel}
+      title={hideTitle ? undefined : actionLabel}
       type="button"
     >
       {copied ? <Check size={13} /> : <Copy size={13} />}
