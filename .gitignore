@@ -101,5 +101,12 @@ site/.generated/
 .mcp.json
 .playwright-mcp/
 /remote-panel
-company-gateway/company-gateway
-tools/remote-panel/bin/
+company-gateway/
+tools/remote-panel/
+scripts/debug-reasonix.sh
+scripts/pr-ci-monitor.sh
+scripts/upstream-candidates.sh
+docs/architecture-overview.md
+internal/agent/zz_repro_repair_test.go
+weekly-report-*.md
+*的取样.txt
