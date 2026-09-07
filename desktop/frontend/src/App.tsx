@@ -330,12 +330,6 @@ function isThemeMode(value: string): value is Theme {
 }
 
 type DesktopLayoutStyle = "classic" | "workbench" | "creation";
-
-function normalizeDesktopLayoutStyle(style: string | undefined): DesktopLayoutStyle {
-  if (style === "workbench") return "workbench";
-  if (style === "creation") return "creation";
-  return "classic";
-}
 const DISMISSED_TODO_STORAGE_KEY = "todoPanel:dismissedKeys";
 const MAX_DISMISSED_TODO_KEYS = 160;
 type HistoryScopeFilter = { scope: "global" | "project"; workspaceRoot: string };
@@ -1433,9 +1427,10 @@ export default function App() {
       applyConfiguredBaseAppearance(nextTheme, nextStyle);
       applyTerminalThemePreference(settings.desktopTerminalTheme);
       applyConversationWidth(settings.conversationWidth);
-      const nextLayoutStyle = normalizeDesktopLayoutStyle(settings.desktopLayoutStyle);
-      setDesktopLayoutStyle(nextLayoutStyle);
-      applyLayoutStyleDefaults(nextLayoutStyle);
+      // The desktop-style picker was removed from settings; workbench is the
+      // only remaining layout, so ignore any older persisted value.
+      setDesktopLayoutStyle("workbench");
+      applyLayoutStyleDefaults("workbench");
       setLocalePref(normalizeLangPref(settings.desktopLanguage));
       setStartupUpdateChecksEnabled(settings.checkUpdates !== false);
       setStatusBarStyle(settings.statusBarStyle === "text" ? "text" : "icon");

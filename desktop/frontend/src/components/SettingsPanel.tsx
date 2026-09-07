@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, startTransition, useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { ArrowRight, BrainCircuit, Cable, Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clipboard, Download, ExternalLink, KeyRound, Languages, ListChecks, Loader2, Monitor, MoreHorizontal, PanelsTopLeft, PanelBottom, Play, Power, QrCode, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Trash2, Volume2 } from "lucide-react";
+import { ArrowRight, BrainCircuit, Cable, Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clipboard, Download, ExternalLink, KeyRound, Languages, ListChecks, Loader2, MoreHorizontal, PanelsTopLeft, PanelBottom, Play, Power, QrCode, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Trash2, Volume2 } from "lucide-react";
 import { asArray } from "../lib/array";
 import { writeClipboardText } from "../lib/clipboard";
 import { ShellInterpreterFields } from "./SettingsShellSupport";
@@ -316,7 +316,7 @@ export function SettingsPanel({
     label: settingsTabLabel(id, t),
     meta: s ? settingsTabMeta(id, s, t) : "",
     searchTerms: id === "general" ? [
-      "settings.desktopLayoutStyle", "settings.language", "settings.currency", "settings.displayMode",
+      "settings.language", "settings.currency", "settings.displayMode",
       "settings.reasoningDisplay", "settings.processFold", "settings.closeBehavior",
       "settings.defaultToolApprovalMode", "settings.sound", "settings.statusBarStyle", "settings.statusBarItems",
     ].map((key) => t(key as DictKey)).join(" ") : "",
@@ -626,7 +626,7 @@ function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<typeof 
     case "models":
       return settingsModelMeta(s, t);
     case "general":
-      return `${desktopLayoutStyleLabel(normalizeDesktopLayoutStyle(s.desktopLayoutStyle), t)} · ${closeBehaviorLabel(normalizeCloseBehavior(s.closeBehavior), t)}`;
+      return closeBehaviorLabel(normalizeCloseBehavior(s.closeBehavior), t);
     case "providers":
       return t("settings.providerCount", { n: s.providers.length });
     case "bots":
@@ -1520,14 +1520,10 @@ function normalizeDisplayMode(mode: string | undefined): DisplayMode {
 
 type DesktopLayoutStyle = "classic" | "workbench" | "creation";
 
-function normalizeDesktopLayoutStyle(style: string | undefined): DesktopLayoutStyle {
-  if (style === "classic") return "classic";
-  if (style === "creation") return "creation";
+function normalizeDesktopLayoutStyle(_style: string | undefined): DesktopLayoutStyle {
+  // The classic and creation layouts were removed locally; every value,
+  // including legacy persisted ones, resolves to workbench.
   return "workbench";
-}
-
-function desktopLayoutStyleLabel(style: DesktopLayoutStyle, t: ReturnType<typeof useT>): string {
-  return t(`settings.desktopLayoutStyle.${style}`);
 }
 
 type StatusBarStyle = "icon" | "text";
@@ -1649,7 +1645,6 @@ function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & { agent
   }, [apply]);
   const languagePref = normalizeLangPref(s.desktopLanguage);
   const desktopCurrency = normalizeDesktopCurrency(s.desktopCurrency);
-  const desktopLayoutStyle = normalizeDesktopLayoutStyle(s.desktopLayoutStyle);
   const [genMusicPreset, setGenMusicPreset] = useState<GenerativePreset>(getGenerativePreset());
   const [soundPref, setSoundPref] = useState<SoundWavPref>(getSuccessPreference());
   const [attentionPref, setAttentionPref] = useState<SoundWavPref>(getAttentionPreference());
@@ -1681,20 +1676,6 @@ function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & { agent
   return (
     <>
       <SettingsSection title={t("settings.general.sectionAppearance")} description={t("settings.general.sectionAppearanceHint")}>
-      <SettingsField label={t("settings.desktopLayoutStyle")} hint={t("settings.desktopLayoutStyleHint")} icon={<Monitor size={18} />}>
-        <div className="set-seg">
-          {(["workbench", "classic", "creation"] as const).map((style) => (
-            <button
-              key={style}
-              className={`set-seg__btn${desktopLayoutStyle === style ? " set-seg__btn--on" : ""}`}
-              disabled={busy}
-              onClick={() => void apply(() => app.SetDesktopLayoutStyle(style))}
-            >
-              {desktopLayoutStyleLabel(style, t)}
-            </button>
-          ))}
-        </div>
-      </SettingsField>
       <SettingsField label={t("settings.language")} hint={t("settings.languageHint")} icon={<Languages size={18} />}>
         <div className="set-seg">
           {LANGUAGE_PREFS.map((pref) => (

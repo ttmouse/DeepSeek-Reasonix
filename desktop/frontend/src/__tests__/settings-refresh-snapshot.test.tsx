@@ -188,7 +188,8 @@ const compactButton = Array.from(document.querySelectorAll("button")).find((butt
 if (!compactButton) throw new Error("compact display mode button did not render");
 const generalFieldLabels = Array.from(rootEl.querySelectorAll(".settings-section__body > .settings-field .settings-field__label"))
   .map((label) => label.textContent?.trim());
-eq(generalFieldLabels[0], "Desktop style", "general settings place desktop style first");
+ok(!document.body.textContent?.includes("Desktop style"), "general settings omit the removed desktop style picker");
+eq(generalFieldLabels[0], "Language", "general settings lead with language now that desktop style is gone");
 eq(document.querySelectorAll(".step-limit-control").length, 0, "general settings hide executor and planner step-limit controls");
 ok(!document.body.textContent?.includes("step limit"), "general settings keep automatic progress free of step-limit copy");
 ok(!document.body.textContent?.includes("Automatic plan mode"), "general settings omit the retired automatic Plan Mode control");
