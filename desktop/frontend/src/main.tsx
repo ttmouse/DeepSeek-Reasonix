@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { WorkspaceFileIconSprite } from "./components/WorkspaceFileIcon";
 import { installGlobalCrashHandlers, installPerformancePressureMonitor } from "./lib/crash";
 import { installWailsNonFileDragErrorSuppression } from "./lib/bridge";
 import { installBreadcrumbConsoleHook } from "./lib/breadcrumbs";
@@ -121,6 +122,7 @@ async function mountApp() {
       <ErrorBoundary>
         <LocaleProvider>
           <ToastProvider>
+            <WorkspaceFileIconSprite />
             <App />
           </ToastProvider>
         </LocaleProvider>

@@ -640,8 +640,8 @@ console.log("\nworkspace changes git errors");
     "nested file rows render one guide for each visible ancestor level",
   );
   ok(
-    document.querySelector('[data-workspace-path="src/main/java/App.java"] .workspace-file-icon')?.textContent !== "",
-    "workspace files render a Seti file-type icon",
+    document.querySelector('[data-workspace-path="src/main/java/App.java"] .workspace-file-icon[data-icon-name]') != null,
+    "workspace files render a Pierre file-type icon",
   );
 
   await act(async () => {
@@ -736,12 +736,11 @@ console.log("\nworkspace changes git errors");
 }
 
 {
-  const javaIcon = workspaceFileIcon("App.java");
+  const reactIcon = workspaceFileIcon("App.tsx");
   const markdownIcon = workspaceFileIcon("README.md");
-  const mavenIcon = workspaceFileIcon("pom.xml");
-  const xmlIcon = workspaceFileIcon("layout.xml");
-  ok(javaIcon.glyph !== "" && javaIcon.glyph !== markdownIcon.glyph, "Seti icons distinguish common file extensions");
-  ok(mavenIcon.glyph !== xmlIcon.glyph, "Seti exact-name mappings take precedence over generic extensions");
+  const dockerIcon = workspaceFileIcon(".dockerignore");
+  ok(reactIcon.token === "react" && markdownIcon.token === "markdown", "Pierre icons distinguish common file extensions");
+  ok(dockerIcon.token === "docker", "Pierre exact-name mappings take precedence over generic extensions");
 }
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
