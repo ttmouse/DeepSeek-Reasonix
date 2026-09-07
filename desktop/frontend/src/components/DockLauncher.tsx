@@ -46,17 +46,13 @@ function isValidBranchName(name: string): boolean {
   return !/[\s~^:?*[\\\t\n]/.test(trimmed);
 }
 
-// Space tiers for the launcher over the transcript: full card while the
-// transcript surface is wide enough, an icon-only rail when it would start
-// crowding the history column, and hidden entirely when the surface is too
-// narrow for even the rail. The launcher must never fight the transcript for
-// width — the history column runs the full surface width, so the card starts
-// overlapping real text well before narrow widths; thresholds err on the side
-// of yielding early.
-const FULL_MODE_MIN_WIDTH = 1040;
-const ICONS_MODE_MIN_WIDTH = 760;
+// Space tiers for the docked launcher: it pushes the transcript left instead
+// of overlaying it, so there is no overlap at any width. When the surface is
+// too narrow to spare the panel's width, the panel yields the space entirely —
+// no intermediate collapsed state.
+const HIDE_BELOW_WIDTH = 760;
 
-type SpaceMode = "full" | "icons" | "hidden";
+type SpaceMode = "full" | "hidden";
 
 interface DiffStats {
   added: number;
@@ -92,18 +88,29 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
     setActiveBranch(gitBranch);
   }, [gitBranch]);
 
-  // Track the transcript surface width (our offset parent) so the card can
-  // degrade to an icon rail / hide instead of overlapping the history column.
+  // Track the transcript surface width (our offset parent) so the panel can
+  // yield the space entirely when the surface gets too narrow.
   useEffect(() => {
     const host = rootRef.current?.parentElement;
     if (!host || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? 0;
-      setSpaceMode(width < ICONS_MODE_MIN_WIDTH ? "hidden" : width < FULL_MODE_MIN_WIDTH ? "icons" : "full");
+      setSpaceMode(width < HIDE_BELOW_WIDTH ? "hidden" : "full");
     });
     observer.observe(host);
     return () => observer.disconnect();
   }, []);
+
+  // Mirror the current tier onto <html> so siblings OUTSIDE the transcript
+  // surface (the footer/composer) can reserve the same right inset via plain
+  // CSS — no App-level re-render on every resize tick. The footer's composer
+  // then lines up with the history column above it.
+  useEffect(() => {
+    document.documentElement.dataset.dockLauncher = spaceMode;
+    return () => {
+      delete document.documentElement.dataset.dockLauncher;
+    };
+  }, [spaceMode]);
 
   // Dismiss the branch switcher on any click outside the launcher card, plus
   // Escape — baseline popover behavior.
@@ -245,7 +252,7 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
   return (
     <div
       ref={rootRef}
-      className={`dock-launcher${spaceMode === "icons" ? " dock-launcher--icons" : ""}`}
+      className="dock-launcher"
       role="toolbar"
       aria-label={t("rightDock.launcher")}
     >
