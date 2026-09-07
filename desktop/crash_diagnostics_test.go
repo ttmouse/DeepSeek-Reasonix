@@ -100,20 +100,20 @@ func TestWebView2NativeFailureSanitizesModuleAndFingerprint(t *testing.T) {
 
 func TestWebKitNativeFailureClassification(t *testing.T) {
 	context := webRuntimeContext{Engine: "webkitgtk", RuntimeVersion: "2.42.5", GPUMode: "on_demand"}
-	recovered, outcome, failure := webKitNativeFailureReport(webKitNativeEvent{reason: 0, recovery: webKitRecoverySucceeded, runtimeContext: context})
-	if recovered.Kind != "performance" || outcome != "recovered" || failure != "webkitgtk.web_process.crashed" {
-		t.Fatalf("recovered report=%+v outcome=%q failure=%q", recovered, outcome, failure)
+	recovered := webKitNativeFailureReport(webKitNativeEvent{reason: 0, recovery: webKitRecoverySucceeded, runtimeContext: context})
+	if recovered.Kind != "performance" {
+		t.Fatalf("recovered report=%+v", recovered)
 	}
 	if recovered.WebRuntime == nil || recovered.WebRuntime.Engine != "webkitgtk" || recovered.WebRuntime.GPUMode != "on_demand" {
 		t.Fatalf("runtime diagnostic=%+v", recovered.WebRuntime)
 	}
-	failed, outcome, _ := webKitNativeFailureReport(webKitNativeEvent{reason: 1, recovery: webKitRecoveryFailed, runtimeContext: context})
-	if failed.Kind != "exception" || outcome != "recovery_failed" || failed.WebRuntime.Reason != "out_of_memory" {
-		t.Fatalf("failed report=%+v outcome=%q", failed, outcome)
+	failed := webKitNativeFailureReport(webKitNativeEvent{reason: 1, recovery: webKitRecoveryFailed, runtimeContext: context})
+	if failed.Kind != "exception" || failed.WebRuntime.Reason != "out_of_memory" {
+		t.Fatalf("failed report=%+v", failed)
 	}
-	degraded, outcome, _ := webKitNativeFailureReport(webKitNativeEvent{reason: 99, recovery: webKitRecoveryNotApplicable, runtimeContext: context})
-	if degraded.Kind != "performance" || outcome != "degraded" || degraded.WebRuntime.Reason != "unknown" {
-		t.Fatalf("degraded report=%+v outcome=%q", degraded, outcome)
+	degraded := webKitNativeFailureReport(webKitNativeEvent{reason: 99, recovery: webKitRecoveryNotApplicable, runtimeContext: context})
+	if degraded.Kind != "performance" || degraded.WebRuntime.Reason != "unknown" {
+		t.Fatalf("degraded report=%+v", degraded)
 	}
 }
 
