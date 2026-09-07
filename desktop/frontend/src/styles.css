@@ -26346,51 +26346,88 @@ body > .mermaid-diagram--fullscreen {
   border-left: none;
 }
 
-/* --- Dock launcher: floating menu over the transcript while the dock is
-   collapsed (the panel replaces it once expanded). --- */
+/* --- Dock launcher: floating popover card over the transcript while the
+   dock is collapsed (the panel replaces it once expanded). Rounded card
+   with a title header, icon rows and trailing chevrons. --- */
 .dock-launcher {
   --wails-draggable: no-drag;
   position: absolute;
   top: 8px;
-  right: 0;
+  right: 8px;
   z-index: var(--z-local-popover);
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 1px;
-  padding: 3px;
-  border-radius: 8px 0 0 8px;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 14px;
   background: var(--bg-elev);
   border: 1px solid var(--border-soft);
-  border-right: 0;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--shadow-color) 14%, transparent),
+    0 2px 6px color-mix(in srgb, var(--shadow-color) 8%, transparent);
+}
+
+.dock-launcher__header {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-faint);
+  user-select: none;
+}
+
+.dock-launcher__divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border-soft);
+  flex: 0 0 auto;
 }
 
 .dock-launcher__entry {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  height: 28px;
+  gap: 10px;
+  height: 34px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
-  color: var(--fg-dim);
+  color: var(--fg);
   cursor: pointer;
   font: inherit;
-  font-size: 11.5px;
-  font-weight: 560;
+  font-size: 12.5px;
+  font-weight: 520;
   white-space: nowrap;
   text-align: left;
 }
 
 .dock-launcher__entry:hover {
   background: var(--bg-hover, rgba(128, 128, 128, 0.08));
-  color: var(--fg);
 }
 
 .dock-launcher__entry svg {
-  color: var(--fg-faint);
+  color: var(--fg-dim);
   flex: 0 0 auto;
+}
+
+.dock-launcher__entry-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dock-launcher__entry-chevron {
+  color: var(--fg-faint);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.dock-launcher__entry:hover .dock-launcher__entry-chevron,
+.dock-launcher__entry:focus-visible .dock-launcher__entry-chevron {
+  opacity: 1;
 }
 
 /* --- Tab container (right dock redesign) --- */
@@ -31150,17 +31187,20 @@ body > .mermaid-diagram--fullscreen {
 }
 
 .sidebar--workbench .sidebar__head,
-.sidebar--workbench .sidebar__quick-actions {
+.sidebar--workbench .sidebar__quick-actions,
+.sidebar--workbench .sidebar__utility-row {
   --wails-draggable: no-drag;
 }
 
-.sidebar--workbench .sidebar__quick-action {
+.sidebar--workbench .sidebar__quick-action,
+.sidebar--workbench .sidebar__utility-button {
   min-width: 0;
   border: 0;
   font: inherit;
 }
 
-.sidebar--workbench .sidebar__quick-action {
+.sidebar--workbench .sidebar__quick-action,
+.sidebar--workbench .sidebar__utility-button {
   display: flex;
   align-items: center;
 }
@@ -31945,8 +31985,40 @@ body > .mermaid-diagram--fullscreen {
   background: var(--sidebar-workbench-fill-strong);
 }
 
-.sidebar--workbench .sidebar__quick-action-wrap {
-  display: contents;
+.sidebar--workbench .sidebar__utility-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sidebar--workbench .sidebar__remote-wrap {
+  display: flex;
+  min-width: 0;
+}
+
+.sidebar--workbench .sidebar__utility-row .tooltip-trigger {
+  min-width: 0;
+}
+
+.sidebar--workbench .sidebar__utility-button {
+  width: 100%;
+  height: 32px;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fg-faint);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+
+.sidebar--workbench .sidebar__utility-button:hover {
+  background: var(--sidebar-hover);
+  color: var(--fg);
+}
+
+.sidebar--workbench .sidebar__utility-button svg {
+  flex: 0 0 auto;
+  stroke-width: 1.9;
 }
 
 .project-tree__group {
@@ -36866,6 +36938,7 @@ body > .mermaid-diagram--fullscreen {
 
 /* Home: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .sidebar__navitem:hover,
+:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="home"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) var(--theme-pane-child-pct, 80%), transparent) !important;
 }
 
@@ -36984,6 +37057,7 @@ body > .mermaid-diagram--fullscreen {
 
 /* Task: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .sidebar__navitem:hover,
+:root[data-theme-pack][data-theme-has-bg="true"][data-theme-scene="task"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) var(--theme-pane-task-child-pct, 98%), transparent) !important;
 }
 
@@ -37101,6 +37175,7 @@ body > .mermaid-diagram--fullscreen {
 
 /* Fallback: child elements — sidebar nav/utility hover (sidebar-hover base) */
 :root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .sidebar__navitem:hover,
+:root[data-theme-pack][data-theme-has-bg="true"] .app:not(.app--creation) .sidebar__utility-button:hover {
   background: color-mix(in srgb, var(--sidebar-hover) 80%, transparent) !important;
 }
 

@@ -71,7 +71,11 @@ ok(
   "the remote menu exposes new-session, browser, stop, and unpin actions",
 );
 ok(
-  /items=\{node\.remote \? remoteProjectMenuItems :/.test(source),
+  // Menus are built on demand now (a row only ever renders one open menu), so
+  // assert the remote branch is still selected — and still built remotely —
+  // rather than pinning the precomputed-array shape that used to live here.
+  /items=\{node\.remote \? buildRemoteMenuItems\(\) :/.test(source) &&
+    /const buildRemoteMenuItems = \(\)[^=]*=>[^;]*node\.remote \? buildRemoteProjectMenuItems\(/.test(source),
   "remote groups swap out the local project menu",
 );
 ok(
@@ -170,6 +174,15 @@ ok(
   /remoteSurfaceActive \? remoteSession\.transcript\.items : state\.items/.test(appSource) &&
     /sessionItemsToMarkdown\(sessionTitle, exportItems, exportLive\)/.test(appSource),
   "remote exports use the visible remote transcript",
+);
+ok(
+  // Regression guard: dropping `cancelJob` from the useController destructuring
+  // while the JSX still reads it throws "Can't find variable: cancelJob" during
+  // render, which takes the whole TabContent tree down through the error
+  // boundary. Keep the declaration and the use in lockstep.
+  /const \{[\s\S]*?\bcancelJob\b[\s\S]*?\} = useController\(\);/.test(appSource) &&
+    /onCancelJob=\{remoteSurfaceActive \? remoteSession\.cancelJob : cancelJob\}/.test(appSource),
+  "cancelJob is destructured from the controller wherever the surface uses it",
 );
 ok(
   /const visibleRuntimeState = remoteSurfaceActive \? remoteSession\.transcript : state/.test(appSource) &&

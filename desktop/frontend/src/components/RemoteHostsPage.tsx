@@ -4,6 +4,7 @@ import { useConfirmDialog } from "./ConfirmDialog";
 import { app } from "../lib/bridge";
 import { useT } from "../lib/i18n";
 import { isRemoteDegradedWarning, remoteConnectionErrorSummaryKey } from "../lib/remoteErrors";
+import { useOverlayStore } from "../store/overlays";
 import { useRemoteStore } from "../store/remote";
 import type { RemoteConnectionStatus, RemoteHostInput, RemoteHostView, RemoteConnState, RemoteLegacyWorkbenchData } from "../lib/types";
 
@@ -36,6 +37,18 @@ export function RemoteHostsPage() {
   const setStoreHosts = useRemoteStore((s) => s.setHosts);
   const hydrateStatuses = useRemoteStore((s) => s.hydrateStatuses);
   const openExplorer = useRemoteStore((s) => s.openExplorer);
+  const setSettingsTarget = useOverlayStore((s) => s.setSettingsTarget);
+
+  // Opening the remote explorer surfaces the right-dock remote panel; the
+  // settings page hosting this button is a full-screen modal, so close it
+  // first or the dock opens invisibly underneath.
+  const openRemoteExplorer = useCallback(
+    (hostId: string) => {
+      setSettingsTarget(null);
+      openExplorer(hostId);
+    },
+    [openExplorer, setSettingsTarget],
+  );
 
   const refreshLegacy = useCallback(async () => {
     try {
@@ -137,7 +150,7 @@ export function RemoteHostsPage() {
                 status={statuses[h.id]}
                 onConnect={() => void app.ConnectRemoteHost(h.id).catch(() => {})}
                 onDisconnect={() => void app.DisconnectRemoteHost(h.id).catch(() => {})}
-                onOpen={() => openExplorer(h.id)}
+                onOpen={() => openRemoteExplorer(h.id)}
                 onEdit={() => setScreen({ kind: "edit", id: h.id })}
                 onRemove={async () => {
                   const confirmed = await confirm({

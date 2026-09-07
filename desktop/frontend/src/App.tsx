@@ -4558,27 +4558,6 @@ export default function App() {
                   <MessageSquare size={18} aria-hidden="true" />
                   <span>{t("topbar.newSession")}</span>
                 </button>
-                <RemoteSwitcher
-                  variant="action"
-                  hosts={remoteHosts}
-                  statuses={remoteStatuses}
-                  onOpen={requestRemoteExplorer}
-                  onOpenWorkspace={openRemoteWorkspaceFromStatus}
-                  onConnect={connectAndOpenRemoteWorkspace}
-                  onDisconnect={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
-                  onManage={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("remote");
-                  }}
-                />
-                <button
-                  className="sidebar__quick-action"
-                  type="button"
-                  onClick={() => void openTrash()}
-                >
-                  <Trash2 size={18} aria-hidden="true" />
-                  <span>{t("sidebar.trash")}</span>
-                </button>
                 <button
                   className="sidebar__quick-action"
                   type="button"
@@ -4586,17 +4565,6 @@ export default function App() {
                 >
                   <AlarmClock size={18} aria-hidden="true" />
                   <span>{t("sidebar.automation")}</span>
-                </button>
-                <button
-                  className="sidebar__quick-action"
-                  type="button"
-                  onClick={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("general");
-                  }}
-                >
-                  <SettingsIcon size={18} aria-hidden="true" />
-                  <span>{t("topbar.settings")}</span>
                 </button>
               </div>
             </>
@@ -4695,7 +4663,48 @@ export default function App() {
               /></Suspense>
           </section>
 
-          {sidebarWorkbench ? null : (
+          {sidebarWorkbench ? (
+            <nav className="sidebar__nav sidebar__nav--footer">
+              <div className="sidebar__utility-row" aria-label={t("sidebar.utilityActions")}>
+                <RemoteSwitcher
+                  variant="icon"
+                  hosts={remoteHosts}
+                  statuses={remoteStatuses}
+                  onOpen={requestRemoteExplorer}
+                  onOpenWorkspace={openRemoteWorkspaceFromStatus}
+                  onConnect={connectAndOpenRemoteWorkspace}
+                  onDisconnect={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
+                  onManage={() => {
+                    closeTransientOverlays();
+                    setSettingsTarget("remote");
+                  }}
+                />
+                <Tooltip label={t("sidebar.trash")} fill side="top">
+                  <button
+                    className="sidebar__utility-button"
+                    type="button"
+                    onClick={() => void openTrash()}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                    <span className="sr-only">{t("sidebar.trash")}</span>
+                  </button>
+                </Tooltip>
+                <Tooltip label={t("topbar.settings")} fill side="top">
+                  <button
+                    className="sidebar__utility-button"
+                    type="button"
+                    onClick={() => {
+                      closeTransientOverlays();
+                      setSettingsTarget("general");
+                    }}
+                  >
+                    <SettingsIcon size={16} aria-hidden="true" />
+                    <span className="sr-only">{t("topbar.settings")}</span>
+                  </button>
+                </Tooltip>
+              </div>
+            </nav>
+          ) : (
             <nav className="sidebar__nav">
               {sidebarCreation && (
                 <Tooltip label={t("projectTree.searchPlaceholder")} fill side="right" disabled={sidebarNavTooltipDisabled}>
