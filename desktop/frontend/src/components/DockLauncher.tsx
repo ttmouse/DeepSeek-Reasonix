@@ -26,9 +26,11 @@ const ENTRY_ICONS: Record<TabType, ComponentType<{ size?: number | string; class
 
 interface DockLauncherProps {
   onSelect: (entryId: string) => void;
+  /** Current git branch for the active workspace; omitted when unknown. */
+  gitBranch?: string;
 }
 
-export function DockLauncher({ onSelect }: DockLauncherProps) {
+export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
   const t = useT();
   const mainEntries = ACTIVITY_BAR_ENTRIES.filter((entry) => entry.group !== "secondary");
   const secondaryEntries = ACTIVITY_BAR_ENTRIES.filter((entry) => entry.group === "secondary");
@@ -54,6 +56,19 @@ export function DockLauncher({ onSelect }: DockLauncherProps) {
     <div className="dock-launcher" role="toolbar" aria-label={t("rightDock.launcher")}>
       <div className="dock-launcher__header">{t("rightDock.launcherTitle")}</div>
       {mainEntries.map(renderEntry)}
+      {gitBranch ? (
+        <button
+          type="button"
+          className="dock-launcher__entry"
+          aria-label={`${t("status.gitBranchTitle")}: ${gitBranch}`}
+          title={`${t("status.gitBranchTitle")}: ${gitBranch}`}
+          onClick={() => onSelect("changed")}
+        >
+          <GitBranch size={16} />
+          <span className="dock-launcher__entry-label">{gitBranch}</span>
+          <ChevronRight size={14} className="dock-launcher__entry-chevron" />
+        </button>
+      ) : null}
       {secondaryEntries.length > 0 && <div className="dock-launcher__divider" role="presentation" />}
       {secondaryEntries.map(renderEntry)}
     </div>

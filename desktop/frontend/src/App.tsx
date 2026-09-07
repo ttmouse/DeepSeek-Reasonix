@@ -4992,7 +4992,7 @@ export default function App() {
                 <div className="transcript-navigation-surface" aria-busy={runtimeTransitioning}>
                   {!effectiveWorkspacePanelGridOpen && !automationView && (
                     <Suspense fallback={null}>
-                      <DockLauncher onSelect={handleActivitySelect} />
+                      <DockLauncher onSelect={handleActivitySelect} gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch} />
                     </Suspense>
                   )}
                   <div
