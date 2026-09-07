@@ -178,6 +178,7 @@ export const zhTW: Record<DictKey, string> = {
   "rightDock.fileTabMenu": "檔案標籤選單",
   "rightDock.empty": "沒有開啟的面板——從活動列選擇一個。",
   "rightDock.launcher": "開啟工作區面板",
+  "rightDock.launcherTitle": "工作區",
   "browser.back": "上一頁",
   "browser.forward": "下一頁",
   "browser.reload": "重新整理",

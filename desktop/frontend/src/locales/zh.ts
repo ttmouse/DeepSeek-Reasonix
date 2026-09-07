@@ -242,6 +242,7 @@ export const zh: Record<DictKey, string> = {
   "rightDock.fileTabMenu": "文件标签菜单",
   "rightDock.empty": "没有打开的面板——从活动栏选择一个。",
   "rightDock.launcher": "打开工作区面板",
+  "rightDock.launcherTitle": "工作区",
   "browser.back": "后退",
   "browser.forward": "前进",
   "browser.reload": "刷新",

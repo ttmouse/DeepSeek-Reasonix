@@ -241,6 +241,7 @@ export const en = {
   "rightDock.fileTabMenu": "File tab menu",
   "rightDock.empty": "No panel open — pick one from the activity bar.",
   "rightDock.launcher": "Open workspace panel",
+  "rightDock.launcherTitle": "Workspace",
   "browser.back": "Back",
   "browser.forward": "Forward",
   "browser.reload": "Reload",
