@@ -3477,6 +3477,7 @@ export const zhTW: Record<DictKey, string> = {
   "context.windowStatusNearLimit": "接近視窗上限",
   "context.windowStatusOverLimit": "已超過視窗上限",
   "context.windowUsageSummary": "{pct}% 已用",
+  "context.ringCompactNow": "立即壓縮對話",
   "context.windowCompactRemaining": "{used} / {window} · 距壓縮還剩 {tokens}",
   "context.windowCompactDistance": "距壓縮",
   "context.windowUsedLabel": "已用",

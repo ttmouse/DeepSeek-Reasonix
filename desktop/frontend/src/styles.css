@@ -3588,7 +3588,6 @@ a[href] {
   gap: 6px;
   max-width: 82%;
   padding: 6px 12px;
-  border: 1px solid var(--chat-user-border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--chat-user-bg) 55%, transparent);
   color: var(--chat-user-fg);
@@ -4095,7 +4094,6 @@ a[href] {
 .msg--user .msg__body {
   max-width: 82%;
   background: var(--chat-user-bg);
-  border: 1px solid var(--chat-user-border);
   border-radius: 14px;
   color: var(--chat-user-fg);
   padding: 10px 16px;
@@ -4391,7 +4389,6 @@ a[href] {
 }
 .msg--user-failed .msg__body {
   opacity: 0.7;
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
 }
 .msg__send-failed {
   margin-top: 6px;
@@ -28236,7 +28233,6 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 .msg--user .msg__body {
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
   border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 11%, var(--bg-elev));
 }
@@ -29607,7 +29603,6 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 :root[data-theme-style] .msg--user:not(.msg--im-source) .msg__body:not(.msg__body--editing) {
   max-width: min(80%, 650px);
   padding: 11px 15px;
-  border: 1px solid var(--chat-user-border);
   border-radius: 8px;
   background: var(--chat-user-bg);
   color: var(--chat-user-fg);
@@ -32119,120 +32114,92 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   stroke: var(--err);
 }
 
-/* popover 卡片 —— 对齐 context-panel__capacity-card 风格（portal 到 body，无 .app--creation 前缀） */
+/* popover 卡片 —— 简洁风格，对齐 .modelsw__menu（portal 到 body） */
 /*
-/*
- * NOTE (font-scale): this popover is portaled to <body>, so it has no
- * .app--creation prefix, yet it is ONLY rendered in creation layout
- * (Composer gates it behind showContextWindowRing = sidebarCreation =
- * desktopLayoutStyle === "creation"). Font sizes here intentionally use
- * calc(<px> * var(--font-scale)) to match the rest of creation and follow
- * the interface text-size setting. Keep the calc(); do NOT revert to bare px.
+ * NOTE (font-scale): this popover is portaled to <body>, so font sizes use
+ * calc(<px> * var(--font-scale)) to follow the interface text-size setting.
  * The typography-overflow-contract test asserts no bare-px font-size remains
  * in .context-ring-popover rules, so a plain "12px" here will fail CI.
  */
-.context-ring-popover,
-:root[data-theme-style] .context-ring-popover {
+.context-ring-popover {
   min-width: 220px;
   max-width: 270px;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border-soft));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--bg)) 0%, var(--bg) 100%);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
   font-size: calc(12px * var(--font-scale));
   line-height: 1.5;
 }
-/* 警告/注意态 tinted border + gradient */
-.context-ring-popover--notice,
-:root[data-theme-style] .context-ring-popover--notice {
-  border-color: color-mix(in srgb, var(--warn) 26%, var(--border-soft));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--warn) 6%, var(--bg)) 0%, var(--bg) 100%);
+.context-ring-popover--notice {
+  border-color: color-mix(in srgb, var(--warn) 30%, var(--border));
 }
-.context-ring-popover--warn,
-:root[data-theme-style] .context-ring-popover--warn {
-  border-color: color-mix(in srgb, var(--err) 28%, var(--border-soft));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--err) 6%, var(--bg)) 0%, var(--bg) 100%);
+.context-ring-popover--warn {
+  border-color: color-mix(in srgb, var(--err) 30%, var(--border));
 }
 .context-ring-popover__inner {
-  padding: 10px;
+  min-width: 0;
 }
 .context-ring-popover__header {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 10px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.context-ring-popover__pct {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-  font-size: calc(11px * var(--font-scale));
-  font-weight: 650;
-  line-height: 1.4;
-  font-variant-numeric: tabular-nums;
-}
-/* 进度条 */
-.context-ring-popover__gauge {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.context-ring-popover__bar {
-  position: relative;
-  display: flex;
-  height: 5px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--fg-faint) 10%, transparent);
-}
-.context-ring-popover__fill {
-  height: 100%;
-  min-width: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
-  transition: width 0.3s var(--ease-out);
-}
-/* 进度条标记线 */
-.context-ring-popover__mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  pointer-events: none;
-}
-.context-ring-popover__mark--compact {
-  background: color-mix(in srgb, var(--warn) 55%, var(--fg-faint));
-}
-.context-ring-popover__mark--attention {
-  background: repeating-linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--fg-faint) 35%, transparent) 0px,
-    color-mix(in srgb, var(--fg-faint) 35%, transparent) 2px,
-    transparent 2px,
-    transparent 4px
-  );
+  margin-bottom: 6px;
 }
 .context-ring-popover__title {
   min-width: 0;
   overflow: hidden;
   color: var(--fg);
-  font-size: calc(14px * var(--font-scale));
+  font-size: calc(13px * var(--font-scale));
   font-weight: 620;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.context-ring-popover__pct {
+  flex: 0 0 auto;
+  color: var(--fg-dim);
+  font-size: calc(11px * var(--font-scale));
+  font-variant-numeric: tabular-nums;
+}
+/* 进度条 */
+.context-ring-popover__gauge {
+  margin-bottom: 8px;
+}
+.context-ring-popover__bar {
+  position: relative;
+  display: flex;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--fg-faint) 12%, transparent);
+}
+.context-ring-popover__fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.3s var(--ease-out);
+}
+.context-ring-popover--notice .context-ring-popover__fill {
+  background: var(--warn);
+}
+.context-ring-popover--warn .context-ring-popover__fill {
+  background: var(--err);
+}
+/* 压缩阈值标记线 */
+.context-ring-popover__mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: var(--fg-faint);
+}
+/* 明细行 */
 .context-ring-popover__rows {
   display: flex;
   flex-direction: column;
@@ -32258,23 +32225,25 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 .context-ring-popover__value--accent {
   color: var(--accent);
-  font-weight: 650;
 }
-/* popover 内环 SVG */
-.context-ring-popover__track {
-  stroke: color-mix(in srgb, var(--fg-faint) 18%, transparent);
+/* 底部压缩按钮 */
+.context-ring-popover__compact {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  font-size: calc(12px * var(--font-scale));
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-out);
 }
-.context-ring-popover__arc {
-  transition: stroke-dashoffset 0.4s var(--ease-out);
-}
-.context-ring-popover--good .context-ring-popover__arc {
-  stroke: var(--accent);
-}
-.context-ring-popover--notice .context-ring-popover__arc {
-  stroke: var(--warn);
-}
-.context-ring-popover--warn .context-ring-popover__arc {
-  stroke: var(--err);
+.context-ring-popover__compact:hover {
+  background: color-mix(in srgb, var(--fg-faint) 14%, var(--bg-soft));
 }
 
 @media (max-width: 760px) {

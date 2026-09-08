@@ -459,10 +459,23 @@ export function formatPerformanceContext(snapshot: PerformanceSnapshot): string 
   }
   if (pipeline?.markdownWorker) {
     const w = pipeline.markdownWorker;
-    lines.push(
-      `markdown worker: ${w.pending} pending, ${w.completed} parsed, avg ${fmtNumber(w.avgParseMs, 1)}ms, max ${fmtNumber(w.maxParseMs)}ms` +
-        `${w.fallbackActive ? ", fallback active" : ""}${w.workerFailures > 0 ? `, ${w.workerFailures} worker failures` : ""}`,
-    );
+    const parts = [
+      `${w.pending} pending`,
+      `${w.completed} parsed`,
+      `avg ${fmtNumber(w.avgParseMs, 1)}ms`,
+      `max ${fmtNumber(w.maxParseMs)}ms`,
+    ];
+    // Worker vs fallback split: fallback parses run synchronously on the main
+    // thread and are prime suspects in event-loop-lag reports.
+    if (w.workerParses > 0) {
+      parts.push(`worker ${w.workerParses} (avg ${fmtNumber(w.avgWorkerParseMs, 1)}ms, max ${fmtNumber(w.maxWorkerParseMs)}ms)`);
+    }
+    if (w.fallbackParses > 0) {
+      parts.push(`fallback ${w.fallbackParses} (avg ${fmtNumber(w.avgFallbackParseMs, 1)}ms, max ${fmtNumber(w.maxFallbackParseMs)}ms)`);
+    }
+    if (w.fallbackActive) parts.push("fallback active");
+    if (w.workerFailures > 0) parts.push(`${w.workerFailures} worker failures`);
+    lines.push(`markdown worker: ${parts.join(", ")}`);
   }
   if (pipeline?.transcriptCache) {
     const c = pipeline.transcriptCache;

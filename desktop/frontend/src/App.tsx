@@ -1015,6 +1015,7 @@ export default function App() {
     refreshMeta,
     pickWorkspace,
     switchWorkspace,
+    compact,
     rewindForTab,
     rewindForTabDetailed,
     undoRewindForTab,
@@ -5051,6 +5052,7 @@ export default function App() {
               aria-hidden={composerSurfaceHidden ? true : undefined}
             >
             <Composer
+              onCompact={compact}
               running={remoteSurfaceActive ? remoteSession.running : state.running || rewindCommitting}
               collaborationMode={collaborationMode}
               toolApprovalMode={toolApprovalMode}

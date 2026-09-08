@@ -167,6 +167,16 @@ export default defineConfig({
     host: "127.0.0.1",
     port: devPort,
     strictPort: true,
+    // Point HMR at the Vite server itself. Without this, the client defaults to
+    // same-origin — inside `wails dev` the page origin is the random
+    // wails.localhost:<port> dev proxy, and macOS ATS blocks the insecure
+    // ws:// handshake there (then Vite falls back, with a console [Error]).
+    // Port is deliberately omitted so it follows the effective server.port
+    // (which CLI --port can override independently of REASONIX_DESKTOP_VITE_PORT).
+    hmr: {
+      host: "127.0.0.1",
+      protocol: "ws",
+    },
     fs: {
       // Browser-dev theme mocks use the same embedded source assets as Wails.
       // Keep the allow-list narrow while retaining Vite's workspace root.

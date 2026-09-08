@@ -1,4 +1,4 @@
-import { userRowKey, type AssistantItem, type TranscriptRow, type TurnModel } from "./transcriptRows";
+import { userRowKey, type AssistantItem, type NoticeItem, type TranscriptRow, type TurnModel } from "./transcriptRows";
 
 // The streaming turn renders in Virtuoso's Footer, outside its measured size
 // tree. Keep the active user's row in history and preserve every later row's
@@ -34,6 +34,16 @@ function firstRowKeyForModel(model: TurnModel): string | undefined {
   return undefined;
 }
 
+// Model-switch notices confirm an accepted switch and must scroll with history
+// even while the turn streams: pinning them to the live footer makes them
+// flash on every stream update. Pull them into the history tail instead.
+function pullLiveModelSwitchNotices(rows: readonly TranscriptRow[]): TranscriptRow[] {
+  return rows.filter((row) => row.kind === "notice" && (row.item as NoticeItem).variant === "model-switch");
+}
+function withoutLiveModelSwitchNotices(rows: readonly TranscriptRow[]): TranscriptRow[] {
+  return rows.filter((row) => !(row.kind === "notice" && (row.item as NoticeItem).variant === "model-switch"));
+}
+
 export function splitTranscriptLiveRows(
   models: readonly TurnModel[],
   rows: readonly TranscriptRow[],
@@ -50,13 +60,19 @@ export function splitTranscriptLiveRows(
     const firstKey = firstRowKeyForModel(active);
     const firstIndex = firstKey ? rows.findIndex((row) => row.key === firstKey) : -1;
     if (!firstKey || firstIndex < 0) return { historyRows: [...rows], liveRows: [], liveActive: true };
-    return { historyRows: rows.slice(0, firstIndex), liveRows: rows.slice(firstIndex), liveActive: true };
+    const liveRows = rows.slice(firstIndex);
+    return {
+      historyRows: [...rows.slice(0, firstIndex), ...pullLiveModelSwitchNotices(liveRows)],
+      liveRows: withoutLiveModelSwitchNotices(liveRows),
+      liveActive: true,
+    };
   }
   const userIndex = rows.findIndex((row) => row.key === userRowKey(activeUser.id));
   if (userIndex < 0) return { historyRows: [...rows], liveRows: [], liveActive: false };
+  const liveRows = rows.slice(userIndex + 1);
   return {
-    historyRows: rows.slice(0, userIndex + 1),
-    liveRows: rows.slice(userIndex + 1),
+    historyRows: [...rows.slice(0, userIndex + 1), ...pullLiveModelSwitchNotices(liveRows)],
+    liveRows: withoutLiveModelSwitchNotices(liveRows),
     liveActive: true,
   };
 }

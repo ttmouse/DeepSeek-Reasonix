@@ -37,6 +37,15 @@ export interface MarkdownWorkerDiagnostic {
   completed: number;
   avgParseMs: number;
   maxParseMs: number;
+  /** Parses served by the worker thread (off-main-thread — safe). */
+  workerParses: number;
+  avgWorkerParseMs: number;
+  maxWorkerParseMs: number;
+  /** Parses served by the synchronous main-thread fallback — these freeze
+   *  the event loop and are the first suspect in event-loop-lag reports. */
+  fallbackParses: number;
+  avgFallbackParseMs: number;
+  maxFallbackParseMs: number;
   fallbackActive: boolean;
   workerFailures: number;
 }

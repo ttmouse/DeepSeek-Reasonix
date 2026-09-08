@@ -164,7 +164,27 @@ console.log("\nmarkdown worker client");
   const blocks = await client.parse("fallback text").promise;
   eq(blocks, RESULT, "fallback resolves the parse result without a Worker");
   eq(seen.join(","), "fallback text", "fallback receives the exact source text");
+  const stats = client.stats();
+  eq(stats.fallbackParses, 1, "fallback parse is counted on the fallback path");
+  eq(stats.workerParses, 0, "fallback parse is not counted on the worker path");
+  eq(stats.completed, 1, "fallback parse still lands in the total counter");
+  eq(stats.maxFallbackParseMs > 0, true, "fallback latency counter is recorded");
   (globalThis as { Worker?: unknown }).Worker = class {};
+}
+
+// ── worker-path parses count separately from fallback ones ───────────────────
+{
+  const worker = new FakeWorker();
+  const client = new MarkdownWorkerClient({ createWorker: () => Promise.resolve(worker) });
+  const handle = client.parse("worker counted");
+  await tick();
+  worker.respond(worker.sent[0].id, RESULT);
+  await handle.promise;
+  const stats = client.stats();
+  eq(stats.workerParses, 1, "worker parse is counted on the worker path");
+  eq(stats.fallbackParses, 0, "worker parse is not counted on the fallback path");
+  eq(stats.completed, 1, "worker parse still lands in the total counter");
+  eq(stats.maxWorkerParseMs >= 0, true, "worker latency counter is recorded");
 }
 
 // ── dispose settles pending work and terminates the worker ───────────────────

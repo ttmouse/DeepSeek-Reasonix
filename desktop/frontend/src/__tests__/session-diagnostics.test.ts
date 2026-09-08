@@ -87,7 +87,20 @@ resetSessionDiagnostics();
 // --- mounted rows + registered providers ---
 {
   noteTranscriptRowCounts(30, 412);
-  registerMarkdownWorkerDiagnostics(() => ({ pending: 1, completed: 9, avgParseMs: 4, maxParseMs: 11, fallbackActive: false, workerFailures: 0 }));
+  registerMarkdownWorkerDiagnostics(() => ({
+    pending: 1,
+    completed: 9,
+    avgParseMs: 4,
+    maxParseMs: 11,
+    workerParses: 7,
+    avgWorkerParseMs: 3,
+    maxWorkerParseMs: 11,
+    fallbackParses: 2,
+    avgFallbackParseMs: 7,
+    maxFallbackParseMs: 9,
+    fallbackActive: false,
+    workerFailures: 0,
+  }));
   registerTranscriptCacheDiagnostics(() => ({
     residentSessions: 2,
     maxResidentSessions: 3,
@@ -101,6 +114,10 @@ resetSessionDiagnostics();
   const snapshot = sessionPipelineDiagnostics();
   ok(snapshot.mountedRows?.mounted === 30 && snapshot.mountedRows.total === 412, "mounted row counts flow through");
   ok(snapshot.markdownWorker?.completed === 9, "markdown worker provider flows through");
+  ok(
+    snapshot.markdownWorker?.workerParses === 7 && snapshot.markdownWorker?.fallbackParses === 2,
+    "markdown worker/fallback split flows through",
+  );
   ok(snapshot.transcriptCache?.residentSessions === 2 && snapshot.transcriptCache.historyEvictions === 1, "cache provider flows through");
 }
 

@@ -3391,6 +3391,7 @@ export const en = {
   "context.windowStatusNearLimit": "Near context limit",
   "context.windowStatusOverLimit": "Over context limit",
   "context.windowUsageSummary": "{pct}% used",
+  "context.ringCompactNow": "Compact conversation now",
   "context.windowCompactRemaining": "{used} / {window} · {tokens} until compression",
   "context.windowCompactDistance": "To compact",
   "context.windowUsedLabel": "Used",

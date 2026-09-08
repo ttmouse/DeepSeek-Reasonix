@@ -21,6 +21,8 @@ interface ContextWindowRingProps {
   cacheHitTokens?: number;
   cacheMissTokens?: number;
   balance?: BalanceInfo;
+  /** Click the ring to compact the current session immediately. */
+  onCompact?: () => void;
 }
 
 const RING = 14;
@@ -44,7 +46,7 @@ function fmtDuration(ms: number, t: ReturnType<typeof useI18n>['t']): string {
   return t("context.durationMinutesSeconds", { minutes, seconds });
 }
 
-export function ContextWindowRing({ enabled = true, context, tabId, turnCost, turnRateBand, currency, cacheHitTokens, cacheMissTokens, balance }: ContextWindowRingProps) {
+export function ContextWindowRing({ enabled = true, context, tabId, turnCost, turnRateBand, currency, cacheHitTokens, cacheMissTokens, balance, onCompact }: ContextWindowRingProps) {
   const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [info, setInfo] = useState<ContextPanelInfo | null>(null);
@@ -186,7 +188,6 @@ export function ContextWindowRing({ enabled = true, context, tabId, turnCost, tu
             <div className="context-ring-popover__bar">
               <span className="context-ring-popover__fill" style={{ width: `${usagePct}%` }} />
               <span className="context-ring-popover__mark context-ring-popover__mark--compact" style={{ left: `${compactPct}%` }} />
-              <span className="context-ring-popover__mark context-ring-popover__mark--attention" style={{ left: `30%` }} />
             </div>
           </div>
           <div className="context-ring-popover__rows">
@@ -247,6 +248,18 @@ export function ContextWindowRing({ enabled = true, context, tabId, turnCost, tu
               </div>
             )}
           </div>
+          {onCompact && (
+            <button
+              type="button"
+              className="context-ring-popover__compact"
+              onClick={() => {
+                setOpen(false);
+                onCompact();
+              }}
+            >
+              {t("context.ringCompactNow")}
+            </button>
+          )}
         </div>
       </AnchoredPopover>
     </>

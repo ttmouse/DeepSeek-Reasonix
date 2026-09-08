@@ -45,7 +45,6 @@ const OWNED_ELSEWHERE = new Map(Object.entries({
   "transcript-scroll-release.test.ts": "test:transcript",
   "transcript-virtualization.test.tsx": "test:transcript",
   "nested-scroll-handoff.test.ts": "test:transcript",
-  "creation-transcript-scrollbar.test.ts": "test:transcript",
   "markdown-table-virtual.test.tsx": "test:transcript",
   "typography-overflow-contract.test.ts": "test:transcript",
   "transcript-selection-retention.test.tsx": "test:transcript",

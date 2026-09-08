@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../lib/i18n";
 import { app } from "../lib/bridge";
-import { Activity, Check, ChevronRight, FileDiff, FileText, GitBranch, Plus, Search, Server } from "lucide-react";
+import { Activity, Check, ChevronRight, Command, FileDiff, FileText, GitBranch, Plus, Search, Server } from "lucide-react";
 import type { ComponentType } from "react";
 import type { TabType } from "../store/activityBar";
 import { ACTIVITY_BAR_ENTRIES } from "./ActivityBar/activityBarConfig";
@@ -29,7 +29,7 @@ const ENTRY_ICONS: Record<TabType, ComponentType<{ size?: number | string; class
   remote: Server,
   // Entries beyond the exposed set are not listed yet; keep a stub so the
   // map stays total if a future config adds them.
-  instructions: FileText,
+  instructions: Command,
   terminal: FileText,
   browser: FileText,
 };

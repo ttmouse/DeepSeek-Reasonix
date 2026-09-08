@@ -599,6 +599,7 @@ export function Composer({
   cacheHitTokens,
   cacheMissTokens,
   balance,
+  onCompact,
   onInvocationMetadataChange,
 }: {
   running: boolean;
@@ -700,6 +701,8 @@ export function Composer({
   cacheHitTokens?: number;
   cacheMissTokens?: number;
   balance?: BalanceInfo;
+  /** Click the context ring to compact the current session immediately. */
+  onCompact?: () => void;
 }) {
   const { t, locale } = useI18n();
   const { showToast } = useToast();
@@ -4612,6 +4615,7 @@ export function Composer({
                 cacheHitTokens={cacheHitTokens}
                 cacheMissTokens={cacheMissTokens}
                 balance={balance}
+                onCompact={onCompact}
               />
               <ModelSwitcher label={modelLabel} tabId={tabId} onPick={onSwitchModel} />
             </div>

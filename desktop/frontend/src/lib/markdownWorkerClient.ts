@@ -22,6 +22,7 @@
 // remark+katex stack only ever lands in lazy chunks / the inline worker.
 
 import type { MarkdownParseResult } from "./markdownPipeline";
+import { addBreadcrumb } from "./breadcrumbs";
 import { registerMarkdownWorkerDiagnostics } from "./sessionDiagnostics";
 
 type MarkdownPipelineModule = typeof import("./markdownPipeline");
@@ -70,10 +71,23 @@ interface PendingRequest {
   startedAt: number;
   text: string;
   state: "queued" | "worker" | "fallback";
+  /** performance.now() when the request was posted to the worker (worker path). */
+  postedAt?: number;
 }
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+// A synchronous fallback parse of >=FALLBACK_BREADCRUMB_MIN_MS is a real
+// main-thread freeze worth attributing in crash/perf reports. Smaller ones
+// stay breadcrumb-silent so a streaming session cannot flood the 30-entry
+// ring and push out the surrounding context.
+const FALLBACK_BREADCRUMB_MIN_MS = 100;
+
+function noteFallbackParseBreadcrumb(durationMs: number): void {
+  if (durationMs < FALLBACK_BREADCRUMB_MIN_MS) return;
+  addBreadcrumb("markdown", `fallback parse ${Math.round(durationMs)}ms (main thread)`);
 }
 
 export class MarkdownWorkerClient {
@@ -86,10 +100,20 @@ export class MarkdownWorkerClient {
   private pumping = false;
   private nextId = 1;
   private disposed = false;
-  // Content-free diagnostics (sessionDiagnostics / crash perf context).
+  // Content-free diagnostics (sessionDiagnostics / crash perf context). The
+  // worker/fallback split is the signal that answers "did the parse run
+  // off-main-thread or freeze the event loop": the fallback path is a
+  // synchronous main-thread parse, so its counters are the ones to watch in
+  // event-loop-lag reports.
   private completedParses = 0;
   private totalParseMs = 0;
   private maxParseMs = 0;
+  private workerParses = 0;
+  private workerTotalMs = 0;
+  private workerMaxMs = 0;
+  private fallbackParses = 0;
+  private fallbackTotalMs = 0;
+  private fallbackMaxMs = 0;
   private fallbackActive = false;
   private workerFailures = 0;
   /** Test/diagnostic introspection: in-flight request count. */
@@ -99,11 +123,18 @@ export class MarkdownWorkerClient {
 
   /** Parse-pipeline counters for the diagnostics snapshot. */
   stats() {
+    const avg = (count: number, total: number) => (count > 0 ? total / count : 0);
     return {
       pending: this.pending.size,
       completed: this.completedParses,
-      avgParseMs: this.completedParses > 0 ? this.totalParseMs / this.completedParses : 0,
+      avgParseMs: avg(this.completedParses, this.totalParseMs),
       maxParseMs: this.maxParseMs,
+      workerParses: this.workerParses,
+      avgWorkerParseMs: avg(this.workerParses, this.workerTotalMs),
+      maxWorkerParseMs: this.workerMaxMs,
+      fallbackParses: this.fallbackParses,
+      avgFallbackParseMs: avg(this.fallbackParses, this.fallbackTotalMs),
+      maxFallbackParseMs: this.fallbackMaxMs,
       fallbackActive: this.fallbackActive,
       workerFailures: this.workerFailures,
     };
@@ -158,6 +189,7 @@ export class MarkdownWorkerClient {
         return;
       }
       entry.state = "worker";
+      entry.postedAt = nowMs();
       worker.postMessage({ id, text: entry.text } satisfies MarkdownParseRequest);
     } finally {
       this.pumping = false;
@@ -173,11 +205,24 @@ export class MarkdownWorkerClient {
 
   // noteSettled records one completed parse attempt (success or error) for
   // the latency counters; cancellations resolve with undefined and skip it.
-  private noteSettled(entry: PendingRequest): void {
-    const duration = Math.max(0, nowMs() - entry.startedAt);
+  // `path` splits the worker (off-main-thread) and fallback (synchronous
+  // main-thread) counters; `durationMs` overrides the default queue-inclusive
+  // latency when a tighter window was measured (postedAt for the worker, the
+  // in-process run window for the fallback).
+  private noteSettled(entry: PendingRequest, path: "worker" | "fallback", durationMs?: number): void {
+    const duration = Math.max(0, durationMs ?? nowMs() - entry.startedAt);
     this.completedParses += 1;
     this.totalParseMs += duration;
     if (duration > this.maxParseMs) this.maxParseMs = duration;
+    if (path === "worker") {
+      this.workerParses += 1;
+      this.workerTotalMs += duration;
+      if (duration > this.workerMaxMs) this.workerMaxMs = duration;
+    } else {
+      this.fallbackParses += 1;
+      this.fallbackTotalMs += duration;
+      if (duration > this.fallbackMaxMs) this.fallbackMaxMs = duration;
+    }
   }
 
   private parseInProcessAsync(id: number, text: string): void {
@@ -189,12 +234,18 @@ export class MarkdownWorkerClient {
     const run = injected
       ? async () => injected(text)
       : () => loadPipeline().then((pipeline) => pipeline.parseMarkdown(text));
+    // The first fallback parse may spend its window waiting on the dynamic
+    // pipeline import (async, does not block the loop); every subsequent one
+    // is a synchronous main-thread parse. Either way the measured window is
+    // what the parse latency counters report.
+    const runStartedAt = nowMs();
     void run().then(
       (result) => {
         const entry = this.pending.get(id);
         if (entry) {
           this.pending.delete(id);
-          this.noteSettled(entry);
+          this.noteSettled(entry, "fallback", nowMs() - runStartedAt);
+          noteFallbackParseBreadcrumb(nowMs() - runStartedAt);
           if (this.disposed) entry.resolve(undefined);
           else entry.resolve(result);
         }
@@ -206,7 +257,8 @@ export class MarkdownWorkerClient {
         const entry = this.pending.get(id);
         if (entry) {
           this.pending.delete(id);
-          this.noteSettled(entry);
+          this.noteSettled(entry, "fallback", nowMs() - runStartedAt);
+          noteFallbackParseBreadcrumb(nowMs() - runStartedAt);
           entry.reject(error instanceof Error ? error : new Error(String(error)));
         }
         if (this.activeRequestId === id) this.activeRequestId = null;
@@ -241,7 +293,7 @@ export class MarkdownWorkerClient {
     if (!entry) return; // cancelled or superseded — drop the stale response
     this.pending.delete(response.id);
     if (this.activeRequestId === response.id) this.activeRequestId = null;
-    this.noteSettled(entry);
+    this.noteSettled(entry, "worker", entry.postedAt !== undefined ? nowMs() - entry.postedAt : undefined);
     this.fallbackActive = false;
     if (response.error !== undefined) {
       entry.reject(new Error(response.error));
@@ -332,5 +384,18 @@ export function setMarkdownWorkerClientForTest(client: MarkdownWorkerClient | nu
 // Diagnostics provider: lets crash.ts/bench read worker counters without an
 // eager import of this lazy-chunk module.
 registerMarkdownWorkerDiagnostics(() =>
-  singleton?.stats() ?? { pending: 0, completed: 0, avgParseMs: 0, maxParseMs: 0, fallbackActive: false, workerFailures: 0 },
+  singleton?.stats() ?? {
+    pending: 0,
+    completed: 0,
+    avgParseMs: 0,
+    maxParseMs: 0,
+    workerParses: 0,
+    avgWorkerParseMs: 0,
+    maxWorkerParseMs: 0,
+    fallbackParses: 0,
+    avgFallbackParseMs: 0,
+    maxFallbackParseMs: 0,
+    fallbackActive: false,
+    workerFailures: 0,
+  },
 );
