@@ -3473,6 +3473,15 @@ export default function App() {
     });
   }, [activeTabId, commitThenSend, controllerReady]);
 
+  // Right-click on a quick-panel card: insert text into the composer only, no auto-submit.
+  const handleInstructionCopyToInput = useCallback((text: string) => {
+    if (!activeTabId) return;
+    setComposerInsertRequestsByTab((current) => ({
+      ...current,
+      [activeTabId]: { id: Date.now(), text, mode: "insert" },
+    }));
+  }, [activeTabId]);
+
   const handleDeliveryContinue = useCallback(async () => {
     await continueDelivery({
       tabId: activeTabIdRef.current,
@@ -5264,7 +5273,7 @@ export default function App() {
                   </Suspense>
                 ) : tab.type === "instructions" ? (
                   <Suspense fallback={null}>
-                    <InstructionPanel onPrompt={handleTranscriptPrompt} />
+                    <InstructionPanel onPrompt={handleTranscriptPrompt} onCopyToInput={handleInstructionCopyToInput} />
                   </Suspense>
                 ) : (
                   <Suspense fallback={null}>

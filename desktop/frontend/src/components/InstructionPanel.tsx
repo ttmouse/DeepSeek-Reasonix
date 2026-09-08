@@ -73,7 +73,7 @@ function readLocalFallback(): PromptItem[] {
   }
 }
 
-export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => void }) {
+export function InstructionPanel({ onPrompt, onCopyToInput }: { onPrompt?: (text: string) => void; onCopyToInput?: (text: string) => void }) {
   const t = useT();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -203,6 +203,17 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
     [onPrompt, editingId],
   );
 
+  // Right-click: fill the text into the composer without submitting.
+  const handleCardContextMenu = useCallback(
+    (e: React.MouseEvent, prompt: PromptItem) => {
+      e.preventDefault();
+      if (!prompt.text.trim() || editingId) return;
+      setPrompts((prev) => prev.map((p) => (p.id === prompt.id ? { ...p, count: p.count + 1 } : p)));
+      onCopyToInput?.(prompt.text.trim());
+    },
+    [onCopyToInput, editingId],
+  );
+
   const handleCardKeyDown = useCallback(
     (e: React.KeyboardEvent, prompt: PromptItem) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -258,6 +269,7 @@ export function InstructionPanel({ onPrompt }: { onPrompt?: (text: string) => vo
               <div
                 className="instruction-panel__card-body"
                 onClick={() => handleCardClick(prompt)}
+                onContextMenu={(e) => handleCardContextMenu(e, prompt)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => handleCardKeyDown(e, prompt)}
