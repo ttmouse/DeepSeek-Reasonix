@@ -595,5 +595,71 @@ console.log("\nask card layout");
   dom.window.close();
 }
 
+// Regression: a failed delivery (dead/stale turn) must not freeze the shelf.
+// The card clears `submitting`, shows why, and stays interactive instead of
+// swallowing every click until the same ask is replayed back.
+{
+  const dom = installDom();
+  const rootEl = document.getElementById("root");
+  if (!rootEl) throw new Error("missing root");
+  const root = createRoot(rootEl);
+  const attempts: string[] = [];
+  const ask: WireAsk = {
+    id: "ask-delivery-failure",
+    questions: [
+      {
+        id: "target",
+        prompt: "Deliver or fail",
+        options: [{ label: "Alpha", description: "Option A" }],
+      },
+    ],
+  };
+  const onAnswer = async (id: string, answers: QuestionAnswer[]) => {
+    attempts.push(id);
+    throw new Error("no active runtime to deliver ask answer");
+  };
+
+  await act(async () => {
+    root.render(
+      React.createElement(LocaleProvider, null,
+        React.createElement(AskCard, {
+          ask,
+          onAnswer,
+          onDismiss: () => undefined,
+          onStop: () => undefined,
+        }),
+      ),
+    );
+    await flushTimers();
+  });
+
+  const confirm = () => document.querySelector(".decision-confirm-bar__confirm") as HTMLButtonElement;
+  const optionButtons = () => [...document.querySelectorAll(".prompt-shelf__actions .prompt-action")] as HTMLElement[];
+
+  eq(confirm().disabled, false, "regression: confirm enabled before submit");
+
+  await act(async () => {
+    document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await flushTimers();
+  });
+  eq(attempts.length, 1, "regression: first submit attempted");
+  const errEl = document.querySelector(".ask-shelf__error");
+  ok(errEl !== null && (errEl.textContent ?? "").length > 0, "regression: delivery failure is surfaced");
+  eq(confirm().disabled, false, "regression: confirm re-enabled after failure");
+  eq(optionButtons()[0]?.getAttribute("aria-disabled"), null, "regression: option row interactive after failure");
+
+  // A second submit must be possible: the shelf is not stuck.
+  await act(async () => {
+    document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await flushTimers();
+  });
+  eq(attempts.length, 2, "regression: second submit goes through after failure");
+
+  await act(async () => {
+    root.unmount();
+  });
+  dom.window.close();
+}
+
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
 if (failed > 0) process.exit(1);

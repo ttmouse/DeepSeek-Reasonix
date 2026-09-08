@@ -19,8 +19,8 @@ export function AskCard({
   onStop,
 }: {
   ask: WireAsk;
-  onAnswer: (id: string, answers: QuestionAnswer[]) => void;
-  onDismiss: () => void;
+  onAnswer: (id: string, answers: QuestionAnswer[]) => void | Promise<void>;
+  onDismiss: () => void | Promise<void>;
   onStop: () => void;
 }) {
   const t = useT();
@@ -35,6 +35,7 @@ export function AskCard({
   const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [descriptionTruncated, setDescriptionTruncated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const shelfRef = useRef<HTMLDivElement | null>(null);
   const customInputRef = useRef<HTMLInputElement | null>(null);
   const instanceId = useId();
@@ -65,6 +66,7 @@ export function AskCard({
     setActive(0);
     setSelectedIndex(0);
     setSubmitting(false);
+    setDeliveryError(null);
   }, [ask.id]);
 
   useEffect(() => {
@@ -100,11 +102,26 @@ export function AskCard({
 
   const currentAnswered = q ? answered(q) : false;
 
+  // Deliver an answer without freezing the shelf: a failed delivery (dead or
+  // stale turn, controller rebuild) must clear the in-flight flag and explain
+  // itself so the card stays interactive instead of swallowing every click
+  // until the same ask is replayed back into a stuck submitting state.
+  const deliverAnswer = async (submit: () => void | Promise<void>) => {
+    setSubmitting(true);
+    setDeliveryError(null);
+    try {
+      await submit();
+    } catch {
+      setDeliveryError(t("ask.submitFailed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const finishOrAdvance = (nextSel = sel, nextCustom = custom) => {
     if (submitting) return;
     if (isLast) {
-      setSubmitting(true);
-      onAnswer(ask.id, answersFrom(nextSel, nextCustom));
+      void deliverAnswer(() => onAnswer(ask.id, answersFrom(nextSel, nextCustom)));
       return;
     }
     setActive((i) => Math.min(i + 1, questions.length - 1));
@@ -321,6 +338,11 @@ export function AskCard({
       }
       note={
         <>
+          {deliveryError && (
+            <div className="ask-shelf__error" role="alert">
+              {deliveryError}
+            </div>
+          )}
           {selectedDescriptionId && descriptionTruncated && (
             <PromptDescriptionDisclosure
               descriptionId={`${selectedDescriptionId}-detail`}
@@ -360,8 +382,7 @@ export function AskCard({
           secondaryLabel={t("ask.justChat")}
           onSecondary={() => {
             if (submitting) return;
-            setSubmitting(true);
-            onDismiss();
+            void deliverAnswer(onDismiss);
           }}
           disabled={submitting}
           confirmDisabled={!canConfirm()}

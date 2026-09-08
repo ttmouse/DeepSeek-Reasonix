@@ -3983,8 +3983,8 @@ export function useController() {
     });
   }, [activeTabId, dispatchTo]);
 
-  const answerQuestion = useCallback((id: string, answers: QuestionAnswer[]) => {
-    if (!activeTabId) return;
+  const answerQuestion = useCallback((id: string, answers: QuestionAnswer[]): Promise<void> => {
+    if (!activeTabId) return Promise.resolve();
     const tabId = activeTabId;
     const epoch = statesRef.current.get(tabId)?.promptEpoch ?? 0;
     const turnId = statesRef.current.get(tabId)?.activeTurnId;
@@ -3994,9 +3994,13 @@ export function useController() {
         ? app.AnswerPromptForTab(tabId, turnId, id, answers)
         : Promise.reject(new Error("active turn id is unavailable"))
       : app.AnswerQuestionForTab(tabId, id, answers);
-    request.catch(() => {
+    // Undo the optimistic tombstone and replay (the ask is still genuinely
+    // pending on the backend), then rethrow so the caller (AskCard) can
+    // surface why the submit failed instead of freezing the shelf silently.
+    return request.catch((err: unknown) => {
       dispatchTo(tabId, { type: "submit_prompt_failed", id, epoch });
       replayPendingPromptsForActiveTab(tabId);
+      throw err;
     });
   }, [activeTabId, dispatchTo]);
 

@@ -2204,19 +2204,25 @@ type QuestionAnswer struct {
 // AnswerQuestion resolves a pending ask_request (the `ask` tool) by ID with the
 // user's selections per question.
 func (a *App) AnswerQuestion(id string, answers []QuestionAnswer) {
-	a.AnswerQuestionForTab("", id, answers)
+	_ = a.AnswerQuestionForTab("", id, answers) // legacy global call; error is unreportable here
 }
 
-func (a *App) AnswerQuestionForTab(tabID, id string, answers []QuestionAnswer) {
+// AnswerQuestionForTab resolves a pending ask_request addressed to a tab. A nil
+// controller (dead or stale runtime, controller still building) returns an
+// error instead of swallowing the click: the ask is genuinely pending but no
+// live turn can receive the answer, so the frontend must tell the user rather
+// than pretend the submit landed (#3938 pattern).
+func (a *App) AnswerQuestionForTab(tabID, id string, answers []QuestionAnswer) error {
 	ctrl := a.ctrlByTabID(tabID)
 	if ctrl == nil {
-		return
+		return fmt.Errorf("no active runtime on tab %q to deliver ask answer", tabID)
 	}
 	out := make([]event.AskAnswer, len(answers))
 	for i, an := range answers {
 		out[i] = event.AskAnswer{QuestionID: an.QuestionID, Selected: an.Selected}
 	}
 	ctrl.AnswerQuestion(id, out)
+	return nil
 }
 
 // Compact runs a plain compaction pass (the "compact now" button). Focus-guided
