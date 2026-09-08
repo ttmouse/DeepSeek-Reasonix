@@ -1,4 +1,5 @@
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCreationTranscriptScrollbar } from "../lib/useCreationTranscriptScrollbar";
 import { Virtuoso } from "react-virtuoso";
 import type { ControllerLiveStore, HistoryLoadTrigger, HistoryMutation, Item, LiveStream } from "../lib/useController";
 import type { CheckpointMeta, WireCompletionSummary } from "../lib/types";
@@ -559,13 +560,31 @@ export function Transcript({
       refreshGeometryEnvironment(element);
     }
   }, [entranceRef, refreshGeometryEnvironment, scrollerRef]);
+  const {
+    state: creationScrollbar,
+    handleScroll: handleCreationScroll,
+    onThumbPointerDown: handleCreationScrollbarThumbPointerDown,
+    onRailPointerDown: handleCreationScrollbarRailPointerDown,
+  } = useCreationTranscriptScrollbar({
+    // Always on: the custom rail pins to the window's right edge (riding
+    // --workspace-width) so it stays visible no matter which right-side
+    // panel — docked launcher or workspace dock — owns that edge.
+    enabled: true,
+    contentRevision: items.length,
+    scrollRef,
+    onScroll: () => {},
+    setScrollMode,
+    writeOffset,
+    finishProgrammaticScroll,
+  });
   const handleTranscriptScroll = useCallback(() => {
+    handleCreationScroll();
     deliverScroll();
     noteScrollActivity();
     pagingAuthorization.noteScrollPosition();
     scheduleActiveQuestionSync();
     scheduleBlankViewportCheck();
-  }, [deliverScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
+  }, [deliverScroll, handleCreationScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
   const [handleJumpToQuestion, handleEarlierHistoryReached, retryOlderHistory, questionJumpSurface] = useTranscriptQuestionJump({
     questions, loadedByTurn, layoutSurfaceKey, rowIndexByKey,
     hasOlderHistory, loadingOlderHistory, olderHistoryError, running, scrollElement, scheduleRecovery: scheduleBlankViewportCheck,
@@ -966,6 +985,30 @@ export function Transcript({
           />
         </LiveStreamContext.Provider>
       )}
+
+      {creationScrollbar.visible && (() => {
+        // Fixed rail pinned to the window's right edge (riding --workspace-width
+        // via CSS), vertically spanning the scroller's rect so the thumb math
+        // (relative to rail height == scroller clientHeight) stays valid. Rect
+        // is re-read on every scrollbar state change (scroll / resize / content
+        // growth all flow through the hook's state updates).
+        const scroller = scrollRef.current;
+        const rect = scroller?.getBoundingClientRect();
+        return (
+          <div
+            className={`transcript__scrollbar transcript__scrollbar--window${creationScrollbar.hot ? " transcript__scrollbar--hot" : ""}`}
+            style={rect ? { top: rect.top, height: rect.height } as CSSProperties : undefined}
+            onPointerDown={handleCreationScrollbarRailPointerDown}
+            aria-hidden="true"
+          >
+            <div
+              className="transcript__scrollbar-thumb"
+              style={{ top: creationScrollbar.thumbTop, height: creationScrollbar.thumbHeight } as CSSProperties}
+              onPointerDown={handleCreationScrollbarThumbPointerDown}
+            />
+          </div>
+        );
+      })()}
 
 
 
