@@ -4098,7 +4098,6 @@ a[href] {
   color: var(--chat-user-fg);
   padding: 10px 16px;
   position: relative;
-  box-shadow: var(--chat-user-shadow);
 }
 .msg--user .msg__body--editing {
   width: min(82%, 680px);
@@ -29606,7 +29605,6 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   border-radius: 8px;
   background: var(--chat-user-bg);
   color: var(--chat-user-fg);
-  box-shadow: var(--app-graphite-shadow);
 }
 
 :root[data-theme-style] .msg--assistant .msg__body {

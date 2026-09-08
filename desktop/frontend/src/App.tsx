@@ -1175,6 +1175,10 @@ export default function App() {
   const dockOpenEntry = useActivityBarStore((s) => s.openEntry);
   const dockCloseTab = useActivityBarStore((s) => s.closeTab);
   const dockSetActivityBarOpen = useActivityBarStore((s) => s.setActivityBarOpen);
+  // Whether the collapsed-dock floating launcher card (悬浮工作区面板) is
+  // dismissed. Toggled by the dedicated launcher icon in the top-right corner;
+  // session-local, so re-opening the app restores the default visible state.
+  const [launcherDismissed, setLauncherDismissed] = useState(false);
   const terminalPanelOpen = useLayoutStore((s) => s.terminalPanelOpen);
   // The dock mirrors the workspace panel's current preview as a single "file"
   // tab: switching files in the list updates that tab's label and path instead
@@ -4365,6 +4369,27 @@ export default function App() {
         aria-pressed={surfaceWorkspacePanelRenderable}
       >
         <PanelRight size={15} />
+      </button>
+    </Tooltip>
+  );
+  // Floating launcher card show/hide toggle. The card only exists while the
+  // dock is collapsed, so the button is rendered only in that state (see the
+  // .app__launcher-toggle mount below). The chevron points the way the card
+  // moves: left to show it, right to hide it.
+  const launcherToggleButton = (
+    <Tooltip label={launcherDismissed ? t("rightDock.showLauncher") : t("rightDock.hideLauncher")}>
+      <button
+        className={[
+          "topicbar__chrome-btn",
+          "topicbar__chrome-btn--launcher",
+          launcherDismissed ? "" : "topicbar__chrome-btn--active",
+        ].filter(Boolean).join(" ")}
+        type="button"
+        onClick={() => setLauncherDismissed((dismissed) => !dismissed)}
+        aria-label={launcherDismissed ? t("rightDock.showLauncher") : t("rightDock.hideLauncher")}
+        aria-pressed={!launcherDismissed}
+      >
+        {launcherDismissed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
       </button>
     </Tooltip>
   );
