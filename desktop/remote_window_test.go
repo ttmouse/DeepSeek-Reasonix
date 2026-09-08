@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -234,6 +235,27 @@ func TestRemoteWindowNavigationJSEscapesURL(t *testing.T) {
 	}
 	if strings.Contains(js, "\");alert") {
 		t.Fatalf("URL escaped the JS string: %q", js)
+	}
+}
+
+func TestRemoteWindowDragRegionJS(t *testing.T) {
+	js := remoteWindowDragRegionJS()
+	for _, want := range []string{
+		"window.__reasonixDragRegion",
+		fmt.Sprintf("var h = %d;", remoteWindowDragRegionHeight),
+		"messageHandlers.external",
+		"postMessage('drag')",
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("drag region JS missing %q:\n%s", want, js)
+		}
+	}
+	// Interactive elements must be excluded so Serve-page UI under the strip
+	// stays clickable.
+	for _, excluded := range []string{"'BUTTON'", "'A'", "'INPUT'", "'role') === 'button'"} {
+		if !strings.Contains(js, excluded) {
+			t.Fatalf("drag region JS does not exclude %s:\n%s", excluded, js)
+		}
 	}
 }
 

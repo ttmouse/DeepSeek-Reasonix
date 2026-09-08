@@ -228,6 +228,64 @@ func remoteWindowNavigationJS(raw string) (string, error) {
 	return "window.location.replace(" + string(encoded) + ");", nil
 }
 
+// remoteWindowDragRegionHeight is the height of the invisible drag strip at
+// the top of the remote window's page, in CSS pixels. It roughly matches the
+// inset traffic-light band of the main window's hidden-inset titlebar.
+const remoteWindowDragRegionHeight = 28
+
+// remoteWindowDragRegionJS returns the script that installs an invisible
+// top-of-window drag region inside the remote Serve page.
+//
+// The remote window on macOS uses mac.TitleBarHiddenInset() like the main
+// window, but unlike the main window it navigates to the loopback Serve page,
+// which has no Wails runtime injected — so the CSS --wails-draggable
+// mechanism the main frontend relies on does not exist there. The window
+// therefore has no draggable area at all and cannot be moved.
+//
+// The fix replays the exact call the Wails runtime itself makes on macOS:
+// window.webkit.messageHandlers.external.postMessage("drag") is handled at the
+// WKWebView level (performWindowDragWithEvent) regardless of page origin, so a
+// small injected listener is enough. The listener is document-level and
+// capture-phase: mousedown within the top strip starts a window drag, unless
+// the press lands on an interactive element so page UI stays clickable. It is
+// installed on every DOM ready (shell, Serve page, and later full reloads)
+// and is idempotent.
+func remoteWindowDragRegionJS() string {
+	return fmt.Sprintf(`(function(){
+if (window.__reasonixDragRegion) return;
+window.__reasonixDragRegion = true;
+var h = %d;
+document.addEventListener('mousedown', function(e){
+  if (e.button !== 0 || e.detail !== 1) return;
+  if (e.clientY > h) return;
+  var t = e.target;
+  while (t && t !== document) {
+    var n = t.nodeName;
+    if (n === 'BUTTON' || n === 'A' || n === 'INPUT' || n === 'SELECT' || n === 'TEXTAREA' || n === 'SUMMARY' || (t.getAttribute && (t.getAttribute('role') === 'button' || t.getAttribute('role') === 'tab' || t.getAttribute('contenteditable') === 'true'))) return;
+    t = t.parentNode;
+  }
+  e.preventDefault();
+  e.stopPropagation();
+  var w = window.webkit;
+  if (w && w.messageHandlers && w.messageHandlers.external) {
+    w.messageHandlers.external.postMessage('drag');
+  }
+}, true);
+})();`, remoteWindowDragRegionHeight)
+}
+
+// injectRemoteWindowDragRegion installs the invisible drag region inside the
+// currently loaded document. macOS only: Windows and Linux remote windows keep
+// a native frame, and the webkit message bridge used by the script is
+// WKWebView-specific. Evaluation via the webview API bypasses page CSP, so it
+// works even if the Serve page ships a strict policy.
+func (a *App) injectRemoteWindowDragRegion() {
+	if goruntime.GOOS != "darwin" {
+		return
+	}
+	runtime.WindowExecJS(a.ctx, remoteWindowDragRegionJS())
+}
+
 func remoteWindowTitle(hostID string) string {
 	hostID = strings.TrimSpace(strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
@@ -574,6 +632,11 @@ func (a *App) consumeInitialRemoteWindowLaunch() (*remoteWindowLaunch, bool, err
 // newer ticket before the first domReady, the initial ticket is discarded, not
 // applied on top of it. Later domReady callbacks from the remote page are no-ops.
 func (a *App) domReadyRemoteWindow() {
+	// Re-install the invisible drag region on every DOM ready: the blank
+	// shell, the Serve page it navigates to, later full reloads, and each
+	// handoff navigation all wipe the previous document (and with it the
+	// listener). The ticket logic below stays first-dom-ready only.
+	a.injectRemoteWindowDragRegion()
 	launch, first, err := a.consumeInitialRemoteWindowLaunch()
 	if !first {
 		return
