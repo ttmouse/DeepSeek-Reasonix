@@ -3749,22 +3749,22 @@ a[href] {
 
 /* ── ChatHistorySidebar (conversation history hover panel) ──────────────────── */
 .ch-sidebar {
-  /* Fixed to the WINDOW's right edge, just inside the custom scrollbar rail
-     (10px wide at right: 0) — same column as the scrollbar instead of
-     floating at the scroller seam next to the docked launcher panel.
-     --workspace-width (0px when the panel is closed) keeps the dots just
-     left of the workspace panel's edge in BOTH modes: embedded (the dock
-     is a grid column) and overlay (the dock floats over the chat's right
-     edge), so the panel never covers them. */
+  /* Fixed to the WINDOW's right edge, hugging the custom scrollbar rail:
+     the offset is exactly the rail's width (10px) on top of
+     --workspace-width (0px when the panel is closed), so the dots sit flush
+     against the rail's left edge in BOTH modes — embedded (the dock is a
+     grid column) and overlay (the dock floats over the chat's right edge) —
+     and slide back to the window edge when the panel closes. If the rail
+     width changes, keep the 10px here in sync. */
   position: fixed;
   top: 50%;
-  right: calc(14px + var(--workspace-width, 0px));
+  right: calc(10px + var(--workspace-width, 0px));
   z-index: var(--z-inline-sticky);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   width: 40px;
-  padding: 0 12px 0 8px;
+  padding: 0 0px 0 8px;
   transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
