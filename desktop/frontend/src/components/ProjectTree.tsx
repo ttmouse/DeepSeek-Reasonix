@@ -1628,7 +1628,6 @@ export function ProjectTree({
             </div>
           );
         }
-        if (!classicTopics) return null;
         return (
           <div className={`project-tree__children${isExpanded ? " project-tree__children--expanded" : ""}`}>
             <div className="project-tree__children-inner">

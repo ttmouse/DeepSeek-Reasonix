@@ -31897,16 +31897,9 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   }
 }
 
-.project-tree__topic-action--busy svg,
-.project-tree__archive-spinner {
-  animation: project-tree-spin 0.9s linear infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .sidebar--workbench .project-tree__topic-state--thinking,
-  .sidebar--workbench .project-tree__topic-state--streaming,
-  .project-tree__topic-action--busy svg,
-  .project-tree__archive-spinner {
+  .sidebar--workbench .project-tree__topic-state--streaming {
     animation: none;
   }
 }
