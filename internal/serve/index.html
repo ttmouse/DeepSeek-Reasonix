@@ -1873,6 +1873,10 @@ input.addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();closeSlashMenu();return;}
   }
   // main keys
+  // Never send while an IME composition is in flight: on macOS/Windows the
+  // Enter that confirms candidates arrives as a plain Enter keydown, which
+  // would submit a half-composed sentence. Same guard as onkey (rewind picker).
+  if(e.isComposing||e.keyCode===229)return;
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();return;}
   if(e.key==='Escape'){
     if(goalMode&&!running){goalMode=false;updateGoalUI();input.value='';closeSlashMenu();return;}
