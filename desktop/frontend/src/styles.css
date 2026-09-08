@@ -3751,10 +3751,14 @@ a[href] {
 .ch-sidebar {
   /* Fixed to the WINDOW's right edge, just inside the custom scrollbar rail
      (10px wide at right: 0) — same column as the scrollbar instead of
-     floating at the scroller seam next to the docked launcher panel. */
+     floating at the scroller seam next to the docked launcher panel.
+     --workspace-width (0px when the panel is closed) keeps the dots just
+     left of the workspace panel's edge in BOTH modes: embedded (the dock
+     is a grid column) and overlay (the dock floats over the chat's right
+     edge), so the panel never covers them. */
   position: fixed;
   top: 50%;
-  right: 14px;
+  right: calc(14px + var(--workspace-width, 0px));
   z-index: var(--z-inline-sticky);
   display: flex;
   flex-direction: column;
@@ -25929,7 +25933,9 @@ body > .mermaid-diagram--fullscreen {
 
 .transcript__scrollbar--window {
   position: fixed;
-  right: 0;
+  /* --workspace-width (0px when closed) rides the rail left of the workspace
+     panel's edge in both embedded and overlay modes, mirroring .ch-sidebar. */
+  right: var(--workspace-width, 0px);
   bottom: auto;
   /* Self-contained: the base rail/thumb rules are scoped to .app--creation,
      so the window variant carries its own chrome. */
