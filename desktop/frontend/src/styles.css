@@ -35235,6 +35235,7 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 .remote-switcher__host {
   min-height: 54px;
   flex-wrap: wrap;
+  flex-shrink: 0;
   padding: 4px 6px 4px 9px;
 }
 .remote-switcher__error-card {

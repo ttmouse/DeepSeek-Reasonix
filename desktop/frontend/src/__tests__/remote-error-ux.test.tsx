@@ -135,6 +135,32 @@ ok(Boolean(warningCard), "degraded connection uses a warning card");
 ok(warningCard?.textContent?.includes("SSH is connected") === true, "degraded warning explains that SSH remains connected");
 ok(warningCard?.textContent?.includes("Connection failed") === false, "degraded warning does not claim the connection failed");
 
+// Layout contract: the host list is a column flex with a max-height; if the
+// rows shrink (default flex-shrink) the per-host error card keeps its natural
+// height and overflows the row, overlapping the next host. The host row must
+// never shrink so the list scrolls instead of colliding.
+{
+  const { readFileSync } = await import("node:fs");
+  const { dirname, resolve } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const styles = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../styles.css"), "utf8");
+  const rule = /([^{}]+)\{([^{}]*)\}/g;
+  const decl = (selector: string, property: string): string | undefined => {
+    let value: string | undefined;
+    let match: RegExpExecArray | null;
+    while ((match = rule.exec(styles)) !== null) {
+      const selectors = match[1].split(",").map((part) => part.trim());
+      if (!selectors.includes(selector)) continue;
+      const declaration = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, "g");
+      let hit: RegExpExecArray | null;
+      while ((hit = declaration.exec(match[2])) !== null) value = hit[1].trim();
+    }
+    return value;
+  };
+  ok(decl(".remote-switcher__host", "flex-shrink") === "0", "failed-state error card never overlaps the next host row (host rows do not shrink)");
+  ok(decl(".remote-switcher__hosts", "overflow-y") === "auto", "over-full host list scrolls instead of squeezing rows");
+}
+
 await act(async () => root.unmount());
 dom.window.close();
 
