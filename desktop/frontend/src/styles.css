@@ -26446,8 +26446,19 @@ body > .mermaid-diagram--fullscreen {
    width+margin (232+8) on the right. Applied as margin on the children — NOT
    footer padding — because later .footer shorthand rules would reset
    padding-right. Creation-hero layout is centered and excluded. */
-html[data-dock-launcher="full"] .footer > *:not(.composer-decision-host--creation-hero) {
-  margin-right: 240px;
+/* The docked launcher consumes the transcript's right edge, so the footer
+   reserves the same inset on ITS OWN box: 240px (launcher 232 + margin 8)
+   plus the shared inline pad. The inset must be footer PADDING, not margins
+   on the children — todo bar, rewind banner, prompt-shelf/decision cards all
+   center themselves with `margin: X auto`, and overriding one side of that
+   shorthand with margin-right made `margin-left: auto` absorb the free space
+   and shoved the panel to the column's right edge. With the inset on the
+   footer, every child resolves its own centering against the same content
+   box as the history rows. Higher specificity than the themed .footer
+   shorthand rules, which would otherwise reset padding-right; creation-hero
+   layout centers itself and is excluded. */
+html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
+  padding-right: calc(240px + var(--transcript-inline-pad, 16px));
 }
 
 /* Branch row: click to open the inline branch switcher. */
