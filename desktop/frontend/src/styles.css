@@ -23630,7 +23630,9 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__actions .topicbar__action-btn--utility:focus-visible:not(:disabled),
 .topicbar__actions .topicbar__chrome-btn:hover:not(:disabled),
 .topicbar__actions .topicbar__chrome-btn:focus-visible:not(:disabled) {
-  background: var(--button-bg) !important;
+  /* --button-bg is #fff in light themes, same as the --bg-elev bar behind
+     these buttons — hover would be invisible. --bg-elev-2 stays visible. */
+  background: var(--bg-elev-2) !important;
   color: var(--fg) !important;
 }
 

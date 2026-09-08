@@ -37,7 +37,9 @@
 .topicbar__menu-item:hover,
 .topicbar__menu-item:focus-visible {
   color: var(--fg);
-  background: var(--button-bg);
+  /* --button-bg equals the menu surface (#fff) in light themes — invisible.
+     Use --bg-elev-2, same as the composer menu items. */
+  background: var(--bg-elev-2);
 }
 
 .topicbar__menu-item:disabled {
@@ -91,5 +93,5 @@
 .topicbar__more-export-menu button:hover,
 .topicbar__more-export-menu button:focus-visible {
   color: var(--fg);
-  background: var(--button-bg);
+  background: var(--bg-elev-2);
 }
