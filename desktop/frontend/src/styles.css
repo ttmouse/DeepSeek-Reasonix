@@ -23494,8 +23494,13 @@ body > .mermaid-diagram--fullscreen {
    already pushes the topic bar left, so the margin is harmless extra spacing.
    Classic/creation keep the toggle inside the actions row, so the extra margin
    does not apply there. */
+/* The dock-toggle is a fixed 30px-wide button at right: 12px, so its left
+   edge sits at vw - 42 while the dock is closed. The actions row ends at
+   vw - margin - 8 (the row's trailing 8px of padding/layout slack); 40px
+   therefore leaves exactly 6px between the launcher toggle and the dock
+   toggle — the same gap the row uses between its own buttons. */
 .layout--workbench .topicbar__actions {
-  margin-right: 36px;
+  margin-right: 40px;
 }
 
 .topicbar__actions > .tooltip-trigger {

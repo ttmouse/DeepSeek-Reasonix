@@ -56,7 +56,7 @@ function isValidBranchName(name: string): boolean {
 // the panel never squeezes the history while visible.
 const HIDE_BELOW_WIDTH = 1010;
 
-export type SpaceMode = "full" | "hidden";
+import type { SpaceMode } from "../lib/launcherCardState";
 
 interface DiffStats {
   added: number;

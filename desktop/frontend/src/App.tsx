@@ -113,7 +113,7 @@ import {
 } from "./lib/types";
 import { requestSessionVersions } from "./lib/sessionRecoveryVersionHostBridge";
 import type { WorkspaceVerificationRevealRequest } from "./components/WorkspacePanel";
-import type { SpaceMode } from "./components/DockLauncher";
+import { resolveLauncherCardState, type SpaceMode } from "./lib/launcherCardState";
 import type { InvocationMetadataMap, StructuredInvocationSubmit } from "./lib/invocationDisplay";
 import type { RewindUndoState } from "./lib/rewindTypes";
 import { formatSelectionReference, type SelectedTextInsertRequest } from "./lib/selectedTextContext";
@@ -4388,8 +4388,11 @@ export default function App() {
   // middle area belongs to the dock/chat, so the card cannot show: the pressed
   // state mirrors whether the card is actually on screen, and the button is
   // inert in that state.
-  const launcherCardRenderable = !effectiveWorkspacePanelGridOpen && launcherSpaceMode === "full";
-  const launcherCardVisible = launcherCardRenderable && !launcherDismissed;
+  const { renderable: launcherCardRenderable, visible: launcherCardVisible } = resolveLauncherCardState({
+    gridOpen: effectiveWorkspacePanelGridOpen,
+    spaceMode: launcherSpaceMode,
+    dismissed: launcherDismissed,
+  });
   const launcherToggleButton = (
     <Tooltip
       label={
