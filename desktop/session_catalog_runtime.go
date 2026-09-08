@@ -228,6 +228,14 @@ func (a *App) runtimeProjectTopicNodes(scope, workspaceRoot string, snapshots []
 			Root: workspaceRoot, TopicID: topicID, TurnsState: string(sessioncatalog.TurnsUnknown),
 			Health: string(sessioncatalog.HealthOK), Children: []ProjectNode{},
 		}
+		// One row per distinct session. A snapshot batch can report the same
+		// session twice (a tab and its detached runtime, or a tab whose stored
+		// path is blank while its controller resolves it), and blank paths all
+		// fold onto the same hashed key — duplicate project_session_* keys break
+		// the tree's sibling-key contract and surface as a React "two children
+		// with the same key" warning. The child key is the identity React sees,
+		// so dedupe on it and merge open/running/status onto the kept row.
+		childrenByKey := map[string]*ProjectNode{}
 		for _, session := range sessions {
 			runtimeStatus := control.RuntimeStatus{}
 			if session.ctrl != nil {
@@ -242,17 +250,28 @@ func (a *App) runtimeProjectTopicNodes(scope, workspaceRoot string, snapshots []
 				continue
 			}
 			path := strings.TrimSpace(session.sessionPath)
+			childKey := projectSessionNodeKey(scope, path)
+			if existing := childrenByKey[childKey]; existing != nil {
+				existing.Open = existing.Open || session.open
+				existing.Running = existing.Running || running
+				if existing.Status == "" {
+					existing.Status = status
+				}
+				continue
+			}
 			sessionLabel := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 			if sessionLabel == "" || sessionLabel == "." {
 				sessionLabel = label
 			}
-			node.Children = append(node.Children, ProjectNode{
-				Key: projectSessionNodeKey(scope, path), Kind: sessionKind, Label: sessionLabel,
+			child := ProjectNode{
+				Key: childKey, Kind: sessionKind, Label: sessionLabel,
 				Root: workspaceRoot, TopicID: topicID, SessionPath: path, Preview: sessionPreviewForPath(path),
 				Open: session.open, Running: running, Status: status,
 				TurnsState: string(sessioncatalog.TurnsUnknown), Health: string(sessioncatalog.HealthOK),
 				Children: []ProjectNode{},
-			})
+			}
+			node.Children = append(node.Children, child)
+			childrenByKey[childKey] = &node.Children[len(node.Children)-1]
 		}
 		out = append(out, node)
 	}

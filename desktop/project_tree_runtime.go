@@ -69,10 +69,15 @@ func (a *App) catalogRuntimeSnapshots() []catalogRuntimeSnapshot {
 	}
 	a.mu.RLock()
 	snapshots := make([]catalogRuntimeSnapshot, 0, len(a.tabs)+len(a.detachedSessions))
+	// A tab resident in both collections (transient detach/reattach) must not be
+	// counted twice: the overlay would then emit duplicate sibling keys for the
+	// same session. Mirrors runtimeTabsLocked's pointer-based dedupe.
+	seen := map[*WorkspaceTab]bool{}
 	collect := func(tab *WorkspaceTab, open bool) {
-		if tab == nil || strings.TrimSpace(tab.TopicID) == "" {
+		if tab == nil || seen[tab] || strings.TrimSpace(tab.TopicID) == "" {
 			return
 		}
+		seen[tab] = true
 		snapshots = append(snapshots, catalogRuntimeSnapshot{
 			scope: tab.Scope, workspaceRoot: tab.WorkspaceRoot, topicID: tab.TopicID,
 			sessionPath: tab.SessionPath, activity: tab.ActivityStatus, topicTitle: tab.TopicTitle,
