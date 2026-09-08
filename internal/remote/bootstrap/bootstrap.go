@@ -114,6 +114,15 @@ func EnsureServe(ctx context.Context, conn Conn, opts Options) (Result, error) {
 		return Result{State: st, Token: tok, Reused: true, CredentialConfigChanged: credentialChanged}, nil
 	}
 
+	// 1.5. Reap orphaned managed serves: launch attempts whose cleanup window
+	// was lost (SSH drop, desktop crash) leave live processes with no
+	// referencing state record, and nothing else ever reaps them. Best-effort
+	// and non-fatal — a failed sweep must not block bootstrap.
+	opts.progress("sweep", "")
+	if sweepErr := sweepOrphanServes(ctx, conn, home); sweepErr != nil {
+		opts.progress("sweep_skipped", sweepErr.Error())
+	}
+
 	// 2. Detect remote platform.
 	opts.progress("detect", "")
 	unameRes, err := conn.Exec(ctx, "uname -sm")

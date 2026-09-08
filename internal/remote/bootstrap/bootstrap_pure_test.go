@@ -146,6 +146,39 @@ func TestStopAndServeAliveCommands(t *testing.T) {
 	}
 }
 
+// Regression: over SSH, macOS ps escapes non-ASCII argv bytes when the locale
+// is unset, so a raw-UTF-8 token/port path pattern failed to match a healthy
+// serve whose workspace path contained e.g. "GPT插件" — bootstrap then aborted
+// with "launched process did not become the expected reasonix serve".
+func TestServeAliveCommandLocaleAndHashFallback(t *testing.T) {
+	paths := StatePaths{
+		TokenFile: "/state/GPT插件-48a91fe2b8f10bd0.token",
+		PortFile:  "/state/GPT插件-48a91fe2b8f10bd0.port",
+		Hash:      "48a91fe2b8f10bd0",
+	}
+	alive := ServeAliveCommand(99, paths)
+	if !strings.Contains(alive, "LC_ALL=en_US.UTF-8 ps -p 99") {
+		t.Errorf("ServeAliveCommand must force a UTF-8 locale for ps: %s", alive)
+	}
+	for _, want := range []string{"H='48a91fe2b8f10bd0'", `*reasonix*serve*"$H"*`} {
+		if !strings.Contains(alive, want) {
+			t.Errorf("ServeAliveCommand missing hash fallback %q: %s", want, alive)
+		}
+	}
+	stop := StopCommand(4321, paths)
+	if !strings.Contains(stop, "LC_ALL=en_US.UTF-8 ps -p 4321") {
+		t.Errorf("StopCommand must force a UTF-8 locale for ps: %s", stop)
+	}
+	if !strings.Contains(stop, `*reasonix*serve*"$H"*`) {
+		t.Errorf("StopCommand missing hash fallback: %s", stop)
+	}
+	// Paths without a hash keep the single full-path alternative only.
+	plain := ServeAliveCommand(7, StatePaths{TokenFile: "/t", PortFile: "/p"})
+	if strings.Contains(plain, "H=") {
+		t.Errorf("ServeAliveCommand must not reference an empty hash var: %s", plain)
+	}
+}
+
 func TestLaunchCommandDetachAndLogHardening(t *testing.T) {
 	cmd := LaunchCommand("/usr/bin/reasonix", "/ws", StatePaths{
 		Dir: "/d", TokenFile: "/d/t", PortFile: "/d/p", PidFile: "/d/i", LogFile: "/d/l",

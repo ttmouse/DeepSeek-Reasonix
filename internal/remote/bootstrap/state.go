@@ -55,7 +55,20 @@ func pathsFor(home, workspace string) StatePaths {
 		PidFile:   path.Join(dir, store.RemoteServePidName(slug)),
 		LockDir:   path.Join(dir, store.RemoteServeLockName(slug)),
 		LockOwner: path.Join(dir, store.RemoteServeLockName(slug), "owner"),
+		// RemoteWorkspaceSlug is "<stem>-<16-hex fnv>"; the hex suffix is the
+		// always-ASCII identity used as a fallback in pid ownership checks.
+		Hash: slugHash(slug),
 	}
+}
+
+// slugHash extracts the 16-hex hash suffix of a RemoteWorkspaceSlug. The
+// readable stem may contain non-ASCII, but the fnv hex is exactly the last
+// 16 characters.
+func slugHash(slug string) string {
+	if len(slug) < 16 {
+		return slug
+	}
+	return slug[len(slug)-16:]
 }
 
 // uploadedBinPath is the fallback location for an uploaded reasonix binary.

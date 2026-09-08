@@ -16,6 +16,12 @@ type StatePaths struct {
 	PidFile   string
 	LockDir   string
 	LockOwner string
+	// Hash is the pure-ASCII 16-hex suffix of the workspace slug. When set,
+	// pid/stop ownership checks accept it as a fallback for the full
+	// token/port path match: over SSH, macOS ps renders non-ASCII argv bytes
+	// in caret/M notation, so a raw-UTF-8 path pattern can fail to match a
+	// perfectly healthy serve whose workspace path contains such characters.
+	Hash string
 }
 
 // shellQuote wraps s in single quotes safe for POSIX sh, escaping embedded
@@ -54,18 +60,50 @@ func LaunchCommand(bin, workspace string, p StatePaths, cred *CredentialProxyOpt
 	)
 }
 
+// psLocale forces a UTF-8 locale for ps invocations. SSH exec sessions start
+// with empty LANG/LC_ALL; macOS ps then escapes non-ASCII argv bytes
+// ("插件" -> "M-fM^OM^RM-dM-;M-6"), so a raw-UTF-8 path pattern never matches.
+// macOS always ships en_US.UTF-8; Linux ps does not escape regardless, and an
+// unknown locale there degrades to the current behavior.
+const psLocale = "LC_ALL=en_US.UTF-8"
+
+// serveMatchDeclsAndPattern builds the shell variable declarations and the
+// case pattern shared by ServeAliveCommand and StopCommand: the pid's args
+// must look like a reasonix serve carrying THIS workspace's token and port
+// files (guards PID reuse), optionally followed by required args in order.
+// When p.Hash is set, a second alternative matches on the ASCII workspace
+// hash alone, so locale/escaping quirks cannot break ownership detection.
+func serveMatchDeclsAndPattern(p StatePaths, requireArgs ...string) (decls, pattern string) {
+	var d strings.Builder
+	fmt.Fprintf(&d, "T=%s; P=%s; ", shellQuote(p.TokenFile), shellQuote(p.PortFile))
+	alternatives := []string{"*reasonix*serve*\"$T\"*\"$P\"*"}
+	if p.Hash != "" {
+		fmt.Fprintf(&d, "H=%s; ", shellQuote(p.Hash))
+		alternatives = append(alternatives, "*reasonix*serve*\"$H\"*")
+	}
+	for i, arg := range requireArgs {
+		fmt.Fprintf(&d, "R%d=%s; ", i, shellQuote(arg))
+		frag := fmt.Sprintf("\"$R%d\"*", i)
+		for j := range alternatives {
+			alternatives[j] += frag
+		}
+	}
+	return d.String(), strings.Join(alternatives, "|")
+}
+
 // StopCommand builds a script that TERMs the pid, waits up to ~5s, then KILLs
 // if still alive. pid is validated numeric by the caller, and the caller has
 // already confirmed (ServeAliveCommand) that the pid is our serve, so PID reuse
 // cannot cause an unrelated process to be signalled.
 func StopCommand(pid int, p StatePaths) string {
+	decls, pattern := serveMatchDeclsAndPattern(p)
 	return fmt.Sprintf(
-		"T=%s; P=%s; ours() { A=$(ps -p %d -o args= 2>/dev/null || ps -p %d -o command= 2>/dev/null); "+
-			"case \"$A\" in *reasonix*serve*\"$T\"*\"$P\"*) return 0;; *) return 1;; esac; }; "+
+		decls+"ours() { A=$("+psLocale+" ps -p %d -o args= 2>/dev/null || ps -p %d -o command= 2>/dev/null); "+
+			"case \"$A\" in %s) return 0;; *) return 1;; esac; }; "+
 			"ours || exit 0; kill -TERM %d 2>/dev/null; "+
 			"for i in 1 2 3 4 5; do kill -0 %d 2>/dev/null || exit 0; ours || exit 0; sleep 1; done; "+
 			"ours && kill -KILL %d 2>/dev/null; exit 0",
-		shellQuote(p.TokenFile), shellQuote(p.PortFile), pid, pid, pid, pid, pid,
+		pid, pid, pattern, pid, pid, pid,
 	)
 }
 
@@ -78,19 +116,12 @@ func StopCommand(pid int, p StatePaths) string {
 // launched under different settings (e.g. before the host switched credential
 // modes) is not treated as reusable.
 func ServeAliveCommand(pid int, p StatePaths, requireArgs ...string) string {
-	var decls strings.Builder
-	fmt.Fprintf(&decls, "T=%s; P=%s; ", shellQuote(p.TokenFile), shellQuote(p.PortFile))
-	var pattern strings.Builder
-	pattern.WriteString("*reasonix*serve*\"$T\"*\"$P\"*")
-	for i, arg := range requireArgs {
-		fmt.Fprintf(&decls, "R%d=%s; ", i, shellQuote(arg))
-		fmt.Fprintf(&pattern, "\"$R%d\"*", i)
-	}
+	decls, pattern := serveMatchDeclsAndPattern(p, requireArgs...)
 	return fmt.Sprintf(
-		"%skill -0 %d 2>/dev/null || { echo 0; exit 0; }; "+
-			"A=$(ps -p %d -o args= 2>/dev/null || ps -p %d -o command= 2>/dev/null); "+
+		decls+"kill -0 %d 2>/dev/null || { echo 0; exit 0; }; "+
+			"A=$("+psLocale+" ps -p %d -o args= 2>/dev/null || ps -p %d -o command= 2>/dev/null); "+
 			"case \"$A\" in %s) echo 1;; *) echo 0;; esac",
-		decls.String(), pid, pid, pid, pattern.String(),
+		pid, pid, pid, pattern,
 	)
 }
 
