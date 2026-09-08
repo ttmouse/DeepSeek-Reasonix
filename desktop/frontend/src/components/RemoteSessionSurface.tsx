@@ -93,17 +93,24 @@ export function RemoteSessionSurface({ tab, session }: { tab: TabMeta; session: 
 
   return (
     <div className="remote-surface remote-surface--ready">
-      <Transcript
-        items={session.transcript.items}
-        live={session.transcript.live}
-        tabId={tab.id}
-        revealSignal={session.surfaceGeneration}
-        running={session.transcript.running}
-        checkpoints={session.transcript.checkpoints}
-        onPrompt={(prompt) => runAction(() => session.submit(prompt))}
-        onRewind={(turn, scope) => runAction(() => session.rewind(turn, scope))}
-        rewindDisabled={session.running || !session.hydrated}
-      />
+      {/* Same height chain local tabs use: .transcript (Virtuoso) requires a
+         definite-height ancestor, otherwise its viewport collapses to ~0 and
+         only the first rows render. */}
+      <div className="transcript-navigation-surface">
+        <div className="transcript-navigation-content">
+          <Transcript
+            items={session.transcript.items}
+            live={session.transcript.live}
+            tabId={tab.id}
+            revealSignal={session.surfaceGeneration}
+            running={session.transcript.running}
+            checkpoints={session.transcript.checkpoints}
+            onPrompt={(prompt) => runAction(() => session.submit(prompt))}
+            onRewind={(turn, scope) => runAction(() => session.rewind(turn, scope))}
+            rewindDisabled={session.running || !session.hydrated}
+          />
+        </div>
+      </div>
 
       {approval ? (
         <div className="remote-surface__approval">
