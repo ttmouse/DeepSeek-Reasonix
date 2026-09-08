@@ -1,12 +1,15 @@
 // DockLauncher is the floating menu shown over the transcript's top-right
 // corner while the right dock is collapsed. It lists the dock's entry points
-// (overview / files / changed / branch / remote / instructions); clicking one
-// expands the dock to that panel. Once the dock is open the launcher itself is
-// hidden (the panel replaces it), so the menu only ever appears in the
-// collapsed state. Visual reference: a rounded floating popover card with a
-// title header, icon rows, diff totals on the changed row and trailing
-// chevrons. The diff stats are polled lightly (every few seconds) because the
-// launcher is exactly the surface that makes agent edits visible live.
+// (overview / files / changed / instructions); clicking one expands the dock
+// to that panel. The changed (改动) entry and the branch row are git-only:
+// both appear only when the active workspace reports a git branch. Remote
+// (远程) is intentionally absent — it stays reachable via the sidebar/status
+// bar and settings. Once the dock is open the launcher itself is hidden (the
+// panel replaces it), so the menu only ever appears in the collapsed state.
+// Visual reference: a rounded floating popover card with a title header, icon
+// rows, diff totals on the changed row and trailing chevrons. The diff stats
+// are polled lightly (every few seconds) because the launcher is exactly the
+// surface that makes agent edits visible live.
 // The branch row opens a switcher modelled on the ChatGPT reference: a search
 // input filters the branch list, and a pinned bottom action creates and checks
 // out a new branch from whatever is typed.
@@ -14,14 +17,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../lib/i18n";
 import { app } from "../lib/bridge";
-import { Activity, Check, ChevronRight, FileText, GitBranch, Plus, Search, Server } from "lucide-react";
+import { Activity, Check, ChevronRight, FileDiff, FileText, GitBranch, Plus, Search, Server } from "lucide-react";
 import type { ComponentType } from "react";
 import type { TabType } from "../store/activityBar";
 import { ACTIVITY_BAR_ENTRIES } from "./ActivityBar/activityBarConfig";
 
 const ENTRY_ICONS: Record<TabType, ComponentType<{ size?: number | string; className?: string }>> = {
   file: FileText,
-  changed: GitBranch,
+  changed: FileDiff,
   context: Activity,
   remote: Server,
   // Entries beyond the exposed set are not listed yet; keep a stub so the
@@ -133,8 +136,14 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
     };
   }, [branchMenuOpen]);
 
+  // Diff totals are a git concept — skip polling entirely for non-git
+  // workspaces (the changed entry is hidden there anyway).
   useEffect(() => {
     let cancelled = false;
+    if (!gitBranch) {
+      setDiffStats(null);
+      return;
+    }
     const load = async () => {
       try {
         // Empty tab id resolves to the active tab on the backend.
@@ -153,7 +162,7 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [gitBranch]);
 
   const loadBranches = async () => {
     setBranchesLoading(true);
@@ -213,7 +222,13 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
     }
   };
 
-  const mainEntries = ACTIVITY_BAR_ENTRIES.filter((entry) => entry.group !== "secondary");
+  // The changed (改动) entry is git-derived (git status / diff), so it is only
+  // shown when the active workspace is a git repo; the branch row below is
+  // gated the same way via activeBranch.
+  const isGitProject = Boolean(gitBranch);
+  const mainEntries = ACTIVITY_BAR_ENTRIES.filter(
+    (entry) => entry.group !== "secondary" && (entry.id !== "changed" || isGitProject),
+  );
   const secondaryEntries = ACTIVITY_BAR_ENTRIES.filter((entry) => entry.group === "secondary");
   const showDiffStats = (diffStats?.added ?? 0) + (diffStats?.removed ?? 0) > 0;
   const trimmedQuery = branchQuery.trim();

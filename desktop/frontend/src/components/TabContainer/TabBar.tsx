@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Activity, FileText, GitBranch, Plus, X } from "lucide-react";
+import { Activity, FileDiff, FileText, Plus, X } from "lucide-react";
 import type { ComponentType, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { WorkspaceFileIcon } from "../WorkspaceFileIcon";
 import { app } from "../../lib/bridge";
@@ -30,7 +30,7 @@ import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type Cont
 // identifiable (mirrors the launcher's icon assignment).
 const TAB_TYPE_ICONS: Record<string, ComponentType<{ size?: number | string }>> = {
   file: FileText,
-  changed: GitBranch,
+  changed: FileDiff,
   context: Activity,
   remote: FileText,
   instructions: FileText,
