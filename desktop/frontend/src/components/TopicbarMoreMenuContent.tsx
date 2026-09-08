@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
-  Activity,
   Check,
   Copy,
   Download,
@@ -9,6 +8,7 @@ import {
   FileJson,
   FileText,
   GitBranch,
+  Newspaper,
   TerminalSquare,
 } from "lucide-react";
 
@@ -190,7 +190,7 @@ export function TopicbarMoreMenuContent({
         aria-pressed={tasksOpen}
         onClick={() => closeAndRun(openSessionSummary)}
       >
-        <Activity size={14} />
+        <Newspaper size={14} />
         <span>{t("summary.session")}</span>
       </button>
     </div>
