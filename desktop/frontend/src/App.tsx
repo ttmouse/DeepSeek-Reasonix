@@ -10,6 +10,7 @@ import {
   SquarePen,
   PanelLeft,
   PanelRight,
+  ClipboardList,
   MessageSquare,
   Settings as SettingsIcon,
   RotateCw,
@@ -112,6 +113,7 @@ import {
 } from "./lib/types";
 import { requestSessionVersions } from "./lib/sessionRecoveryVersionHostBridge";
 import type { WorkspaceVerificationRevealRequest } from "./components/WorkspacePanel";
+import type { SpaceMode } from "./components/DockLauncher";
 import type { InvocationMetadataMap, StructuredInvocationSubmit } from "./lib/invocationDisplay";
 import type { RewindUndoState } from "./lib/rewindTypes";
 import { formatSelectionReference, type SelectedTextInsertRequest } from "./lib/selectedTextContext";
@@ -1179,6 +1181,10 @@ export default function App() {
   // dismissed. Toggled by the dedicated launcher icon in the top-right corner;
   // session-local, so re-opening the app restores the default visible state.
   const [launcherDismissed, setLauncherDismissed] = useState(false);
+  // Space-yield mode of the floating launcher card, reported by DockLauncher:
+  // when the transcript surface gets too narrow the card hides itself entirely
+  // (it would crowd the chat), and the toggle must mirror that.
+  const [launcherSpaceMode, setLauncherSpaceMode] = useState<SpaceMode>("full");
   const terminalPanelOpen = useLayoutStore((s) => s.terminalPanelOpen);
   // The dock mirrors the workspace panel's current preview as a single "file"
   // tab: switching files in the list updates that tab's label and path instead
@@ -4032,6 +4038,7 @@ export default function App() {
   }, [activeTabId, handleTabClose], Boolean(activeTabId));
   useGlobalShortcut("shortcuts.show", () => setShortcutsOpen(true));
   useGlobalShortcut("sidebar.toggle", toggleSidebar, [toggleSidebar]);
+  useGlobalShortcut("workspacePanel.toggle", toggleWorkspacePanel, [toggleWorkspacePanel]);
 
   // --- Topic shortcut navigation (Cmd/Ctrl+1-9) ---
   const visibleTopicsRef = useRef<TopicShortcutEntry[]>([]);
@@ -4376,20 +4383,38 @@ export default function App() {
   // dock is collapsed, so the button is rendered only in that state (see the
   // .app__launcher-toggle mount below). The chevron points the way the card
   // moves: left to show it, right to hide it.
+  // The floating card only renders while the dock is collapsed, the surface is
+  // wide enough, and the card is not dismissed. While any of those fails the
+  // middle area belongs to the dock/chat, so the card cannot show: the pressed
+  // state mirrors whether the card is actually on screen, and the button is
+  // inert in that state.
+  const launcherCardRenderable = !effectiveWorkspacePanelGridOpen && launcherSpaceMode === "full";
+  const launcherCardVisible = launcherCardRenderable && !launcherDismissed;
   const launcherToggleButton = (
-    <Tooltip label={launcherDismissed ? t("rightDock.showLauncher") : t("rightDock.hideLauncher")}>
+    <Tooltip
+      label={
+        launcherCardVisible
+          ? t("rightDock.hideLauncher")
+          : launcherCardRenderable
+            ? t("rightDock.showLauncher")
+            : ""
+      }
+    >
       <button
         className={[
           "topicbar__chrome-btn",
           "topicbar__chrome-btn--launcher",
-          launcherDismissed ? "" : "topicbar__chrome-btn--active",
+          launcherCardVisible ? "topicbar__chrome-btn--active" : "",
         ].filter(Boolean).join(" ")}
         type="button"
-        onClick={() => setLauncherDismissed((dismissed) => !dismissed)}
-        aria-label={launcherDismissed ? t("rightDock.showLauncher") : t("rightDock.hideLauncher")}
-        aria-pressed={!launcherDismissed}
+        onClick={() => {
+          if (!launcherCardRenderable) return;
+          setLauncherDismissed((dismissed) => !dismissed);
+        }}
+        aria-label={launcherCardVisible ? t("rightDock.hideLauncher") : t("rightDock.showLauncher")}
+        aria-pressed={launcherCardVisible}
       >
-        {launcherDismissed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
+        <ClipboardList size={15} />
       </button>
     </Tooltip>
   );
@@ -4718,6 +4743,11 @@ export default function App() {
                   <Search size={15} />
                 </button>
               </Tooltip>
+              {/* Launcher card toggle: always rendered, lives in the actions
+                  row right after the command palette button in both dock
+                  states (while the dock is open the row's right margin is
+                  cleared so it ends flush at the panel's edge). */}
+              {!automationView && <div className="app__launcher-toggle">{launcherToggleButton}</div>}
               {/* ExternalOpener 暂时隐藏（待调整）：需要时挂回
               {shouldMountExternalOpener(activeTab, Boolean(sidebarImDetailConnection)) && activeTab && (
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
@@ -4816,9 +4846,9 @@ export default function App() {
             ) : (
               <>
                 <div className="transcript-navigation-surface" aria-busy={runtimeTransitioning}>
-                  {!effectiveWorkspacePanelGridOpen && !automationView && (
+                  {!effectiveWorkspacePanelGridOpen && !automationView && !launcherDismissed && (
                     <Suspense fallback={null}>
-                      <DockLauncher onSelect={handleActivitySelect} gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch} />
+                      <DockLauncher onSelect={handleActivitySelect} gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch} onSpaceModeChange={setLauncherSpaceMode} />
                     </Suspense>
                   )}
                   <div

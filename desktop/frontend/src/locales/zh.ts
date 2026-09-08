@@ -215,6 +215,8 @@ export const zh: Record<DictKey, string> = {
   "rightDock.resize": "调整工作区面板宽度",
   "rightDock.expand": "展开工作区",
   "rightDock.collapse": "收起工作区",
+  "rightDock.showLauncher": "展开工作区浮层",
+  "rightDock.hideLauncher": "收起工作区浮层",
   "rightDock.workbench": "工作区面板",
   "rightDock.views": "工作区视图",
   "rightDock.overview": "概览",
@@ -1240,6 +1242,7 @@ export const zh: Record<DictKey, string> = {
   "ask.customPlaceholder": "输入你自己的答案…",
   "ask.justChat": "跳过并继续聊天",
   "ask.justChatDesc": "提交空回答并继续对话。",
+  "ask.submitFailed": "提交失败：这个回合已结束或正在重建，回答无法送达。请发送一条新消息继续。",
 
   // 清空上下文确认
   "clearContext.title": "清空当前上下文",
@@ -2635,6 +2638,7 @@ export const zh: Record<DictKey, string> = {
   "shortcuts.action.terminalToggle": "切换内置终端",
   "shortcuts.action.terminalNewSession": "新建终端会话",
   "shortcuts.action.sidebarToggle": "切换侧边栏",
+  "shortcuts.action.workspacePanelToggle": "切换工作区面板",
   "shortcuts.action.textSizeIncrease": "增大字号",
   "shortcuts.action.textSizeDecrease": "减小字号",
   "shortcuts.action.textSizeReset": "重置字号",
@@ -2653,6 +2657,7 @@ export const zh: Record<DictKey, string> = {
   "shortcuts.desc.terminalToggle": "显示或隐藏内置终端。",
   "shortcuts.desc.terminalNewSession": "打开一个新的内置终端会话。",
   "shortcuts.desc.sidebarToggle": "显示或隐藏左侧边栏。",
+  "shortcuts.desc.workspacePanelToggle": "展开或收起右侧工作区面板。",
   "shortcuts.desc.textSizeIncrease": "放大会话和界面文字。",
   "shortcuts.desc.textSizeDecrease": "缩小会话和界面文字。",
   "shortcuts.desc.textSizeReset": "恢复默认字号。",

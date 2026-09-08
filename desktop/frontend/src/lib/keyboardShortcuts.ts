@@ -17,6 +17,7 @@ export type ShortcutAction =
   | "terminal.toggle"
   | "terminal.newSession"
   | "sidebar.toggle"
+  | "workspacePanel.toggle"
   | "textSize.increase"
   | "textSize.decrease"
   | "textSize.reset"
@@ -155,10 +156,11 @@ export const SHORTCUT_DEFINITIONS: readonly ShortcutDefinition[] = [
     section: "view",
     labelKey: "shortcuts.action.shellToggle",
     descriptionKey: "shortcuts.desc.shellToggle",
+    // Moved off Cmd/Ctrl+Shift+B: that chord now toggles the workspace panel.
     defaults: {
-      darwin: { key: "b", meta: true, shift: true },
-      windows: { key: "b", ctrl: true, shift: true },
-      linux: { key: "b", ctrl: true, shift: true },
+      darwin: { key: "b", meta: true, alt: true },
+      windows: { key: "b", ctrl: true, alt: true },
+      linux: { key: "b", ctrl: true, alt: true },
     },
     preventDefault: true,
   },
@@ -186,6 +188,18 @@ export const SHORTCUT_DEFINITIONS: readonly ShortcutDefinition[] = [
     labelKey: "shortcuts.action.sidebarToggle",
     descriptionKey: "shortcuts.desc.sidebarToggle",
     defaults: modCombo("b"),
+    preventDefault: true,
+  },
+  {
+    action: "workspacePanel.toggle",
+    section: "view",
+    labelKey: "shortcuts.action.workspacePanelToggle",
+    descriptionKey: "shortcuts.desc.workspacePanelToggle",
+    defaults: {
+      darwin: { key: "b", meta: true, shift: true },
+      windows: { key: "b", ctrl: true, shift: true },
+      linux: { key: "b", ctrl: true, shift: true },
+    },
     preventDefault: true,
   },
   {

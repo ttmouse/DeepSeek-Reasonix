@@ -151,6 +151,8 @@ export const zhTW: Record<DictKey, string> = {
   "rightDock.resize": "調整右側面板寬度",
   "rightDock.expand": "展開右側工作區",
   "rightDock.collapse": "收起右側工作區",
+  "rightDock.showLauncher": "展開工作區浮層",
+  "rightDock.hideLauncher": "收起工作區浮層",
   "rightDock.workbench": "右側工作台",
   "rightDock.views": "右側工作台視圖",
   "rightDock.overview": "概覽",
@@ -997,6 +999,7 @@ export const zhTW: Record<DictKey, string> = {
   "ask.customPlaceholder": "輸入你自己的答案…",
   "ask.justChat": "跳過並繼續聊天",
   "ask.justChatDesc": "提交空回答並繼續對話。",
+  "ask.submitFailed": "提交失敗：這個回合已結束或正在重建，回答無法送達。請發送新訊息繼續。",
 
   // 歷史抽屜
   "history.title": "歷史",
@@ -3355,6 +3358,7 @@ export const zhTW: Record<DictKey, string> = {
   "shortcuts.action.terminalToggle": "切換內建終端機",
   "shortcuts.action.terminalNewSession": "新增終端機工作階段",
   "shortcuts.action.sidebarToggle": "切換側邊欄",
+  "shortcuts.action.workspacePanelToggle": "切換工作區面板",
   "shortcuts.action.textSizeIncrease": "增大字號",
   "shortcuts.action.textSizeDecrease": "減小字號",
   "shortcuts.action.textSizeReset": "重置字號",
@@ -3373,6 +3377,7 @@ export const zhTW: Record<DictKey, string> = {
   "shortcuts.desc.terminalToggle": "顯示或隱藏內建終端機。",
   "shortcuts.desc.terminalNewSession": "開啟新的內建終端機工作階段。",
   "shortcuts.desc.sidebarToggle": "顯示或隱藏左側邊欄。",
+  "shortcuts.desc.workspacePanelToggle": "展開或收起右側工作區面板。",
   "shortcuts.desc.textSizeIncrease": "放大會話和介面文字。",
   "shortcuts.desc.textSizeDecrease": "縮小會話和介面文字。",
   "shortcuts.desc.textSizeReset": "恢復預設字號。",

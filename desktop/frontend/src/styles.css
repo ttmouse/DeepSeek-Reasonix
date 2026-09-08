@@ -9641,6 +9641,12 @@ body > .mermaid-diagram--fullscreen {
 .ask-shelf__custom::placeholder {
   color: var(--fg-faint);
 }
+.ask-shelf__error {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 0 6px;
+}
 
 .prompt-shelf--compact .prompt-shelf__card {
   gap: 6px;
@@ -23478,12 +23484,17 @@ body > .mermaid-diagram--fullscreen {
   --wails-draggable: no-drag;
 }
 /* When the dock is closed in workbench mode, the fixed top-right dock-toggle
-/* When the dock is closed in workbench mode, the fixed top-right dock-toggle
-   overlaps the topic bar's right edge; leave room so the actions don't
-   collide with it. When the dock is open it occupies the right column, so no
-   extra margin is needed. Classic/creation keep the toggle inside the actions
-   row, so the extra margin does not apply there. */
-.layout--workbench:not(.layout--workspace-open) .topicbar__actions {
+/* When the dock is closed in workbench mode, the fixed top-right toggles
+   (dock-toggle at right:12px, launcher-toggle at right:48px) overlap the
+   The dock toggle is fixed at the top-right corner of the window, above the
+   topic bar's right edge; leave room so the actions don't collide with it.
+   The launcher toggle now lives inside the actions row (to the right of the
+   search button), so it does not need extra clearance. This margin applies in
+   both dock-closed and dock-open (overlay) states; in grid mode the dock
+   already pushes the topic bar left, so the margin is harmless extra spacing.
+   Classic/creation keep the toggle inside the actions row, so the extra margin
+   does not apply there. */
+.layout--workbench .topicbar__actions {
   margin-right: 36px;
 }
 
@@ -23671,9 +23682,10 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__actions .topicbar__action-btn--utility:focus-visible:not(:disabled),
 .topicbar__actions .topicbar__chrome-btn:hover:not(:disabled),
 .topicbar__actions .topicbar__chrome-btn:focus-visible:not(:disabled) {
-  /* --button-bg is #fff in light themes, same as the --bg-elev bar behind
-     these buttons — hover would be invisible. --bg-elev-2 stays visible. */
-  background: var(--bg-elev-2) !important;
+  /* Hover fill: 10% foreground tint over the topicbar's --bg-elev surface.
+     --bg-elev-2 is too close to --bg-elev in low-contrast themes and reads as
+     invisible; the fg tint stays visible in both light and dark themes. */
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev)) !important;
   color: var(--fg) !important;
 }
 
@@ -25642,11 +25654,52 @@ body > .mermaid-diagram--fullscreen {
 }
 .app__dock-toggle .topicbar__chrome-btn:hover:not(:disabled),
 .app__dock-toggle .topicbar__chrome-btn:focus-visible:not(:disabled) {
-  background: var(--button-bg) !important;
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev)) !important;
   color: var(--fg) !important;
 }
 .app__dock-toggle .topicbar__chrome-btn--workspace:not(:hover):not(:focus-visible) {
   color: var(--fg-faint);
+}
+.app__dock-toggle .topicbar__chrome-btn--workspace.topicbar__chrome-btn--active {
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev)) !important;
+  color: var(--fg) !important;
+}
+
+/* Floating launcher card (悬浮工作区面板) show/hide toggle. Lives in the
+   topic bar's actions row while the dock is collapsed (tight after the
+   command palette button). The chevron reflects the card's state: left (show)
+   when dismissed, right (hide) when visible. */
+.app__launcher-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --wails-draggable: no-drag;
+  pointer-events: auto;
+}
+/* The launcher toggle stays in the actions row, right after the command
+   palette button, in both dock states. While the dock is open the layout is
+   pushed left, so the row's corner clearance (reserved for the pinned dock
+   toggle) is no longer needed — end the row flush at the panel's edge so the
+   launcher has no dead margin on its right. */
+.app:has(.workbench-dock) .layout--workbench .topicbar__actions {
+  margin-right: 0;
+}
+.app__launcher-toggle .topicbar__chrome-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app__launcher-toggle .topicbar__chrome-btn:hover:not(:disabled),
+.app__launcher-toggle .topicbar__chrome-btn:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev)) !important;
+  color: var(--fg) !important;
+}
+.app__launcher-toggle .topicbar__chrome-btn--launcher:not(:hover):not(:focus-visible) {
+  color: var(--fg-faint);
+}
+.app__launcher-toggle .topicbar__chrome-btn--launcher.topicbar__chrome-btn--active {
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev)) !important;
+  color: var(--fg) !important;
 }
 
 .workbench-dock__tabs {
@@ -26289,8 +26342,9 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 .workbench-dock__tab-add:hover {
-  background: var(--bg-elev);
-  color: var(--fg);
+  /* Match the right-dock tab hover fill. */
+  background: color-mix(in srgb, var(--fg) 5%, var(--chat-bg));
+  color: var(--fg-dim);
 }
 
 .tab-container__content {
@@ -29427,6 +29481,16 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   color: var(--fg);
   border-color: color-mix(in srgb, var(--fg-faint) 30%, var(--border));
   background: var(--bg-elev-2);
+}
+
+/* The top-right icon cluster (command palette, workspace toggles) uses the
+   same hover fill as the right-dock tabs so the whole corner reads as one
+   tab-like surface. Higher specificity than the shared action-btn hover. */
+:root[data-theme-style] .topicbar__actions .topicbar__action-btn--utility:hover:not(:disabled),
+:root[data-theme-style] .topicbar__actions .topicbar__action-btn--utility:focus-visible:not(:disabled) {
+  color: var(--fg-dim) !important;
+  border-color: color-mix(in srgb, var(--fg-faint) 30%, var(--border));
+  background: color-mix(in srgb, var(--fg) 5%, var(--chat-bg)) !important;
 }
 
 :root[data-theme-style] .layout--workbench-chrome-hidden .topicbar,

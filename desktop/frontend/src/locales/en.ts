@@ -214,6 +214,8 @@ export const en = {
   "rightDock.resize": "Resize workspace panel",
   "rightDock.expand": "Expand workspace",
   "rightDock.collapse": "Collapse workspace",
+  "rightDock.showLauncher": "Show workspace menu",
+  "rightDock.hideLauncher": "Hide workspace menu",
   "rightDock.workbench": "Workspace panel",
   "rightDock.views": "Workspace views",
   "rightDock.overview": "Overview",
@@ -1239,6 +1241,7 @@ export const en = {
   "ask.customPlaceholder": "Type your own answer…",
   "ask.justChat": "Skip and keep chatting",
   "ask.justChatDesc": "Submit empty answers and continue the conversation.",
+  "ask.submitFailed": "Couldn't deliver: this turn has ended or is being rebuilt, so your answer didn't reach it. Send a new message to continue.",
 
   // clear context confirmation
   "clearContext.title": "Clear current context",
@@ -2632,6 +2635,7 @@ export const en = {
   "shortcuts.action.terminalToggle": "Toggle integrated terminal",
   "shortcuts.action.terminalNewSession": "New terminal session",
   "shortcuts.action.sidebarToggle": "Toggle sidebar",
+  "shortcuts.action.workspacePanelToggle": "Toggle workspace panel",
   "shortcuts.action.textSizeIncrease": "Increase text size",
   "shortcuts.action.textSizeDecrease": "Decrease text size",
   "shortcuts.action.textSizeReset": "Reset text size",
@@ -2650,6 +2654,7 @@ export const en = {
   "shortcuts.desc.terminalToggle": "Show or hide the integrated terminal.",
   "shortcuts.desc.terminalNewSession": "Open a new integrated terminal session.",
   "shortcuts.desc.sidebarToggle": "Show or hide the left sidebar.",
+  "shortcuts.desc.workspacePanelToggle": "Expand or collapse the right workspace panel.",
   "shortcuts.desc.textSizeIncrease": "Make transcript and UI text larger.",
   "shortcuts.desc.textSizeDecrease": "Make transcript and UI text smaller.",
   "shortcuts.desc.textSizeReset": "Return text size to the default.",

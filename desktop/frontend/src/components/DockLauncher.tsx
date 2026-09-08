@@ -56,7 +56,7 @@ function isValidBranchName(name: string): boolean {
 // the panel never squeezes the history while visible.
 const HIDE_BELOW_WIDTH = 1010;
 
-type SpaceMode = "full" | "hidden";
+export type SpaceMode = "full" | "hidden";
 
 interface DiffStats {
   added: number;
@@ -67,9 +67,12 @@ interface DockLauncherProps {
   onSelect: (entryId: string) => void;
   /** Current git branch for the active workspace; omitted when unknown. */
   gitBranch?: string;
+  /** Reports the space-yield mode whenever it changes, so the App-level
+   *  launcher toggle can mirror whether the card is actually on screen. */
+  onSpaceModeChange?: (mode: SpaceMode) => void;
 }
 
-export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
+export function DockLauncher({ onSelect, gitBranch, onSpaceModeChange }: DockLauncherProps) {
   const t = useT();
   const [diffStats, setDiffStats] = useState<DiffStats | null>(null);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -99,11 +102,13 @@ export function DockLauncher({ onSelect, gitBranch }: DockLauncherProps) {
     if (!host || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? 0;
-      setSpaceMode(width < HIDE_BELOW_WIDTH ? "hidden" : "full");
+      const next = width < HIDE_BELOW_WIDTH ? "hidden" : "full";
+      setSpaceMode(next);
+      onSpaceModeChange?.(next);
     });
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [onSpaceModeChange]);
 
   // Mirror the current tier onto <html> so siblings OUTSIDE the transcript
   // surface (the footer/composer) can reserve the same right inset via plain
