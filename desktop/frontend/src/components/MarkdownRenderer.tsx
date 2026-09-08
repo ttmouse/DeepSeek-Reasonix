@@ -22,16 +22,14 @@ import { markdownImageUrlTransform, markdownUrlTransform } from "../lib/markdown
 
 const MarkdownRenderer = memo(function MarkdownRenderer({
   text,
-  plainStatusBlocks = false,
   bare = false,
 }: {
   text: string;
-  plainStatusBlocks?: boolean;
   bare?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mathContent = useMemo(() => normalizeMath(text), [text]);
-  const components = useMemo(() => createComponents(plainStatusBlocks), [plainStatusBlocks]);
+  const components = useMemo(() => createComponents(), []);
   const content = (
     <ReactMarkdown
       remarkPlugins={reasonixRemarkPlugins}

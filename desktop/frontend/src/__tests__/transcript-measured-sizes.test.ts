@@ -242,17 +242,38 @@ function recordRow(store: ReturnType<typeof createTranscriptMeasuredSizes>, row:
     hasOlderHistory: false,
     turnForUser: () => 0,
   };
-  const batch = buildTranscriptRows(models, { ...options, creationMode: false }).find((row) => row.kind === "tool-batch");
-  const group = buildTranscriptRows(models, { ...options, creationMode: true }).find((row) => row.kind === "tool-group");
+  const batch = buildTranscriptRows(models, options).find((row) => row.kind === "tool-batch");
+  const shellModels = buildTurnModels([
+    user,
+    { ...firstTool, id: "shell-1", name: "bash", readOnly: false },
+    { ...secondTool, id: "shell-2", name: "bash", readOnly: false },
+    answer,
+  ]);
+  const shellFolds: FoldMap = new Map([[
+    shellModels[0].segments[0].key,
+    { open: true, userOverridden: true, running: false },
+  ]]);
+  const group = buildTranscriptRows(shellModels, { ...options, folds: shellFolds }).find((row) => row.kind === "tool-group");
   const batchVersion = batch && transcriptRowMeasurementVersion(batch);
   const groupVersion = group && transcriptRowMeasurementVersion(group);
-  ok(batchVersion === groupVersion, "batch and group rows combine the same member versions");
+  ok(Boolean(batch && group), "read-only tools batch and shell tools group into rows");
+  ok(Boolean(batchVersion && groupVersion && batchVersion !== groupVersion), "batch and group rows version by their own members");
   const patchedTool = { ...secondTool, output: "late member content" };
   const patchedModels = buildTurnModels([user, firstTool, patchedTool, answer]);
-  const patchedBatch = buildTranscriptRows(patchedModels, { ...options, creationMode: false }).find((row) => row.kind === "tool-batch");
-  const patchedGroup = buildTranscriptRows(patchedModels, { ...options, creationMode: true }).find((row) => row.kind === "tool-group");
+  const patchedBatch = buildTranscriptRows(patchedModels, options).find((row) => row.kind === "tool-batch");
+  const patchedShellModels = buildTurnModels([
+    user,
+    { ...firstTool, id: "shell-1", name: "bash", readOnly: false },
+    { ...patchedTool, id: "shell-2", name: "bash", readOnly: false },
+    answer,
+  ]);
+  const patchedShellFolds: FoldMap = new Map([[
+    patchedShellModels[0].segments[0].key,
+    { open: true, userOverridden: true, running: false },
+  ]]);
+  const patchedGroup = buildTranscriptRows(patchedShellModels, { ...options, folds: patchedShellFolds }).find((row) => row.kind === "tool-group");
   ok(patchedBatch && transcriptRowMeasurementVersion(patchedBatch) !== batchVersion, "a member patch advances its read-only batch version");
-  ok(patchedGroup && transcriptRowMeasurementVersion(patchedGroup) !== groupVersion, "a member patch advances its creation group version");
+  ok(patchedGroup && transcriptRowMeasurementVersion(patchedGroup) !== groupVersion, "a member patch advances its shell group version");
 }
 
 {
@@ -262,7 +283,6 @@ function recordRow(store: ReturnType<typeof createTranscriptMeasuredSizes>, row:
     folds: EMPTY_FOLDS,
     foldPreference: "auto",
     hasOlderHistory: false,
-    creationMode: false,
     turnForUser: () => undefined,
   });
   const beforeRow = beforeRows.find((row) => row.kind === "answer")!;
@@ -277,7 +297,6 @@ function recordRow(store: ReturnType<typeof createTranscriptMeasuredSizes>, row:
     folds: EMPTY_FOLDS,
     foldPreference: "auto",
     hasOlderHistory: false,
-    creationMode: false,
     turnForUser: () => undefined,
   });
   const afterRow = afterRows.find((row) => row.kind === "answer")!;

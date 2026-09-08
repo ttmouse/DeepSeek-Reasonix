@@ -795,13 +795,11 @@ export const AssistantMessage = memo(function AssistantMessage({
   item,
   defaultExpanded = false,
   expandWhileStreaming = false,
-  creationMode = false,
 }: {
   item: AssistantItem;
   defaultExpanded?: boolean;
   /** false in compact mode: completed steps fold away, so auto-open + fold reads as flicker. */
   expandWhileStreaming?: boolean;
-  creationMode?: boolean;
 }) {
   const reasoningDisplayMode = useReasoningDisplayMode();
   const hasText = item.streaming || item.text.trim() !== "";
@@ -823,7 +821,6 @@ export const AssistantMessage = memo(function AssistantMessage({
           {hasText && (
             <Markdown
               text={item.text}
-              plainStatusBlocks={creationMode}
               streaming={item.streaming}
               cacheKey={item.id}
               wasStreamed={item.wasStreamed}

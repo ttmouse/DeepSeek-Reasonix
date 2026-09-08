@@ -14,7 +14,7 @@ import { isHostRecoveryGuidance } from "./hostRecoverySteer";
 import { stableStringHash } from "./stableStringHash";
 import { isBatchedReadOnlyTool, isSteerNoticeText, type ExtensionItem, type Item } from "./useController";
 import { appendTurnActionCopyText } from "./turnActionCopy";
-import { isCreationGroupableTool, toolGroupKind, type ToolGroupKind } from "../components/ToolGroup";
+import { toolGroupKind, type ToolGroupKind } from "../components/ToolGroup";
 import type { ProcessFoldPreference } from "./processFoldPreference";
 import type { ResolvedReasoningDisplayMode } from "./reasoningDisplayPreference";
 import {
@@ -547,11 +547,10 @@ export function userRowKey(itemId: string): string {
   return `u:${itemId}`;
 }
 
-/** Body rows of one expanded process fold: read-only batches, creation tool
+/** Body rows of one expanded process fold: read-only batches, shell tool
  *  groups, single tool cards, phases, info notices, compactions, reasoning. */
 function processBodyRows(
   segment: SegmentModel,
-  creationMode: boolean,
   reasoningDisplayMode: ResolvedReasoningDisplayMode,
   subcallsByParent: ReadonlyMap<string, readonly ToolItem[]>,
 ): TranscriptRowWithLayout[] {
@@ -578,7 +577,7 @@ function processBodyRows(
   };
   const flushToolBatch = () => {
     if (!toolBatchKind || toolBatch.length === 0) return;
-    if (creationMode || toolBatch.length >= 2) {
+    if (toolBatch.length >= 2) {
       rows.push({ kind: "tool-group", key: `tg:${toolBatch[0].id}`, items: [...toolBatch], groupKind: toolBatchKind, layoutVariant: "tool-group-collapsed" });
     } else {
       pushToolRow(toolBatch[0]);
@@ -587,22 +586,12 @@ function processBodyRows(
     toolBatchKind = null;
   };
   for (const it of segment.displayItems) {
-    if (creationMode && it.kind === "tool" && isCreationGroupableTool(it as ToolItem)) {
-      const kind = toolGroupKind(it as ToolItem);
-      if (kind) {
-        if (toolBatchKind && toolBatchKind !== kind) flushToolBatch();
-        toolBatchKind = kind;
-        toolBatch.push(it as ToolItem);
-        continue;
-      }
-    }
     if (it.kind !== "tool") {
       flushToolBatch();
       flushRO();
     }
     if (
-      !creationMode
-      && it.kind === "tool"
+      it.kind === "tool"
       && it.status === "done"
       && !it.fileDiff
       && toolGroupKind(it as ToolItem) === "shell"
@@ -613,7 +602,7 @@ function processBodyRows(
       continue;
     }
     if (it.kind === "tool") flushToolBatch();
-    if (!creationMode && it.kind === "tool" && it.status !== "running" && isBatchedReadOnlyTool(it.name, it.readOnly)) {
+    if (it.kind === "tool" && it.status !== "running" && isBatchedReadOnlyTool(it.name, it.readOnly)) {
       roBatch.push(it as ToolItem);
       continue;
     }
@@ -665,7 +654,6 @@ export interface BuildRowsOptions {
   folds: FoldMap;
   foldPreference: ProcessFoldPreference;
   hasOlderHistory: boolean;
-  creationMode: boolean;
   /** Checkpoint-aware turn number for a user item (questionTurnsById). */
   turnForUser: (item: UserItem) => number | undefined;
   /** A checkpoint may make a turn actionable even without assistant text. */
@@ -697,7 +685,7 @@ export function buildTranscriptRows(models: readonly TurnModel[], options: Build
     for (const segment of model.segments) {
       for (const item of segment.outsideItems) {
         if (item.kind === "notice" && item.variant === "model-switch") {
-          rows.push({ kind: "notice", key: `n:${item.id}`, item, layoutVariant: "text-flow" });
+          modelRows.push({ kind: "notice", key: `n:${item.id}`, item, layoutVariant: "text-flow" });
         }
       }
     }
@@ -705,7 +693,7 @@ export function buildTranscriptRows(models: readonly TurnModel[], options: Build
       if (segment.displayItems.length > 0) {
         const open = options.folds.get(segment.key)?.open ?? defaultFoldOpen(segment, options.foldPreference);
         modelRows.push({ kind: "process-header", key: `ph:${segment.key}`, segment, open, layoutVariant: "static" });
-        if (open) modelRows.push(...processBodyRows(segment, options.creationMode, reasoningDisplayMode, subcallsByParent));
+        if (open) modelRows.push(...processBodyRows(segment, reasoningDisplayMode, subcallsByParent));
       }
       for (const item of segment.outsideItems) {
         if (item.kind === "extension") {

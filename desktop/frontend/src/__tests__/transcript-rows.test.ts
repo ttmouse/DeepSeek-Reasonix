@@ -94,7 +94,6 @@ const fixture: Item[] = [
     folds: EMPTY_FOLDS,
     foldPreference: "auto" as const,
     hasOlderHistory: false,
-    creationMode: false,
     turnForUser: () => undefined,
   };
   const before = buildTranscriptRows(buildTurnModels([currentUser, currentAnswer]), options);
@@ -126,7 +125,6 @@ const rowOptions = (folds: FoldMap, pref: "auto" | "expanded" = "auto", hasOlder
   folds,
   foldPreference: pref,
   hasOlderHistory,
-  creationMode: false,
   turnForUser: (item: Extract<Item, { kind: "user" }>) => turnOf.get(item.id),
 });
 const kinds = (rows: TranscriptRow[]) => rows.map((row) => row.kind).join(",");
@@ -182,16 +180,6 @@ const keys = (rows: TranscriptRow[]) => rows.map((row) => row.key).join(",");
     "user,process-header,reasoning,tool-batch,tool,notice,answer,turn-actions,user,process-header,reasoning,answer,turn-actions",
     "expanded preference keeps all process rows in the virtual model",
   );
-}
-
-{
-  // Creation mode groups groupable tools into ToolGroup rows instead of
-  // read-only batches.
-  const models = buildTurnModels(fixture);
-  const rows = buildTranscriptRows(models, { ...rowOptions(EMPTY_FOLDS, "expanded"), creationMode: true });
-  const group = rows.find((row) => row.kind === "tool-group");
-  ok(group && "items" in group && group.items.length === 2 && group.groupKind === "explore", "creation mode batches groupable read tools into a ToolGroup row");
-  ok(!rows.some((row) => row.kind === "tool-batch"), "creation mode never emits read-only batches");
 }
 
 {

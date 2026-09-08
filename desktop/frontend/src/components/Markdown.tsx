@@ -382,13 +382,11 @@ const StreamingMarkdownTail = memo(function StreamingMarkdownTail({ text }: { te
 
 export const Markdown = memo(function Markdown({
   text,
-  plainStatusBlocks = false,
   streaming = false,
   cacheKey,
   wasStreamed,
 }: {
   text: string;
-  plainStatusBlocks?: boolean;
   streaming?: boolean;
   /** Stable transcript item key shared by live-footer and virtualized hosts. */
   cacheKey?: string;
@@ -438,11 +436,11 @@ export const Markdown = memo(function Markdown({
     <>
       <Suspense fallback={<div className="md" data-transcript-geometry-pending data-transcript-selection-source-fallback>{renderedText}</div>}>
         {sections.length === 1 ? (
-          <MarkdownRenderer text={renderedText} plainStatusBlocks={plainStatusBlocks} />
+          <MarkdownRenderer text={renderedText} />
         ) : (
           <div className="md" data-markdown-sections={sections.length}>
             {sections.map((section, index) => (
-              <MarkdownRenderer key={index} text={section} plainStatusBlocks={plainStatusBlocks} bare />
+              <MarkdownRenderer key={index} text={section} bare />
             ))}
           </div>
         )}
@@ -460,7 +458,6 @@ export const Markdown = memo(function Markdown({
     <Suspense fallback={historyFallback}>
       <MarkdownHistory
         text={text}
-        plainStatusBlocks={plainStatusBlocks}
         cacheKey={cacheKey}
         fallback={historyFallback}
         onParsed={handleWorkerParsed}

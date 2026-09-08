@@ -125,7 +125,6 @@ console.log("\nworkspace changes git errors");
       gitAvailable: true,
     },
     {
-      creationMode: true,
       history: [{ hash: "1234567890", author: "Agent", date: "2026-07-10T12:00:00Z", message: "older commit" }],
     },
   );

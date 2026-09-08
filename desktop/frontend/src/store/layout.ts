@@ -21,9 +21,9 @@ import { applySetState } from "./setState";
 const SIDEBAR_COLLAPSED_KEY = "reasonix.sidebar.collapsed";
 const SIDEBAR_DEFAULT_WIDTH = 264;
 export const SIDEBAR_MIN_WIDTH = 264;
-export const CREATION_SIDEBAR_MIN_WIDTH = 236;
-// Creation keeps the expanded rail at the narrow floor by default.
-export const CREATION_SIDEBAR_DEFAULT_WIDTH = CREATION_SIDEBAR_MIN_WIDTH;
+// Legacy persisted widths may sit below the current floor (they were written by
+// the removed creation layout); this floor only guards the stored lower bound.
+export const STORED_SIDEBAR_MIN_WIDTH = 236;
 export const SIDEBAR_MAX_WIDTH = 300;
 const SIDEBAR_VIEWPORT_RATIO = 0.18;
 
@@ -31,16 +31,13 @@ const SIDEBAR_VIEWPORT_RATIO = 0.18;
 // when a file is open.
 const RIGHT_DOCK_TREE_DEFAULT_WIDTH = 200;
 export const RIGHT_DOCK_TREE_MIN_WIDTH = 200;
-// Creation file-tree dock stays tighter than classic 300. With Creation's
-// narrower Windows caption strip (~108px), 252 is enough for icon+label tabs.
-export const CREATION_RIGHT_DOCK_TREE_MIN_WIDTH = 252;
-export const CREATION_RIGHT_DOCK_TREE_DEFAULT_WIDTH = CREATION_RIGHT_DOCK_TREE_MIN_WIDTH;
+// Legacy persisted widths may sit below the current floor (they were written by
+// the removed creation layout); this floor only guards the stored lower bound.
+export const STORED_RIGHT_DOCK_TREE_MIN_WIDTH = 252;
 export const RIGHT_DOCK_TREE_MAX_WIDTH = 560;
 export const RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH = 660;
 export const RIGHT_DOCK_PREVIEW_MIN_WIDTH = 420;
 export const RIGHT_DOCK_MIN_RENDER_WIDTH = 280;
-// Creation tree mode may render below the classic 280 floor when the viewport squeezes.
-export const CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH = 236;
 export const RIGHT_DOCK_MAX_WIDTH = 860;
 const WORKSPACE_PANEL_OPEN_KEY = "reasonix.workspacePanel.open";
 // First-launch default when no preference is stored (matches post-#6371 UX).
@@ -50,12 +47,8 @@ export function clampSidebarWidth(width: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)));
 }
 
-export function clampCreationSidebarWidth(width: number): number {
-  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(CREATION_SIDEBAR_MIN_WIDTH, Math.round(width)));
-}
-
 function clampStoredSidebarWidth(width: number): number {
-  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(CREATION_SIDEBAR_MIN_WIDTH, Math.round(width)));
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(STORED_SIDEBAR_MIN_WIDTH, Math.round(width)));
 }
 
 export function clampRightDockPreviewWidth(width: number, maxWidth = RIGHT_DOCK_MAX_WIDTH): number {
@@ -68,15 +61,11 @@ export function clampRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TRE
   return Math.min(Math.max(maxWidth, RIGHT_DOCK_TREE_MIN_WIDTH), Math.max(RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
 }
 
-export function clampCreationRightDockTreeWidth(width: number, maxWidth = RIGHT_DOCK_TREE_MAX_WIDTH): number {
-  return Math.min(Math.max(maxWidth, CREATION_RIGHT_DOCK_TREE_MIN_WIDTH), Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width)));
-}
-
 function clampStoredRightDockTreeWidth(width: number): number {
   // Stored widths are validated again against the live viewport at load time
   // (resolveWorkspacePanelWidth clamps to the chat pane's 400px floor), so
   // persistence only guards the sane lower bound and integer form.
-  return Math.max(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width));
+  return Math.max(STORED_RIGHT_DOCK_TREE_MIN_WIDTH, Math.round(width));
 }
 
 export function defaultSidebarWidth(): number {
@@ -86,16 +75,8 @@ export function defaultSidebarWidth(): number {
   return SIDEBAR_DEFAULT_WIDTH;
 }
 
-export function defaultCreationSidebarWidth(): number {
-  return CREATION_SIDEBAR_DEFAULT_WIDTH;
-}
-
 export function defaultRightDockTreeWidth(): number {
   return RIGHT_DOCK_TREE_DEFAULT_WIDTH;
-}
-
-export function defaultCreationRightDockTreeWidth(): number {
-  return CREATION_RIGHT_DOCK_TREE_DEFAULT_WIDTH;
 }
 
 function loadSidebarCollapsed(): boolean {
@@ -149,7 +130,7 @@ export type RightDockMode = "context" | "files" | "changed" | "remote" | "instru
 
 // rightDockTabOrder lets the user reorder the dock's mode tabs by dragging.
 // The order is a full permutation of RightDockMode persisted to localStorage;
-// conditionally hidden modes (context in creation, remote with no hosts) keep
+// conditionally hidden modes (remote with no hosts) keep
 // their slot and are filtered at render time.
 export const RIGHT_DOCK_DEFAULT_TAB_ORDER: RightDockMode[] = ["context", "files", "changed", "remote", "instructions"];
 const RIGHT_DOCK_TAB_ORDER_KEY = "reasonix.rightDock.tabOrder";
@@ -330,12 +311,12 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   setTerminalHeight: (height) => set({ terminalHeight: height }),
 }));
 
-export function applyLayoutStyleDefaults(style: "classic" | "workbench" | "creation"): void {
+export function applyLayoutStyleDefaults(): void {
   const state = useLayoutStore.getState();
   if (loadOptionalLayoutSize("sidebarWidthGraphite", clampStoredSidebarWidth) === null) {
-    state.setSidebarWidth(style === "creation" ? defaultCreationSidebarWidth() : defaultSidebarWidth());
+    state.setSidebarWidth(defaultSidebarWidth());
   }
   if (loadOptionalLayoutSize("rightDockTreeWidth", clampStoredRightDockTreeWidth) === null) {
-    state.setRightDockTreeWidth(style === "creation" ? defaultCreationRightDockTreeWidth() : defaultRightDockTreeWidth());
+    state.setRightDockTreeWidth(defaultRightDockTreeWidth());
   }
 }

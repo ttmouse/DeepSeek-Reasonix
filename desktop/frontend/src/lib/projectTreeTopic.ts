@@ -2,7 +2,7 @@ import { asArray } from "./array";
 import { getLocale, type DictKey, type Translator } from "./i18n";
 import type { ProjectNode, ProjectTopicStatus } from "./types";
 
-export type ProjectTreeVariant = "classic" | "workbench" | "creation";
+export type ProjectTreeVariant = "classic" | "workbench";
 export type WorkbenchOrganizeMode = "project" | "recent" | "time";
 export type WorkbenchSortMode = "created" | "updated";
 
@@ -417,14 +417,12 @@ export function projectTreeTopicHasUnreadActivity(
   return Math.max(readActivity[key] ?? 0, baselineAt) < activityAt;
 }
 
-export function projectTreeShouldRenderTopicActions(isSessionNode: boolean, variant: ProjectTreeVariant, unread: boolean): boolean {
-  return !isSessionNode && variant !== "creation" && !unread;
+export function projectTreeShouldRenderTopicActions(isSessionNode: boolean, _variant: ProjectTreeVariant, unread: boolean): boolean {
+  return !isSessionNode && !unread;
 }
 
-// Pinning reorders the classic/workbench trees shared with creation mode, so
-// the creation context menu keeps its original rename/trash-only entries.
-export function projectTreeTopicMenuOffersPin(variant: ProjectTreeVariant): boolean {
-  return variant !== "creation";
+export function projectTreeTopicMenuOffersPin(_variant: ProjectTreeVariant): boolean {
+  return true;
 }
 
 export function topicActivityLabel(ms: number, t: Translator, compact = false): string {

@@ -218,7 +218,6 @@ export function ProjectTree({
   const t = useT();
   const { showToast } = useToast();
   const compactTopics = variant === "workbench";
-  const creationTopics = variant === "creation";
   const [tree, setTree] = useState<ProjectNode[]>([]);
   const treeRef = useRef<ProjectNode[]>([]);
   const latestRevisionRef = useRef(0);
@@ -334,7 +333,7 @@ export function ProjectTree({
     const pageState = topicPageStateRef.current[key];
     const cursor = append ? pageState?.nextCursor ?? "" : "";
     if (append && !cursor) return;
-    const sortMode = creationTopics ? "updated" : workbenchSortModeRef.current;
+    const sortMode = workbenchSortModeRef.current;
     const limit = timeFilter === "10" ? 10 : timeFilter === "20" ? 20 : 50;
     const requestSignature = projectTreeTopicPageSignature(query, timeFilter, sortMode, limit);
     // Last-query-wins: stale completions cannot overwrite a newer first page.
@@ -383,7 +382,7 @@ export function ProjectTree({
         showToast(message, "error", { durationMs: 6000 });
       }
     }
-  }, [applyRuntimeProjection, creationTopics, currentArchiveTombstones, query, showToast, timeFilter, updateTopicPageState]);
+  }, [applyRuntimeProjection, currentArchiveTombstones, query, showToast, timeFilter, updateTopicPageState]);
   loadProjectTopicsRef.current = loadProjectTopics;
 
   const selectWorkbenchSortMode = useCallback((sortMode: WorkbenchSortMode) => {
@@ -955,16 +954,14 @@ export function ProjectTree({
       .map(filterNode)
       .filter((node): node is ProjectNode => node !== null);
     if (compactTopics) return arrangeWorkbenchTree(filtered, workbenchOrganizeMode, workbenchSortMode);
-    if (creationTopics) return arrangeWorkbenchTree(filtered, "project", "updated");
     return arrangeClassicProjectTree(filtered, workbenchSortMode);
-  }, [compactTopics, creationTopics, query, timeFilter, treeWithRemoteSessions, workbenchOrganizeMode, workbenchSortMode]);
+  }, [compactTopics, query, timeFilter, treeWithRemoteSessions, workbenchOrganizeMode, workbenchSortMode]);
 
   const pinnedTreeSections = useMemo<PinnedTreeSections>(() => {
-    if (creationTopics) return { pinned: [], projects: visibleTree };
     return splitPinnedProjectTree(visibleTree, workbenchSortMode, compactTopics);
-  }, [compactTopics, creationTopics, visibleTree, workbenchSortMode]);
+  }, [compactTopics, visibleTree, workbenchSortMode]);
 
-  const classicTopics = !compactTopics && !creationTopics;
+  const classicTopics = !compactTopics;
   const classicTruncationActive = classicTopics && query.trim() === "" && timeFilter === "all";
 
   const projectLabelByRoot = useMemo(() => {

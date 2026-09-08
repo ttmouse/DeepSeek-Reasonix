@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Virtuoso } from "react-virtuoso";
 import type { ControllerLiveStore, HistoryLoadTrigger, HistoryMutation, Item, LiveStream } from "../lib/useController";
 import type { CheckpointMeta, WireCompletionSummary } from "../lib/types";
@@ -53,7 +53,6 @@ import { ProcessFoldHeader } from "./ProcessFoldHeader";
 import { CompactionCard, NoticeCard, PhaseCard, SteerCard } from "./TranscriptCards";
 import { LiveStreamContext } from "./LiveStreamContext";
 import { useTranscriptSelectableRows } from "../lib/useTranscriptSelectableRows";
-import { useCreationTranscriptScrollbar } from "../lib/useCreationTranscriptScrollbar";
 import { useTranscriptScrollInteractions } from "../lib/useTranscriptScrollInteractions";
 import { hasTranscriptScrollableRange, TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX, useTranscriptScrollArbiter } from "../lib/useTranscriptScrollArbiter";
 import { TRANSCRIPT_READER_FULL_MOUNT_ROW_LIMIT } from "../lib/transcriptHistoryPrependLease";
@@ -103,8 +102,6 @@ export function Transcript({
   rewindDisabled = false,
   running = false,
   questionNavigator = true,
-  welcomeVariant = "default",
-  creationMode = false,
   actionHoverMenus = false,
   rewindSignal = 0,
   revealSignal = 0,
@@ -140,8 +137,6 @@ export function Transcript({
   rewindDisabled?: boolean;
   running?: boolean;
   questionNavigator?: boolean;
-  welcomeVariant?: "default" | "creation";
-  creationMode?: boolean;
   actionHoverMenus?: boolean;
   rewindSignal?: number;
   revealSignal?: number;
@@ -259,24 +254,6 @@ export function Transcript({
     cancelStreamingAutoScroll();
     releaseTailFollow();
   }, [cancelStreamingAutoScroll, releaseTailFollow]);
-
-  const {
-    state: creationScrollbar,
-    handleScroll: handleCreationScroll,
-    onThumbPointerDown: handleCreationScrollbarThumbPointerDown,
-    onRailPointerDown: handleCreationScrollbarRailPointerDown,
-  } = useCreationTranscriptScrollbar({
-    // Always on: the custom rail replaces the native scrollbar so it can pin
-    // to the window's right edge instead of the scroller's (the docked
-    // launcher panel owns the scroller's right edge).
-    enabled: true,
-    contentRevision: items.length,
-    scrollRef,
-    onScroll: () => {},
-    setScrollMode,
-    writeOffset,
-    finishProgrammaticScroll,
-  });
 
   const [
     questions,
@@ -420,13 +397,12 @@ export function Transcript({
       folds,
       foldPreference,
       hasOlderHistory,
-      creationMode,
       turnForUser,
       hasCheckpointForTurn,
       reasoningDisplayMode,
       subcallsByParent,
     }),
-    [turnModels, folds, foldPreference, hasOlderHistory, creationMode, turnForUser, hasCheckpointForTurn, reasoningDisplayMode, subcallsByParent],
+    [turnModels, folds, foldPreference, hasOlderHistory, turnForUser, hasCheckpointForTurn, reasoningDisplayMode, subcallsByParent],
   );
   const { liveSplit, liveMinHeight } = useTranscriptLiveTurnStability({
     turnModels, rows, liveId, running, stabilityKey: `${layoutSurfaceKey}:${userResizeRevision}`,
@@ -587,10 +563,9 @@ export function Transcript({
     deliverScroll();
     noteScrollActivity();
     pagingAuthorization.noteScrollPosition();
-    handleCreationScroll();
     scheduleActiveQuestionSync();
     scheduleBlankViewportCheck();
-  }, [deliverScroll, handleCreationScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
+  }, [deliverScroll, noteScrollActivity, pagingAuthorization, scheduleActiveQuestionSync, scheduleBlankViewportCheck]);
   const [handleJumpToQuestion, handleEarlierHistoryReached, retryOlderHistory, questionJumpSurface] = useTranscriptQuestionJump({
     questions, loadedByTurn, layoutSurfaceKey, rowIndexByKey,
     hasOlderHistory, loadingOlderHistory, olderHistoryError, running, scrollElement, scheduleRecovery: scheduleBlankViewportCheck,
@@ -708,7 +683,6 @@ export function Transcript({
             item={assistantAnswerOnly(row.item)}
             defaultExpanded={false}
             expandWhileStreaming={false}
-            creationMode={creationMode}
             reasoningDisplay="hide"
           />
         );
@@ -756,7 +730,6 @@ export function Transcript({
     actionHoverMenus,
     actionPending,
     checkpointsByTurn,
-    creationMode,
     handleFoldToggle,
     handleReasoningManualOpen,
     lastTurn,
@@ -915,7 +888,7 @@ export function Transcript({
     <div className="transcript-shell" aria-busy={Boolean(questionJumpSurface) || undefined}>
       {empty ? (
         <div
-          className={`transcript transcript--empty${creationMode ? " transcript--creation-scrollbar" : ""}`}
+          className="transcript transcript--empty"
           ref={(node) => handleScrollerRef(node)}
           aria-busy={hydrating || undefined}
         >
@@ -924,14 +897,14 @@ export function Transcript({
               <Loader2 className="transcript__loading-icon" aria-hidden="true" />
               <span>{t("common.loading")}</span>
             </div>
-          ) : <Welcome onPrompt={onPrompt} variant={welcomeVariant} />}
+          ) : <Welcome onPrompt={onPrompt} />}
         </div>
       ) : !geometryReady ? (
         // Bootstrap the real readable width/font signature before Virtuoso
         // constructs its empty size tree. This element is the first scroller,
         // not a remount/recovery cycle; later environment changes stay live.
         <div
-          className={`transcript${creationMode ? " transcript--creation-scrollbar" : ""}`}
+          className="transcript"
           ref={(node) => handleScrollerRef(node)}
           aria-busy="true"
           data-transcript-geometry-bootstrap="true"
@@ -941,7 +914,7 @@ export function Transcript({
           <Virtuoso<TranscriptRow, TranscriptVirtuosoContext>
             key={virtuosoResetKey}
             ref={virtuosoRef}
-            className={`transcript${creationMode ? " transcript--creation-scrollbar" : ""}${creationMode && creationScrollbar.hot ? " transcript--scrollbar-hot" : ""}`}
+            className="transcript"
             data-transcript-hydrating={hydrating ? "true" : "false"}
             data-transcript-reader-layout-lease={readerTransactionActive ? "true" : "false"}
             data-transcript-row-count={virtualRows.length}
@@ -994,29 +967,7 @@ export function Transcript({
         </LiveStreamContext.Provider>
       )}
 
-      {creationScrollbar.visible && (() => {
-        // Fixed rail pinned to the window's right edge, vertically spanning
-        // the scroller's rect so the thumb math (relative to rail height ==
-        // scroller clientHeight) stays valid. Rect is re-read on every
-        // scrollbar state change (scroll / resize / content growth all flow
-        // through the hook's state updates).
-        const scroller = scrollRef.current;
-        const rect = scroller?.getBoundingClientRect();
-        return (
-          <div
-            className={`transcript__scrollbar transcript__scrollbar--window${creationScrollbar.hot ? " transcript__scrollbar--hot" : ""}`}
-            style={rect ? { top: rect.top, height: rect.height } as CSSProperties : undefined}
-            onPointerDown={handleCreationScrollbarRailPointerDown}
-            aria-hidden="true"
-          >
-            <div
-              className="transcript__scrollbar-thumb"
-              style={{ top: creationScrollbar.thumbTop, height: creationScrollbar.thumbHeight } as CSSProperties}
-              onPointerDown={handleCreationScrollbarThumbPointerDown}
-            />
-          </div>
-        );
-      })()}
+
 
       {!empty && showQuestionNav && (
         <ChatHistorySidebar questions={questions} onJump={handleJumpToQuestion} />

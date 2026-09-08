@@ -57,7 +57,6 @@ const options: BuildRowsOptions = {
   folds: EMPTY_FOLDS,
   foldPreference: "auto",
   hasOlderHistory: false,
-  creationMode: false,
   turnForUser: () => 0,
 };
 

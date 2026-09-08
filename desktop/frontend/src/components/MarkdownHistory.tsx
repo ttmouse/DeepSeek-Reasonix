@@ -138,7 +138,6 @@ function useBlockWindowSentinel(
 
 export const MarkdownHistory = memo(function MarkdownHistory({
   text,
-  plainStatusBlocks = false,
   cacheKey,
   entryId,
   fallback,
@@ -146,7 +145,6 @@ export const MarkdownHistory = memo(function MarkdownHistory({
   onError,
 }: {
   text: string;
-  plainStatusBlocks?: boolean;
   /** Stable transcript item key — enables cache reuse across live/history hosts. */
   cacheKey?: string;
   /** @deprecated Use cacheKey. Retained for focused history callers. */
@@ -252,7 +250,7 @@ export const MarkdownHistory = memo(function MarkdownHistory({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, stableCacheKey, revision]);
 
-  const components = useMemo(() => createComponents(plainStatusBlocks), [plainStatusBlocks]);
+  const components = useMemo(() => createComponents(), []);
   const totalBlocks = blocks?.length ?? 0;
   const [blockWindow, moveBlockWindow] = useProgressiveBlockWindow(totalBlocks, blocks);
   const rootRef = useRef<HTMLDivElement>(null);

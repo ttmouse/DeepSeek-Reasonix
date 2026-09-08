@@ -5,14 +5,8 @@ import { useT } from "../lib/i18n";
 // (/ commands, @ files, Enter), and a few clickable example prompts that send
 // immediately so a first turn is one click away.
 
-export function Welcome({ onPrompt, variant = "default" }: { onPrompt: (text: string) => void; variant?: "default" | "creation" }) {
+export function Welcome({ onPrompt }: { onPrompt: (text: string) => void }) {
   const t = useT();
-  if (variant === "creation") {
-    // Headline lives above the hero Composer in App footer (same stack).
-    void onPrompt;
-    void t;
-    return null;
-  }
 
   const examples = [t("welcome.ex1"), t("welcome.ex2"), t("welcome.ex3"), t("welcome.ex4")];
   return (

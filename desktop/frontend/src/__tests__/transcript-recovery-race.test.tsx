@@ -695,7 +695,7 @@ stubSnapshot = null;
 const duplicateCurrent: Item[] = [
   { kind: "user", id: "u-duplicate-current", text: "current" }, { kind: "phase", id: "duplicate-process-id", text: "working" },
 ];
-const duplicateOptions = { folds: EMPTY_FOLDS, foldPreference: "auto" as const, hasOlderHistory: false, creationMode: false, turnForUser: () => undefined };
+const duplicateOptions = { folds: EMPTY_FOLDS, foldPreference: "auto" as const, hasOlderHistory: false, turnForUser: () => undefined };
 const duplicateBeforeRows = buildTranscriptRows(buildTurnModels(duplicateCurrent), duplicateOptions);
 const duplicateAfterRows = buildTranscriptRows(buildTurnModels([
   { kind: "user", id: "u-duplicate-older", text: "older" }, { kind: "phase", id: "duplicate-process-id", text: "older work" },

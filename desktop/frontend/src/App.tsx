@@ -2,7 +2,6 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { ShellExpandProvider, useShellExpand } from "./lib/shellExpand";
 import {
   Activity,
-  Command,
   Copy as RestoreIcon,
   Minus,
   Search,
@@ -142,9 +141,6 @@ import {
 import { useComposerModeActions } from "./lib/useComposerModeActions";
 import { openRemoteNewSession, useRemoteComposerProfileSync, useRemoteComposerRuntimeActions, useRemoteComposerSend } from "./lib/useRemoteComposerIntegration";
 import {
-  CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH,
-  CREATION_RIGHT_DOCK_TREE_MIN_WIDTH,
-  CREATION_SIDEBAR_MIN_WIDTH,
   RIGHT_DOCK_MIN_RENDER_WIDTH,
   RIGHT_DOCK_TREE_MIN_WIDTH,
   type RightDockMode,
@@ -153,13 +149,9 @@ import {
   TERMINAL_DEFAULT_HEIGHT,
   TERMINAL_MIN_HEIGHT,
   applyLayoutStyleDefaults,
-  clampCreationRightDockTreeWidth,
-  clampCreationSidebarWidth,
   clampRightDockTreeWidth,
   clampSidebarWidth,
   clampTerminalHeight,
-  defaultCreationRightDockTreeWidth,
-  defaultCreationSidebarWidth,
   defaultRightDockTreeWidth,
   defaultSidebarWidth,
   saveRightDockTreeWidth,
@@ -328,7 +320,6 @@ function isThemeMode(value: string): value is Theme {
   return value === "auto" || value === "light" || value === "dark";
 }
 
-type DesktopLayoutStyle = "classic" | "workbench" | "creation";
 const DISMISSED_TODO_STORAGE_KEY = "todoPanel:dismissedKeys";
 const MAX_DISMISSED_TODO_KEYS = 160;
 type HistoryScopeFilter = { scope: "global" | "project"; workspaceRoot: string };
@@ -1032,18 +1023,14 @@ export default function App() {
     cancelJob,
     switchTab,
     switchRemoteTab,
-    openProjectTab,
     createIsolatedWorktree,
-    openGlobalTab,
     closeTab,
     reorderTabs,
-    openTopicSession,
     activateTopic,
     noteNavigationIntent,
     isNavigationIntentCurrent,
     reassertVisibleTabAfterStaleNavigation,
     syncActiveTab,
-    ensureBlankTab,
     ensureBlankSurface,
     commitSingleSurfaceNavigation,
   } = useController();
@@ -1072,8 +1059,6 @@ export default function App() {
   const setSettingsTarget = useOverlayStore((s) => s.setSettingsTarget);
   const settingsFocus = useOverlayStore((s) => s.settingsFocus);
   const setSettingsFocus = useOverlayStore((s) => s.setSettingsFocus);
-  const [desktopLayoutStyle, setDesktopLayoutStyle] = useState<DesktopLayoutStyle>("workbench");
-  const singleSurfaceLayout = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "creation";
   const { configLoadWarnings, applySnapshot: applyConfigWarningSnapshot, reload: reloadConfigWarnings, dismiss: dismissConfigWarnings } = useConfigLoadWarnings();
   const [startupUpdateChecksEnabled, setStartupUpdateChecksEnabled] = useState<boolean | null>(null);
   const [histView, setHistView] = useState<HistoryViewState | null>(null);
@@ -1250,7 +1235,6 @@ export default function App() {
     }
   }, [mainView, settingsTarget, paletteOpen, sidebarSearchOpen, histView, shortcutsOpen, topicExportOpen, setMainView]);
   const sidebarSearchFocusSignal = useOverlayStore((s) => s.sidebarSearchFocusSignal);
-  const setSidebarSearchFocusSignal = useOverlayStore((s) => s.setSidebarSearchFocusSignal);
   const [sidebarTogglePressed, setSidebarTogglePressed] = useState(false);
   const [clearContextPending, setClearContextPending] = useState(false);
   const [backgroundRuntimes, setBackgroundRuntimes] = useState<BackgroundRuntimeView[]>([]);
@@ -1413,8 +1397,7 @@ export default function App() {
       applyConversationWidth(settings.conversationWidth);
       // The desktop-style picker was removed from settings; workbench is the
       // only remaining layout, so ignore any older persisted value.
-      setDesktopLayoutStyle("workbench");
-      applyLayoutStyleDefaults("workbench");
+      applyLayoutStyleDefaults();
       setLocalePref(normalizeLangPref(settings.desktopLanguage));
       setStartupUpdateChecksEnabled(settings.checkUpdates !== false);
       hydrateReasoningDisplayMode(settings.reasoningDisplayMode, settings.reasoningDisplayModeExplicit === true);
@@ -1534,11 +1517,9 @@ export default function App() {
   // the tree width is the single source so toggling tabs never resizes the
   // sidebar. Preview detail stays inside the dock without widening it.
   const preferredWorkspacePanelWidth = rightDockTreeWidth;
-  const rightDockTreeMinWidth = desktopLayoutStyle === "creation" ? CREATION_RIGHT_DOCK_TREE_MIN_WIDTH : RIGHT_DOCK_TREE_MIN_WIDTH;
-  const rightDockTreeWidthClamp = desktopLayoutStyle === "creation" ? clampCreationRightDockTreeWidth : clampRightDockTreeWidth;
-  const rightDockMinRenderWidth = desktopLayoutStyle === "creation" && !rightDockDetailActive
-    ? CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH
-    : RIGHT_DOCK_MIN_RENDER_WIDTH;
+  const rightDockTreeMinWidth = RIGHT_DOCK_TREE_MIN_WIDTH;
+  const rightDockTreeWidthClamp = clampRightDockTreeWidth;
+  const rightDockMinRenderWidth = RIGHT_DOCK_MIN_RENDER_WIDTH;
   const workspacePanelMinWidth = rightDockTreeMinWidth;
   const chatReservedWidth = CHAT_MIN_WIDTH;
   const workspacePanelAvailableWidth = availableWorkspacePanelWidth({
@@ -2580,35 +2561,21 @@ export default function App() {
     saveSidebarCollapsed(nextCollapsed);
   }, [anchorAppScrollToChat, closeTransientOverlays, pulseSidebarToggle, sidebarCollapsed]);
 
-  const sidebarWidthClamp = desktopLayoutStyle === "creation" ? clampCreationSidebarWidth : clampSidebarWidth;
+  const sidebarWidthClamp = clampSidebarWidth;
   const sidebarRenderWidth = liveSidebarWidth ?? sidebarWidth;
-  const sidebarResizeMinWidth = desktopLayoutStyle === "creation" ? CREATION_SIDEBAR_MIN_WIDTH : SIDEBAR_MIN_WIDTH;
+  const sidebarResizeMinWidth = SIDEBAR_MIN_WIDTH;
 
   useEffect(() => {
-    if (desktopLayoutStyle === "creation" || sidebarWidth >= SIDEBAR_MIN_WIDTH) return;
+    if (sidebarWidth >= SIDEBAR_MIN_WIDTH) return;
     setSidebarWidth(SIDEBAR_MIN_WIDTH);
     saveSidebarWidth(SIDEBAR_MIN_WIDTH);
-  }, [desktopLayoutStyle, sidebarWidth]);
+  }, [sidebarWidth]);
 
   useEffect(() => {
-    if (desktopLayoutStyle === "creation") {
-      if (rightDockTreeWidth >= CREATION_RIGHT_DOCK_TREE_MIN_WIDTH) return;
-      setRightDockTreeWidth(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH);
-      saveRightDockTreeWidth(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH);
-      return;
-    }
     if (rightDockTreeWidth >= RIGHT_DOCK_TREE_MIN_WIDTH) return;
     setRightDockTreeWidth(RIGHT_DOCK_TREE_MIN_WIDTH);
     saveRightDockTreeWidth(RIGHT_DOCK_TREE_MIN_WIDTH);
-  }, [desktopLayoutStyle, rightDockTreeWidth]);
-
-  // Creation no longer exposes the overview tab. If a previous session left
-  // rightDockMode on "context", coerce it to files so 文件 stays selected.
-  useEffect(() => {
-    if (desktopLayoutStyle !== "creation") return;
-    if (rightDockMode !== "context") return;
-    setRightDockMode("files");
-  }, [desktopLayoutStyle, rightDockMode, setRightDockMode]);
+  }, [rightDockTreeWidth]);
 
   const setExpandedSidebarWidth = useCallback((width: number) => {
     closeTransientOverlays();
@@ -3412,17 +3379,6 @@ export default function App() {
     state.hydratePlaceholderItems?.length,
   );
   const transcriptHydrating = state.hydrating && !state.hydrateHistoryLoaded;
-  // Creation hero only after history hydration settles on a truly empty session.
-  // Avoid flash while switching tabs: items may be empty while placeholders show.
-  // Exclude IM/Bot detail: hero CSS collapses .main, which also hosts that panel.
-  // (desktopLayoutStyle is available here; sidebarCreation is declared later.)
-  const creationEmptyHero =
-    desktopLayoutStyle === "creation" &&
-    !runtimeTransitioning &&
-    !sidebarImDetailConnection &&
-    !sessionHasContent &&
-    !transcriptHydrating &&
-    !hydratePlaceholderActive;
   const transcriptItems = hydratePlaceholderActive ? state.hydratePlaceholderItems! : state.items;
   const handleLoadOlderHistory = useCallback((targetTurn?: number, trigger: HistoryLoadTrigger = "retry") => {
     return activeTabId ? loadOlderHistory(activeTabId, targetTurn, trigger) : Promise.resolve(false);
@@ -3456,9 +3412,9 @@ export default function App() {
     if (!match) return;
     const intent = Number(match[1]);
     if (navigationSurface?.intent !== intent) return;
-    if (singleSurfaceLayout && activeTabId) commitSingleSurfaceNavigation(activeTabId);
+    if (activeTabId) commitSingleSurfaceNavigation(activeTabId);
     commitNavigationSurfacePaint(intent, outcome);
-  }, [activeTabId, commitNavigationSurfacePaint, commitSingleSurfaceNavigation, navigationSurface?.intent, singleSurfaceLayout]);
+  }, [activeTabId, commitNavigationSurfacePaint, commitSingleSurfaceNavigation, navigationSurface?.intent]);
   const latestGuidanceConsumed = useMemo(() => {
     for (let i = state.items.length - 1; i >= 0; i--) {
       const item = state.items[i];
@@ -3687,17 +3643,11 @@ export default function App() {
       if (latest()) setTabMetas(tabs);
       return tabs;
     };
-    const openTopicTarget = async (scope: string, workspaceRoot: string, topicId: string, sessionPath?: string): Promise<TabMeta> => {
-      if (singleSurfaceLayout) return activateTopic(scope, workspaceRoot, topicId, sessionPath || "", request.navigationIntentSeq);
-      if (sessionPath) return openTopicSession(scope, workspaceRoot, topicId, sessionPath, request.navigationIntentSeq);
-      if (scope === "global") return openGlobalTab(topicId, request.navigationIntentSeq);
-      return openProjectTab(workspaceRoot, topicId, request.navigationIntentSeq);
-    };
+    const openTopicTarget = async (scope: string, workspaceRoot: string, topicId: string, sessionPath?: string): Promise<TabMeta> =>
+      activateTopic(scope, workspaceRoot, topicId, sessionPath || "", request.navigationIntentSeq);
     const openBlankTarget = async (scope: string, workspaceRoot: string): Promise<TabMeta> => {
       const root = scope === "project" ? workspaceRoot : "";
-      return singleSurfaceLayout
-        ? ensureBlankSurface(scope, root, request.navigationIntentSeq)
-        : ensureBlankTab(scope, root, request.navigationIntentSeq);
+      return ensureBlankSurface(scope, root, request.navigationIntentSeq);
     };
 
     try {
@@ -3823,7 +3773,7 @@ export default function App() {
         showToast(err?.message || String(err));
       }
     }
-  }, [activateTopic, createIsolatedWorktree, ensureBlankSurface, ensureBlankTab, isNavigationIntentCurrent, openChannelSession, openGlobalTab, openProjectTab, openTopicSession, refreshHistoryView, resumeSession, seedActiveTabMeta, showToast, singleSurfaceLayout, t]);
+  }, [activateTopic, createIsolatedWorktree, ensureBlankSurface, isNavigationIntentCurrent, openChannelSession, refreshHistoryView, resumeSession, seedActiveTabMeta, showToast, t]);
 
   const enqueueNavigationWithIntent = useCallback((input: DesktopNavigationIntent, navigationIntentSeq: number): Promise<void> => {
     beginNavigationSurface(navigationIntentSeq);
@@ -4011,10 +3961,8 @@ export default function App() {
     return enqueueNavigation({ kind: "sidebar-im", connection });
   }, [enqueueNavigation]);
 
-  const onResumeSession = useCallback((session: SessionMeta): Promise<void> => {
-    if (state.running && !singleSurfaceLayout) return Promise.resolve();
-    return enqueueNavigation({ kind: "resume-session", session });
-  }, [enqueueNavigation, singleSurfaceLayout, state.running]);
+  const onResumeSession = useCallback((session: SessionMeta): Promise<void> =>
+    enqueueNavigation({ kind: "resume-session", session }), [enqueueNavigation]);
 
   const onRecoveryCreated = useCallback(() => {
     setProjectRevision((value) => value + 1);
@@ -4026,9 +3974,6 @@ export default function App() {
   }, [refreshHistoryView]);
 
   const openTaskMonitorSession = useCallback(async (tabID: string, taskID: string): Promise<boolean> => {
-    if (state.running && !singleSurfaceLayout) {
-      throw new Error(t("history.failedOpenSession"));
-    }
     // Claim the navigation epoch before the first Wails await. If the user
     // switches tabs while the task/session lookup is pending, its completion is
     // stale and must not enqueue a newer navigation request.
@@ -4055,7 +4000,7 @@ export default function App() {
     }
     await enqueueNavigationWithIntent({ kind: "resume-session", session }, navigationIntentSeq);
     return isNavigationIntentCurrent(navigationIntentSeq);
-  }, [beginNavigationSurface, enqueueNavigationWithIntent, isNavigationIntentCurrent, noteNavigationIntent, settleNavigationSurface, singleSurfaceLayout, state.running, t]);
+  }, [beginNavigationSurface, enqueueNavigationWithIntent, isNavigationIntentCurrent, noteNavigationIntent, settleNavigationSurface]);
 
   // Command palette: ⌘K / Ctrl+K opens a fuzzy navigator over commands and
   // recent sessions. Sessions are snapshotted on open so the list is stable
@@ -4392,16 +4337,12 @@ export default function App() {
   const sidebarToggleTitle = sidebarCollapsed
       ? t("sidebar.expand")
       : t("sidebar.collapse");
-  const sidebarNavTooltipDisabled = !sidebarCollapsed;
   const browserPreviewChrome = typeof window !== "undefined" && !window.runtime;
   const browserMockScenario = browserPreviewChrome ? browserMockScenarioParam() : "";
   const guidanceQueueMockItems = isGuidanceMockScenario(browserMockScenario) ? GUIDANCE_QUEUE_MOCK_ITEMS : undefined;
-  const workspacePanelResetWidth = desktopLayoutStyle === "creation"
-    ? defaultCreationRightDockTreeWidth()
-    : defaultRightDockTreeWidth();
+  const workspacePanelResetWidth = defaultRightDockTreeWidth();
   const workspacePanelResizeMinWidth = workspacePanelAriaMinWidth(workspacePanelMinWidth, workspacePanelRenderWidth);
   const workspacePanelResizeMaxWidth = workspacePanelAvailableWidth;
-  const sidebarCreation = desktopLayoutStyle === "creation";
   // Command palette shortcut label (⌘K / Ctrl+K), platform-aware.
   const commandPaletteShortcut = formatShortcutCombo(
     resolvedShortcutCombo("commandPalette.open", desktopPlatform),
@@ -4434,13 +4375,11 @@ export default function App() {
     ? sidebarImDetailConnection.platformLabel
     : topicbarImSource ? t("msg.fromIm", { source: topicbarImSource.label }) : "";
   const topicbarImSourcePlatform = sidebarImDetailConnection?.platform ?? topicbarImSource?.platform;
-  const topicbarSubtitleVisible = !sidebarCreation && Boolean(activeTab?.isolatedWorktree || topicbarImSourceLabel);
+  const topicbarSubtitleVisible = Boolean(activeTab?.isolatedWorktree || topicbarImSourceLabel);
   const topicbarSubtitleTitle = sidebarImDetailConnection
     ? [topicbarWorkspaceLabel, topicbarImSourceLabel, sidebarImScopeLabel(sidebarImDetailConnection, t)].filter(Boolean).join(" · ")
     : [topicbarWorkspacePath || topicbarWorkspaceLabel, topicbarImSourceLabel].filter(Boolean).join(" · ");
   const topicbarCanRename = !sidebarImDetailConnection && (Boolean(activeTab?.topicId) || Boolean(activeTab?.remote));
-  const topicbarTitleEditSize = Math.min(56, Math.max(4, topicTitleDraft.length || topicbarTitle.length || 1));
-  const sidebarWorkbench = desktopLayoutStyle === "workbench";
   // The Wails drag runtime ignores anything with detail !== 1, so a double click
   // on a --wails-draggable region never reaches the OS. Both platforms that hide
   // their native title bar need this handled here.
@@ -4457,14 +4396,12 @@ export default function App() {
       .then(() => window.setTimeout(syncMainWindowMaximised, 80))
       .catch(() => undefined);
   }, [chromeDoubleClickZooms, desktopPlatform, syncMainWindowMaximised]);
-  // Creation keeps the classic sidebar/chat structure while gating chrome tweaks
-  // behind its own style flag so classic/workbench remain unchanged.
-  const appChromeHidden = sidebarWorkbench || sidebarCreation;
-  const workbenchChromeHidden = sidebarWorkbench;
+  const appChromeHidden = true;
+  const workbenchChromeHidden = true;
   const sidebarClassName = [
     "sidebar",
     sidebarCollapsed ? "sidebar--collapsed" : "",
-    sidebarWorkbench ? "sidebar--workbench" : "",
+    "sidebar--workbench",
   ].filter(Boolean).join(" ");
 
   return (
@@ -4480,20 +4417,17 @@ export default function App() {
         `app--${desktopPlatform}`,
         windowsFramelessChrome ? "app--windows-frameless" : "",
         browserPreviewChrome ? "app--browser-preview" : "",
-        sidebarWorkbench ? "app--workbench" : "",
-        sidebarCreation ? "app--creation" : "",
-        !sidebarWorkbench && !sidebarCreation ? "app--classic" : "",
+        "app--workbench",
       ].filter(Boolean).join(" ")}
     >
       <ThemeBackground />
-      {sidebarWorkbench && !automationView && <div className="app__dock-toggle">{dockToggleButton}</div>}
+      {!automationView && <div className="app__dock-toggle">{dockToggleButton}</div>}
       <div
         ref={layoutRef}
         className={[
           "layout",
-          sidebarWorkbench ? "layout--workbench" : "",
-          workbenchChromeHidden ? "layout--workbench-chrome-hidden" : "",
-          sidebarCreation ? "layout--creation-chrome-hidden" : "",
+          "layout--workbench",
+          "layout--workbench-chrome-hidden",
           "layout--statusbar-hidden",
           sidebarCollapsed ? "layout--sidebar-collapsed" : "",
           sidebarResizing ? "layout--resizing layout--sidebar-resizing" : "",
@@ -4513,7 +4447,7 @@ export default function App() {
           <AppChrome
             platform={desktopPlatform}
             browserPreviewChrome={browserPreviewChrome}
-            workbenchChrome={sidebarWorkbench}
+            workbenchChrome={true}
             tabs={visibleTabs}
             activeTabId={visibleTabId}
             revealActiveSignal={tabRevealSignal}
@@ -4540,101 +4474,33 @@ export default function App() {
         </a>
 
         <aside className={sidebarClassName} aria-label={t("sidebar.navigation")}>
-          {sidebarWorkbench ? (
-            <>
-              <div className="sidebar__head" aria-hidden={sidebarCollapsed}>
-                <div className="sidebar__brand sidebar__brand--workbench">
-                  <img src={logoWordmark} alt="Reasonix" className="sidebar__brand-logo sidebar__brand-logo--workbench" draggable={false} />
-                </div>
+            <div className="sidebar__head" aria-hidden={sidebarCollapsed}>
+              <div className="sidebar__brand sidebar__brand--workbench">
+                <img src={logoWordmark} alt="Reasonix" className="sidebar__brand-logo sidebar__brand-logo--workbench" draggable={false} />
               </div>
+            </div>
 
-              <div className="sidebar__quick-actions">
-                <button
-                  className="sidebar__quick-action"
-                  type="button"
-                  onClick={() => {
-                    void handleNewTab();
-                  }}
-                >
-                  <MessageSquare size={18} aria-hidden="true" />
-                  <span>{t("topbar.newSession")}</span>
-                </button>
-                <button
-                  className="sidebar__quick-action"
-                  type="button"
-                  onClick={() => setMainView("automation")}
-                >
-                  <AlarmClock size={18} aria-hidden="true" />
-                  <span>{t("sidebar.automation")}</span>
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="sidebar__brand" aria-hidden={sidebarCollapsed}>
-                <img src={logoWordmark} alt="Reasonix" className="sidebar__brand-logo" draggable={false} />
-              </div>
-
+            <div className="sidebar__quick-actions">
               <button
-                className="sidebar__new"
+                className="sidebar__quick-action"
+                type="button"
                 onClick={() => {
                   void handleNewTab();
                 }}
               >
-                <SquarePen size={18} />
-                <span>{sidebarCreation ? t("creation.sidebar.newChat") : t("topbar.newSession")}</span>
+                <MessageSquare size={18} aria-hidden="true" />
+                <span>{t("topbar.newSession")}</span>
               </button>
-            </>
-          )}
+              <button
+                className="sidebar__quick-action"
+                type="button"
+                onClick={() => setMainView("automation")}
+              >
+                <AlarmClock size={18} aria-hidden="true" />
+                <span>{t("sidebar.automation")}</span>
+              </button>
+            </div>
 
-          {sidebarCreation && (
-            <section className="sidebar-feature-zone" aria-label={t("settings.title")}>
-              <div className="sidebar-feature-zone__title">{t("creation.sidebar.features")}</div>
-              <div className="sidebar-feature-zone__items">
-                <button
-                  className="sidebar-feature-zone__item"
-                  type="button"
-                  onClick={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("skills");
-                  }}
-                >
-                  <Command size={14} aria-hidden="true" />
-                  <span>{t("creation.sidebar.skills")}</span>
-                </button>
-                <button
-                  className="sidebar-feature-zone__item"
-                  type="button"
-                  onClick={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("memory");
-                  }}
-                >
-                  <Brain size={14} aria-hidden="true" />
-                  <span>{t("settings.tab.memory")}</span>
-                </button>
-                <button
-                  className="sidebar-feature-zone__item"
-                  type="button"
-                  onClick={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("bots");
-                  }}
-                >
-                  <MessageSquare size={14} aria-hidden="true" />
-                  <span>{t("creation.sidebar.messageChannels")}</span>
-                </button>
-                <button
-                  className="sidebar-feature-zone__item"
-                  type="button"
-                  onClick={() => setMainView("automation")}
-                >
-                  <AlarmClock size={14} aria-hidden="true" />
-                  <span>{t("sidebar.automation")}</span>
-                </button>
-              </div>
-            </section>
-          )}
 
           <section className="sidebar__section sidebar__section--projects">
             <Suspense fallback={null}><ProjectTree
@@ -4655,8 +4521,8 @@ export default function App() {
                 }}
                 timeFilter={topicTimeFilter}
                 onTimeFilterChange={setTopicTimeFilter}
-                variant={sidebarWorkbench ? "workbench" : sidebarCreation ? "creation" : "classic"}
-                searchExpanded={!sidebarCreation || sidebarSearchOpen}
+                variant="workbench"
+                searchExpanded={sidebarSearchOpen}
                 searchFocusSignal={sidebarSearchFocusSignal}
                 showShortcutBadges={showTopicBadges}
                 shortcutPlatform={desktopPlatform}
@@ -4664,101 +4530,46 @@ export default function App() {
               /></Suspense>
           </section>
 
-          {sidebarWorkbench ? (
-            <nav className="sidebar__nav sidebar__nav--footer">
-              <div className="sidebar__utility-row" aria-label={t("sidebar.utilityActions")}>
-                <RemoteSwitcher
-                  variant="icon"
-                  hosts={remoteHosts}
-                  statuses={remoteStatuses}
-                  onOpen={requestRemoteExplorer}
-                  onOpenWorkspace={openRemoteWorkspaceFromStatus}
-                  onConnect={connectAndOpenRemoteWorkspace}
-                  onDisconnect={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
-                  onManage={() => {
-                    closeTransientOverlays();
-                    setSettingsTarget("remote");
-                  }}
-                />
-                <Tooltip label={t("sidebar.trash")} fill side="top">
-                  <button
-                    className="sidebar__utility-button"
-                    type="button"
-                    onClick={() => void openTrash()}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                    <span className="sr-only">{t("sidebar.trash")}</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label={t("topbar.settings")} fill side="top">
-                  <button
-                    className="sidebar__utility-button"
-                    type="button"
-                    onClick={() => {
-                      closeTransientOverlays();
-                      setSettingsTarget("general");
-                    }}
-                  >
-                    <SettingsIcon size={16} aria-hidden="true" />
-                    <span className="sr-only">{t("topbar.settings")}</span>
-                  </button>
-                </Tooltip>
-              </div>
-            </nav>
-          ) : (
-            <nav className="sidebar__nav">
-              {sidebarCreation && (
-                <Tooltip label={t("projectTree.searchPlaceholder")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                  <button
-                    className={`sidebar__navitem sidebar__navitem--search${sidebarSearchOpen ? " sidebar__navitem--active" : ""}`}
-                    type="button"
-                    aria-label={t("projectTree.searchPlaceholder")}
-                    aria-pressed={sidebarSearchOpen}
-                    onClick={() => {
-                      setSidebarSearchOpen((open) => !open);
-                      setSidebarSearchFocusSignal((signal) => signal + 1);
-                    }}
-                  >
-                    <Search size={15} />
-                    <span>{t("tabBar.commandSearchCompact")}</span>
-                  </button>
-                </Tooltip>
-              )}
-              <Tooltip label={t("sidebar.trash")} fill side="right" disabled={sidebarNavTooltipDisabled}>
+          <nav className="sidebar__nav sidebar__nav--footer">
+            <div className="sidebar__utility-row" aria-label={t("sidebar.utilityActions")}>
+              <RemoteSwitcher
+                variant="icon"
+                hosts={remoteHosts}
+                statuses={remoteStatuses}
+                onOpen={requestRemoteExplorer}
+                onOpenWorkspace={openRemoteWorkspaceFromStatus}
+                onConnect={connectAndOpenRemoteWorkspace}
+                onDisconnect={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => {})}
+                onManage={() => {
+                  closeTransientOverlays();
+                  setSettingsTarget("remote");
+                }}
+              />
+              <Tooltip label={t("sidebar.trash")} fill side="top">
                 <button
-                  className="sidebar__navitem"
+                  className="sidebar__utility-button"
+                  type="button"
                   onClick={() => void openTrash()}
                 >
-                  <Trash2 size={15} />
-                  <span>{t("sidebar.trash")}</span>
+                  <Trash2 size={16} aria-hidden="true" />
+                  <span className="sr-only">{t("sidebar.trash")}</span>
                 </button>
               </Tooltip>
-              {!sidebarCreation && (
-                <Tooltip label={t("heartbeat.scheduler")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                  <button
-                    className="sidebar__navitem"
-                    onClick={() => setMainView("automation")}
-                  >
-                    <AlarmClock size={15} />
-                    <span>{t("sidebar.automation")}</span>
-                  </button>
-                </Tooltip>
-              )}
-              <Tooltip label={t("topbar.settings")} fill side="right" disabled={sidebarNavTooltipDisabled}>
+              <Tooltip label={t("topbar.settings")} fill side="top">
                 <button
-                  className="sidebar__navitem"
+                  className="sidebar__utility-button"
+                  type="button"
                   onClick={() => {
                     closeTransientOverlays();
                     setSettingsTarget("general");
                   }}
                 >
-                  <SettingsIcon size={15} />
-                  <span>{t("topbar.settings")}</span>
+                  <SettingsIcon size={16} aria-hidden="true" />
+                  <span className="sr-only">{t("topbar.settings")}</span>
                 </button>
               </Tooltip>
-            </nav>
-          )}
-
+            </div>
+          </nav>
         </aside>
         <button
           className="sidebar-resizer"
@@ -4771,22 +4582,10 @@ export default function App() {
           aria-valuenow={sidebarRenderWidth}
           onPointerDown={startSidebarResize}
           onKeyDown={resizeSidebarWithKeyboard}
-          onDoubleClick={() => setExpandedSidebarWidth(desktopLayoutStyle === "creation" ? defaultCreationSidebarWidth() : defaultSidebarWidth())}
+          onDoubleClick={() => setExpandedSidebarWidth(defaultSidebarWidth())}
         />
-        {sidebarCreation && (
-          <button
-            className={`sidebar-collapse-toggle${sidebarCollapsed ? " sidebar-collapse-toggle--collapsed" : ""}${sidebarTogglePressed ? " sidebar-collapse-toggle--pressed" : ""}`}
-            type="button"
-            onClick={toggleSidebar}
-            aria-label={sidebarToggleTitle}
-            aria-pressed={!sidebarCollapsed}
-            title={sidebarToggleTitle}
-          >
-            {sidebarCollapsed ? <PanelRight size={14} /> : <PanelLeft size={14} />}
-          </button>
-        )}
 
-        <section className={`chat-pane${creationEmptyHero ? " chat-pane--creation-empty" : ""}`}>
+        <section className="chat-pane">
           {mainView === "automation" ? (
             <Suspense fallback={<div className="heartbeat-page" />}>
               <HeartbeatView onOpenTopic={(scope, workspaceRoot, topicId) => {
@@ -4822,7 +4621,6 @@ export default function App() {
                       autoFocus
                       className="topicbar__title-input"
                       aria-label={t("topicBar.renameSession")}
-                      size={sidebarCreation ? topicbarTitleEditSize : undefined}
                       value={topicTitleDraft}
                       onChange={(event) => setTopicTitleDraft(event.target.value)}
                       onFocus={(event) => event.currentTarget.select()}
@@ -4899,7 +4697,6 @@ export default function App() {
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
               )}
               */}
-              {sidebarCreation && dockToggleButton}
               {tasksOpen && (
                 <div className="taskmonitor-popover" role="dialog" aria-label={t("summary.session")}>
                   <Suspense fallback={null}>
@@ -5027,9 +4824,7 @@ export default function App() {
                       turnStartAt={state.turnStartAt}
                       contentRevision={state.historyLayoutRevision}
                       historyMutation={state.historyMutation}
-                      welcomeVariant={sidebarCreation ? "creation" : "default"}
-                      creationMode={sidebarCreation}
-                      actionHoverMenus={sidebarCreation && !hydratePlaceholderActive && !runtimeTransitioning}
+                      actionHoverMenus={!hydratePlaceholderActive && !runtimeTransitioning}
                       rewindSignal={rewindSignal}
                       revealSignal={transcriptRevealSignal}
                       hydrating={transcriptHydrating || (runtimeTransitioning && !navigationTargetDataReady)}
@@ -5058,7 +4853,7 @@ export default function App() {
 
           {!sidebarImDetailConnection && (
           <footer
-            className={["footer", terminalSurfaceOpen && !sidebarCreation ? "footer--compact" : "", visibleDecisionSurface ? "footer--decision" : "", runtimeTransitioning ? "footer--navigation-hidden" : ""].filter(Boolean).join(" ")} ref={footerRef} style={navigationSurface?.phase === "source-retained" && footerHeight > 0 ? { height: footerHeight, minHeight: footerHeight, boxSizing: "border-box" } : undefined} inert={runtimeTransitioning || undefined} aria-hidden={runtimeTransitioning || undefined}
+            className={["footer", terminalSurfaceOpen ? "footer--compact" : "", visibleDecisionSurface ? "footer--decision" : "", runtimeTransitioning ? "footer--navigation-hidden" : ""].filter(Boolean).join(" ")} ref={footerRef} style={navigationSurface?.phase === "source-retained" && footerHeight > 0 ? { height: footerHeight, minHeight: footerHeight, boxSizing: "border-box" } : undefined} inert={runtimeTransitioning || undefined} aria-hidden={runtimeTransitioning || undefined}
           >
             {showTodos && (
               <TodoPanel
@@ -5250,15 +5045,11 @@ export default function App() {
                   : composerSurfaceHidden
                     ? "composer-decision-host--hidden"
                     : "",
-                creationEmptyHero ? "composer-decision-host--creation-hero" : "",
               ].filter(Boolean).join(" ")}
               hidden={Boolean(decisionSurface) || undefined}
               inert={composerSurfaceHidden ? true : undefined}
               aria-hidden={composerSurfaceHidden ? true : undefined}
             >
-            {creationEmptyHero && (
-              <h2 className="welcome-creation__headline">{t("welcome.creation.title")}</h2>
-            )}
             <Composer
               running={remoteSurfaceActive ? remoteSession.running : state.running || rewindCommitting}
               collaborationMode={collaborationMode}
@@ -5320,8 +5111,6 @@ export default function App() {
               guidanceConsumedItemId={latestGuidanceConsumed?.itemId}
               guidanceConsumedText={latestGuidanceConsumed?.text}
               guidanceQueuePreviewItems={guidanceQueueMockItems}
-              showContextWindowRing={sidebarCreation}
-              heroMode={creationEmptyHero}
               context={visibleRuntimeState.context}
               turnCost={visibleRuntimeState.turnCost}
               turnRateBand={visibleRuntimeState.turnRateBand}
@@ -5371,7 +5160,7 @@ export default function App() {
                   <Suspense fallback={null}>
                     <RemotePanel onClose={() => dockCloseTab(tab.id)} />
                   </Suspense>
-                ) : tab.type === "context" && desktopLayoutStyle !== "creation" ? (
+                ) : tab.type === "context" ? (
                   <Suspense fallback={null}>
                     <ContextPanel
                     tabId={remoteSurfaceActive ? undefined : activeTabId}
@@ -5447,7 +5236,6 @@ export default function App() {
                       verificationRevealRequest={verificationRevealRequest}
                       qualityFloor={composerProfile.qualityFloor}
                       showViewTabs={false}
-                      creationMode={sidebarCreation}
                       onOpenFilesChange={handleOpenFilesChange}
                     />
                   </Suspense>

@@ -386,14 +386,6 @@ function composerMaxHeight(): number {
   return Math.max(COMPOSER_MIN_HEIGHT, Math.min(COMPOSER_MAX_HEIGHT, Math.floor(window.innerHeight * COMPOSER_MAX_VIEWPORT_RATIO)));
 }
 
-// Hero (creation) input cap: the old 96px hard cap clipped longer drafts
-// before the card autosize took over; give the hero min(30vh, 160px) so a
-// visible scrollbar takes over instead (#8494/#8742/#9019).
-function composerHeroInputMaxHeight(): number {
-  if (typeof window === "undefined") return 160;
-  return Math.min(Math.floor(window.innerHeight * 0.3), 160);
-}
-
 // The rendered card includes the run strip while a turn runs; subtract it to
 // recover the user's logical height when measuring from the DOM.
 function composerLogicalHeight(card: HTMLElement): number {
@@ -600,8 +592,6 @@ export function Composer({
   guidanceConsumedItemId,
   guidanceConsumedText,
   guidanceQueuePreviewItems,
-  showContextWindowRing = false,
-  heroMode = false,
   context,
   turnCost,
   turnRateBand,
@@ -703,10 +693,6 @@ export function Composer({
   guidanceConsumedItemId?: string;
   guidanceConsumedText?: string;
   guidanceQueuePreviewItems?: readonly string[];
-  showContextWindowRing?: boolean;
-  // Creation empty-session hero: slim centered composer under the welcome
-  // headline (hides task/approval chrome; keeps model + effort).
-  heroMode?: boolean;
   context?: ContextInfo;
   turnCost?: number;
   turnRateBand?: string;
@@ -2902,23 +2888,6 @@ export function Composer({
   }, []);
 
   const measureTextareaAutoHeight = useCallback(() => {
-    // Creation empty hero starts single-line but must grow so multi-line drafts
-    // stay readable before send (review: fixed 20px + overflow:hidden clipped).
-    if (heroMode) {
-      const measureNode = measureTaRef.current;
-      if (!measureNode) {
-        setTextareaAutoHeight(20);
-        setTextareaAutoOverflow(false);
-        return;
-      }
-      const scrollHeight = measureNode.scrollHeight || 20;
-      const maxHeight = composerHeroInputMaxHeight();
-      const nextHeight = Math.min(Math.max(scrollHeight, 20), maxHeight);
-      const nextOverflow = scrollHeight > maxHeight + 1;
-      setTextareaAutoHeight((current) => (current === nextHeight ? current : nextHeight));
-      setTextareaAutoOverflow((current) => (current === nextOverflow ? current : nextOverflow));
-      return;
-    }
     const richHeight = invocationsRef.current.length > 0 ? richInputRef.current?.scrollHeight() : 0;
     const scrollHeight = richHeight || measureTaRef.current?.scrollHeight || 0;
     if (!scrollHeight) return;
@@ -2930,7 +2899,7 @@ export function Composer({
     });
     setTextareaAutoHeight((current) => (current === sizing.inputHeight ? current : sizing.inputHeight));
     setTextareaAutoOverflow((current) => (current === sizing.overflow ? current : sizing.overflow));
-  }, [composerHeight, heroMode, invocations.length]);
+  }, [composerHeight, invocations.length]);
 
   useLayoutEffect(() => {
     measureTextareaAutoHeight();
@@ -3798,7 +3767,6 @@ export function Composer({
       className={[
         "composer-wrap",
         decisionPending ? "composer-wrap--decision-pending" : "",
-        heroMode ? "composer-wrap--hero" : "",
       ].filter(Boolean).join(" ")}
       style={attachmentInputEnabled ? { "--wails-drop-target": "drop" } as CSSProperties : undefined}
       onDropCapture={onFileDropCapture}
@@ -4544,8 +4512,7 @@ export function Composer({
         />
         <div className={composerMetaClass}>
           <div className="composer-meta__params">
-            {!heroMode && (
-              <div className="composer-meta__control composer-meta__control--menu">
+            <div className="composer-meta__control composer-meta__control--menu">
                 <Tooltip label={t("composer.menuLabel")} disabled={mainMenuOpen}>
                   <button
                     ref={mainMenuAnchorRef}
@@ -4561,9 +4528,7 @@ export function Composer({
                   </button>
                 </Tooltip>
               </div>
-            )}
-            {!heroMode && (
-              <div className="composer-meta__control composer-meta__control--approval-popup">
+            <div className="composer-meta__control composer-meta__control--approval-popup">
                 <Tooltip label={t("composer.accessMenuTitle", { shortcut: yoloComboLabel })} disabled={approvalPopupOpen}>
                   <button
                     ref={approvalPopupAnchorRef}
@@ -4581,8 +4546,7 @@ export function Composer({
                   </button>
                 </Tooltip>
               </div>
-            )}
-            {!heroMode && goalModeOn && (
+            {goalModeOn && (
               <div className="composer-meta__control composer-meta__control--goal">
                 <Tooltip label={t("composer.taskModeGoalTooltipSummary")}>
                   <button
@@ -4598,7 +4562,7 @@ export function Composer({
                 </Tooltip>
               </div>
             )}
-            {!heroMode && planModeOn && (
+            {planModeOn && (
               <div className="composer-meta__control composer-meta__control--goal">
                 <Tooltip label={t("composer.taskModePlanTooltipSummary")}>
                   <button
@@ -4614,7 +4578,7 @@ export function Composer({
                 </Tooltip>
               </div>
             )}
-            {!heroMode && floorOn && (
+            {floorOn && (
               <div className="composer-meta__control composer-meta__control--goal">
                 <Tooltip label={t("composer.qualityFloorDeliveryTooltipSummary")}>
                   <button
@@ -4630,38 +4594,33 @@ export function Composer({
                 </Tooltip>
               </div>
             )}
-            {!heroMode && <span className="composer-meta__divider" aria-hidden="true" />}
-            {!heroMode && <span className="composer-meta__spacer" aria-hidden="true" />}
+            <span className="composer-meta__divider" aria-hidden="true" />
+            <span className="composer-meta__spacer" aria-hidden="true" />
             <div className="composer-meta__control composer-meta__control--model">
               {/*
-                Creation-only: showContextWindowRing is wired to sidebarCreation
-                (desktopLayoutStyle === "creation") in App.tsx. The ring popover
-                is portaled to <body> without an .app--creation prefix, so its
-                styles look global but only ever apply in creation layout. If you
-                ever surface this ring in another layout, its font sizes already
-                scale via --font-scale (see .context-ring-popover in styles.css).
+                The context ring trigger is hidden in layouts without it via
+                CSS (.context-ring defaults to display:none). The popover is
+                portaled to <body> without a layout prefix, so its styles look
+                global. Font sizes already scale via --font-scale.
               */}
-              {!heroMode && showContextWindowRing && (
-                <ContextWindowRing
-                  enabled={showContextWindowRing}
-                  context={context}
-                  tabId={tabId}
-                  turnCost={turnCost}
-                  turnRateBand={turnRateBand}
-                  currency={currency}
-                  cacheHitTokens={cacheHitTokens}
-                  cacheMissTokens={cacheMissTokens}
-                  balance={balance}
-                />
-              )}
+              <ContextWindowRing
+                context={context}
+                tabId={tabId}
+                turnCost={turnCost}
+                turnRateBand={turnRateBand}
+                currency={currency}
+                cacheHitTokens={cacheHitTokens}
+                cacheMissTokens={cacheMissTokens}
+                balance={balance}
+              />
               <ModelSwitcher label={modelLabel} tabId={tabId} onPick={onSwitchModel} />
             </div>
-            {!heroMode && hasEffort && (
+            {hasEffort && (
               <div className="composer-meta__control composer-meta__control--effort">
                 <EffortSwitcher effort={effort} disabled={modeControlsDisabled} onPick={onSetEffort} />
               </div>
             )}
-            {!heroMode && hasEffort && (
+            {hasEffort && (
               <div className="composer-meta__control composer-meta__control--more">
                 <Tooltip label={compactEffortTitle} disabled={moreMenuOpen || moreMenuClosing}>
                   <button

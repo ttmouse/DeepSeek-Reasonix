@@ -148,7 +148,6 @@ export function WorkspacePanel({
   workspaceScopeKey: workspaceScopeKeyProp,
   workspaceMemoryKey: workspaceMemoryKeyProp,
   workspaceMemoryVisitId: workspaceMemoryVisitIdProp,
-  creationMode = false,
   completionSummary,
   turnStartAt = 0,
   qualityFloor,
@@ -183,7 +182,6 @@ export function WorkspacePanel({
   workspaceScopeKey?: string;
   workspaceMemoryKey?: string;
   workspaceMemoryVisitId?: number;
-  creationMode?: boolean;
   completionSummary?: WireCompletionSummary;
   turnStartAt?: number;
   qualityFloor?: "standard" | "delivery";
@@ -253,10 +251,9 @@ export function WorkspacePanel({
   const [previewResource, setPreviewResource] = useState(() => emptyKeyedResource<FilePreview>());
   const [viewMode, setViewMode] = useState<"files" | "changed">(initialViewMode);
   const selectedPath = viewMode === "changed" ? selectedChangePath : selectedFilePath;
-  // Both creation and regular workspaces use the same three-layer change view;
-  // keep the prop in the seam for older callers while making history collapsed
-  // by default everywhere.
-  const groupedChangesLayout = creationMode !== false || viewMode === "changed";
+  // History stays collapsed by default; the changed view keeps the grouped
+  // three-layer change layout.
+  const groupedChangesLayout = viewMode === "changed";
   const [gitHistoryResource, setGitHistoryResource] = useState(() => emptyKeyedResource<GitCommitView[]>());
   const [changeDetailResource, setChangeDetailResource] = useState(() => emptyKeyedResource<WorkspaceChangeDetailView>());
   const [expandedCommit, setExpandedCommit] = useState<string | null>(null);
@@ -378,7 +375,7 @@ export function WorkspacePanel({
         if (tree) tree.scrollTop = remembered?.scrollTop ?? 0;
       });
     }
-  }, [creationMode, legacyTreeWidth, workspaceMemoryKey, workspaceMemoryVisitId]);
+  }, [legacyTreeWidth, workspaceMemoryKey, workspaceMemoryVisitId]);
 
   useEffect(() => {
     if (memoryRestorePendingRef.current) return;

@@ -49,13 +49,11 @@ export const LiveAssistantMessage = memo(function LiveAssistantMessage({
   item,
   defaultExpanded = false,
   expandWhileStreaming = false,
-  creationMode = false,
   reasoningDisplay = "normal",
 }: {
   item: AssistantItem;
   defaultExpanded?: boolean;
   expandWhileStreaming?: boolean;
-  creationMode?: boolean;
   reasoningDisplay?: "normal" | "hide";
 }) {
   const live = useContext(LiveStreamContext);
@@ -78,7 +76,7 @@ export const LiveAssistantMessage = memo(function LiveAssistantMessage({
     shown.reasoningComplete = true;
     shown.reasoningDurationMs = undefined;
   }
-  return <AssistantMessage item={shown} defaultExpanded={defaultExpanded} expandWhileStreaming={expandWhileStreaming} creationMode={creationMode} />;
+  return <AssistantMessage item={shown} defaultExpanded={defaultExpanded} expandWhileStreaming={expandWhileStreaming} />;
 });
 
 export const TranscriptVirtuosoItem = forwardRef<HTMLDivElement, ItemProps<TranscriptRow> & { context: TranscriptVirtuosoContext }>(

@@ -18,76 +18,10 @@ import { MarkdownImage } from "./MarkdownImage";
 
 const MermaidDiagram = lazy(() => import("./MermaidDiagram"));
 
-const STATUS_MARKER_RE = /(?:✅|☑|☒|✔️?|✓|\[[xX ]\])/;
-const STATUS_MARKER_GLOBAL_RE = /(?:✅|☑|☒|✔️?|✓|\[[xX ]\])/g;
-const BULLET_RE = /^[-*•]\s+\S/;
-const DIVIDER_RE = /^[\s\-_=─━—]+$/;
-
-function splitStatusLine(line: string): string[] {
-  const parts = (line.match(STATUS_MARKER_GLOBAL_RE) ?? []).length > 1
-    ? line.split(/(?=(?:✅|☑|☒|✔️?|✓|\[[xX ]\]))/)
-    : [line];
-  return parts
-    .map((part) => part.replace(/^(?:✅|☑|☒|✔️?|✓|\[[xX ]\]|[-*•])\s*/i, "").trim())
-    .filter(Boolean)
-    .map((part) => part.replace(/\s{2,}/g, " · "));
-}
-
-function looksLikeDiagram(text: string): boolean {
-  return /[←→↔]|<{1,2}-{2,}|-{2,}>{1,2}|[-_=─━]{6,}/.test(text);
-}
-
-function splitPlainBlock(text: string): { preText: string; statusItems: string[] } {
-  const items: string[] = [];
-  const preLines: string[] = [];
-  const lines = text.split(/\r?\n/);
-  const bulletLines = lines.filter((line) => BULLET_RE.test(line.trim())).length;
-  const collectBulletLines = bulletLines >= 2 && !looksLikeDiagram(text);
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    const marked = STATUS_MARKER_RE.test(line) || (collectBulletLines && BULLET_RE.test(line));
-    if (marked) {
-      items.push(...splitStatusLine(line));
-    } else if (DIVIDER_RE.test(line) && items.length > 0 && !looksLikeDiagram(text)) {
-      continue;
-    } else {
-      preLines.push(rawLine);
-    }
-  }
-  while (preLines.length > 0 && preLines[0].trim() === "") preLines.shift();
-  while (preLines.length > 0 && preLines[preLines.length - 1].trim() === "") preLines.pop();
-  return { preText: preLines.join("\n"), statusItems: items };
-}
-
-function PlainMarkdownBlock({ text }: { text: string }) {
-  const { preText, statusItems } = splitPlainBlock(text);
-  const asList = statusItems.length >= 2;
-  return (
-    <div className={`md-plain-block${asList ? " md-plain-block--split" : " md-plain-block--pre"}`}>
-      <CodeViewer value={text} scrollMode="bounded" maxHeight="min(60vh, 28rem)" />
-      {asList && preText && (
-        <div className="md-plain-block__diagram">
-          <CodeViewer value={preText} scrollMode="bounded" maxHeight="min(60vh, 28rem)" />
-        </div>
-      )}
-      {asList && (
-        <div className="md-status-list">
-          {statusItems.map((item, index) => (
-            <div className="md-status-list__item" key={`${index}-${item}`}>
-              <span className="md-status-list__dot" aria-hidden="true" />
-              <span className="md-status-list__text">{item}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // The components map is shared by the main-thread react-markdown renderer
 // (streaming path) and the worker-parsed block renderer (history path), so
 // both produce byte-identical DOM for the same document.
-export function createComponents(plainStatusBlocks: boolean): Components {
+export function createComponents(): Components {
   return {
     pre: ({ children }) => <>{children}</>,
     table: ({ children }) => <MarkdownTable>{children}</MarkdownTable>,
@@ -108,7 +42,6 @@ export function createComponents(plainStatusBlocks: boolean): Components {
             </Suspense>
           );
         }
-        if (!match && plainStatusBlocks) return <PlainMarkdownBlock text={text.replace(/\n$/, "")} />;
         return <CodeViewer value={value} language={lang} scrollMode="bounded" maxHeight="min(60vh, 28rem)" />;
       }
       return <code className="md-code">{children}</code>;

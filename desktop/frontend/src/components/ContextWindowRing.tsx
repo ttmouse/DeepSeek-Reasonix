@@ -23,9 +23,10 @@ interface ContextWindowRingProps {
   balance?: BalanceInfo;
 }
 
-const RING = 20;
+const RING = 14;
 const RING_R = (RING - 3) / 2;
 const RING_C = 2 * Math.PI * RING_R;
+
 
 function fmtCompact(n: number): string {
   if (n <= 0) return "0";
@@ -154,11 +155,11 @@ export function ContextWindowRing({ enabled = true, context, tabId, turnCost, tu
         aria-label={t("context.windowUsageSummary", { used: String(used), window: String(windowTokens), pct: rawUsagePct })}
       >
         <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} className="context-ring__svg">
-          <circle className="context-ring__track" cx={RING / 2} cy={RING / 2} r={RING_R} fill="none" strokeWidth={3} />
+          <circle className="context-ring__track" cx={RING / 2} cy={RING / 2} r={RING_R} fill="none" strokeWidth={2.5} />
           <circle
             className="context-ring__arc"
             cx={RING / 2} cy={RING / 2} r={RING_R}
-            fill="none" strokeWidth={3}
+            fill="none" strokeWidth={2.5}
             strokeLinecap="round"
             strokeDasharray={RING_C}
             strokeDashoffset={ringOffset}

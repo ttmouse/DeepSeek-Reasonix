@@ -40,7 +40,6 @@ const options: BuildRowsOptions = {
   folds: EMPTY_FOLDS,
   foldPreference: "auto",
   hasOlderHistory: false,
-  creationMode: false,
   turnForUser: (item) => (item.id === "u1" ? 0 : item.id === "u2" ? 1 : undefined),
 };
 
