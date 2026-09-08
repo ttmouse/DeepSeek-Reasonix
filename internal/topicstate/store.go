@@ -98,7 +98,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err := db.PingContext(ctx); err != nil {
 		return fail(err)
 	}
-	for _, pragma := range []string{`PRAGMA foreign_keys=ON`, `PRAGMA busy_timeout=2000`} {
+	for _, pragma := range []string{`PRAGMA foreign_keys=ON`, `PRAGMA busy_timeout=5000`} {
 		if _, err := db.ExecContext(ctx, pragma); err != nil {
 			return fail(err)
 		}
@@ -137,7 +137,7 @@ func diskFileDSN(path string) string {
 		slash = "/" + slash
 	}
 	u := &url.URL{Scheme: "file", Path: slash}
-	return u.String() + "?_pragma=busy_timeout%282000%29&_pragma=foreign_keys%281%29"
+	return u.String() + "?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29"
 }
 
 func applyMigrations(ctx context.Context, db *sql.DB, now func() time.Time) error {

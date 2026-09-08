@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"maps"
 	"strings"
+	"time"
 
 	"reasonix/internal/topicstate"
 )
@@ -80,19 +81,33 @@ func logTopicStateReadFallback(workspaceRoot string, stateErr, legacyErr error, 
 }
 
 func topicStateReadable(workspaceRoot string) error {
-	if _, err := desktopTopicState.snapshot(workspaceRoot); err != nil {
-		legacy, legacyErr := readLegacyTopicSnapshot(workspaceRoot)
-		if legacyErr == nil && legacy.exists {
+	// Startup fans ListProjectTopics out across processes (dev app + spawned
+	// serve, hot-reload restarts) and cloud-backed workspaces (Synology Drive
+	// placeholders). A transient SQLITE_BUSY / EIO during that burst must not
+	// surface as a toast; retry briefly before giving up.
+	var err error
+	for attempt := 0; ; attempt++ {
+		_, err = desktopTopicState.snapshot(workspaceRoot)
+		if err == nil {
 			return nil
 		}
-		logTopicStateReadFallback(workspaceRoot, err, legacyErr, legacy.exists)
 		var future *topicstate.FutureSchemaError
-		if errors.As(err, &future) {
-			return errors.New("topic metadata was written by a newer Reasonix version; upgrade Reasonix to open it safely")
+		if errors.As(err, &future) || attempt >= 2 {
+			break
 		}
-		return fmt.Errorf("topic metadata is unavailable (%s); retry or check the Reasonix state directory permissions", topicStateErrorType(err))
+		time.Sleep(300 * time.Millisecond)
 	}
-	return nil
+	legacy, legacyErr := readLegacyTopicSnapshot(workspaceRoot)
+	if legacyErr == nil && legacy.exists {
+		return nil
+	}
+	logTopicStateReadFallback(workspaceRoot, err, legacyErr, legacy.exists)
+	slog.Error("desktop: topic state snapshot unavailable", "scope", topicScopeKind(workspaceRoot), "root", workspaceRoot, "error", err, "legacy_error", legacyErr)
+	var future *topicstate.FutureSchemaError
+	if errors.As(err, &future) {
+		return errors.New("topic metadata was written by a newer Reasonix version; upgrade Reasonix to open it safely")
+	}
+	return fmt.Errorf("topic metadata is unavailable (%s): %v; retry or check the Reasonix state directory permissions", topicStateErrorType(err), err)
 }
 
 func mergeLegacyAutoMeta(existing, legacy json.RawMessage) json.RawMessage {
