@@ -28449,6 +28449,15 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   border-radius: 7px;
 }
 
+/* The + add button is a sibling of the strip, so the base 24px rule doesn't
+   follow this skin's taller tabs; sync its hit area / hover fill height so
+   it reads as one more tab. Width stays equal to height so the button
+   remains a rounded square. */
+.workbench-dock__tab-add {
+  width: 28px;
+  height: 28px;
+}
+
 .workbench-dock__tab--active {
   /* Keep the label right-edge fade on the selected fill: the base
      .workbench-dock__tab--active rule sets --label-fade-end to --bg-elev, but
@@ -30309,6 +30318,14 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   font-weight: 600;
   background: transparent;
   transition: color var(--dur-fast), background var(--dur-fast), transform 120ms ease, --label-fade-end var(--dur-fast);
+}
+
+:root[data-theme-style] .workbench-dock__tab-add {
+  /* Sync with the theme-style tab height (27px) so the + button's hit area
+     and hover fill line up with the tabs it sits beside; equal width keeps
+     it a rounded square. */
+  width: 27px;
+  height: 27px;
 }
 
 :root[data-theme-style] .workbench-dock__tab--floating {
