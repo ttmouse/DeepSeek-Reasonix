@@ -6158,6 +6158,60 @@ body > .mermaid-diagram--fullscreen {
   padding: 0 12px 0 8px;
 }
 
+/* ── ToolGroup: fold header for repeated shell calls in the transcript ─────
+   Upstream kept every .tool-group__* rule under .app--creation; when the
+   creation layout was removed locally the rules went with it, but the shell
+   fold group still renders in the workbench transcript — so restore the
+   header here, unscoped. */
+.tool-group {
+  margin: 6px auto;
+  color: var(--fg-faint);
+}
+.tool-group__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.tool-group__title {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--fg) 82%, transparent);
+  font-size: calc(13px * var(--font-scale));
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.tool-group__summary {
+  min-width: 0;
+  color: color-mix(in srgb, var(--fg-faint) 86%, transparent);
+  font-size: calc(13px * var(--font-scale));
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-group__chevron {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  transition: transform 0.16s;
+}
+.tool-group__chevron--open {
+  transform: rotate(90deg);
+}
+.tool-group__body {
+  overflow: hidden;
+  padding: 8px 0 0 26px;
+}
+
 /* ── process cards: reasoning and tool calls share the same shell ─────────── */
 .tool {
   margin: 6px auto;
