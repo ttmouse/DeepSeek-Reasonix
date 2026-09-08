@@ -23801,7 +23801,9 @@ body > .mermaid-diagram--fullscreen {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* No overflow: hidden here — the More menu dropdown is anchored inside the
+     title row and must be allowed to overflow the bar. Each child (h1,
+     workspace label, subtitle) clamps its own text. */
 }
 
 .topicbar__title-row {
@@ -24025,6 +24027,13 @@ body > .mermaid-diagram--fullscreen {
   display: inline-flex;
 }
 
+/* When anchored in the title row (left side of the bar) the trigger sits
+   inside the window drag region — opt the button out of dragging. */
+.topicbar__title-row .topicbar__more {
+  flex: 0 0 auto;
+  --wails-draggable: no-drag;
+}
+
 /* Borderless icon-only entries: file opener, More menu, workspace toggle,
 /* Borderless icon-only entries: file opener, More menu, workspace toggle,
    and the utility (search) button. Default state has no background/border —
@@ -24033,6 +24042,7 @@ body > .mermaid-diagram--fullscreen {
 .topicbar__actions .external-opener__primary,
 .topicbar__actions .external-opener__menu-trigger,
 .topicbar__actions .topicbar__more .topicbar__action-btn,
+.topicbar__title-row .topicbar__more .topicbar__action-btn,
 .topicbar__actions .topicbar__chrome-btn,
 .topicbar__actions .topicbar__action-btn--utility {
   border: none !important;
@@ -24046,6 +24056,8 @@ body > .mermaid-diagram--fullscreen {
 
 .topicbar__actions .topicbar__more .topicbar__action-btn:hover:not(:disabled),
 .topicbar__actions .topicbar__more .topicbar__action-btn:focus-visible:not(:disabled),
+.topicbar__title-row .topicbar__more .topicbar__action-btn:hover:not(:disabled),
+.topicbar__title-row .topicbar__more .topicbar__action-btn:focus-visible:not(:disabled),
 .topicbar__actions .external-opener__primary:hover:not(:disabled),
 .topicbar__actions .external-opener__primary:focus-visible:not(:disabled),
 .topicbar__actions .external-opener__menu-trigger:hover:not(:disabled),

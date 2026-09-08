@@ -4858,6 +4858,18 @@ export default function App() {
                     {topicbarWorkspaceLabel}
                   </span>
                 )}
+                {!sidebarImDetailConnection && (
+                  <TopicbarMoreMenu
+                    sessionHasContent={sessionHasContent}
+                    getSessionMarkdown={getSessionMarkdown}
+                    exportSession={(format) => void exportSession(format)}
+                    openChangedDock={() => openRightDockMode("changed")}
+                    toggleTerminal={toggleTerminalPanel} terminalEnabled={!remoteSurfaceActive}
+                    prefetchTerminal={prefetchTerminalPanel}
+                    openSessionSummary={() => setTasksOpen((open) => open ? false : "session")}
+                    tasksOpen={Boolean(tasksOpen)}
+                  />
+                )}
               </div>
               {topicbarSubtitleVisible && (
                 <div className="topicbar__subtitle" title={topicbarSubtitleTitle}>
@@ -4887,18 +4899,6 @@ export default function App() {
                 <ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal} />
               )}
               */}
-              {!sidebarImDetailConnection && (
-                <TopicbarMoreMenu
-                  sessionHasContent={sessionHasContent}
-                  getSessionMarkdown={getSessionMarkdown}
-                  exportSession={(format) => void exportSession(format)}
-                  openChangedDock={() => openRightDockMode("changed")}
-                  toggleTerminal={toggleTerminalPanel} terminalEnabled={!remoteSurfaceActive}
-                  prefetchTerminal={prefetchTerminalPanel}
-                  openSessionSummary={() => setTasksOpen((open) => open ? false : "session")}
-                  tasksOpen={Boolean(tasksOpen)}
-                />
-              )}
               {sidebarCreation && dockToggleButton}
               {tasksOpen && (
                 <div className="taskmonitor-popover" role="dialog" aria-label={t("summary.session")}>

@@ -5,10 +5,18 @@
   z-index: var(--z-topicbar-menu);
   min-width: 168px;
   padding: 5px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  /* Weak surface treatment, matching the composer popovers
+     (.composer-access-menu): border + background only, no heavy shadow. */
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
   --wails-draggable: no-drag;
+}
+
+/* In the title row the trigger sits at the left edge — anchor the dropdown
+   to the left so it doesn't overflow the window. */
+.topicbar__title-row .topicbar__more-menu {
+  right: auto;
+  left: 0;
 }
 
 .topicbar__menu-item {
@@ -53,10 +61,16 @@
   z-index: var(--z-topicbar-menu);
   min-width: 168px;
   padding: 5px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  /* Same weak surface treatment as the primary menu. */
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
   --wails-draggable: no-drag;
+}
+
+/* Same for the export submenu when the trigger is in the title row. */
+.topicbar__title-row .topicbar__more-export-menu {
+  right: auto;
+  left: calc(100% - 8px);
 }
 
 .topicbar__more-export-menu button {
