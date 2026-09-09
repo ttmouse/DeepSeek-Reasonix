@@ -1468,14 +1468,40 @@ export function Composer({
     [atRaw, atDir, atFrag, atSessionsCache],
   );
 
+  // Capability overview shown when the @ token has no fragment yet — a
+  // Codex-style "+" menu that introduces what @ can do. Selecting a card
+  // returns focus to the input so typing immediately starts searching.
+  type AtIntroKind = "commands" | "files" | "sessions";
+  const AT_INTRO_ITEMS: AtIntroKind[] = ["commands", "files", "sessions"];
+  const atIntroItemLabel = (kind: AtIntroKind): string => {
+    switch (kind) {
+      case "commands": return t("composer.atIntroCommands");
+      case "files": return t("composer.atIntroFiles");
+      case "sessions": return t("composer.atIntroSessions");
+    }
+  };
+  const atIntroItemDesc = (kind: AtIntroKind): string => {
+    switch (kind) {
+      case "commands": return t("composer.atIntroCommandsDesc");
+      case "files": return t("composer.atIntroFilesDesc");
+      case "sessions": return t("composer.atIntroSessionsDesc");
+    }
+  };
+
   const atMenuItems = useMemo<AtMenuItem[]>(
-    () => [
-      ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
-      ...atCommands.map((command) => ({ kind: "command" as const, command })),
-      ...atMatches.map((entry) => ({ kind: "file" as const, entry })),
-      ...atSessions.map((session) => ({ kind: "session" as const, session })),
-    ],
-    [includePastChatsItem, atCommands, atMatches, atSessions],
+    () => {
+      // Empty fragment: show the capability overview instead of a dense list —
+      // a Codex-style "+" menu that explains what @ can do. Typing a fragment
+      // switches to the grouped search (commands / files / sessions).
+      if (atFrag === "") return [];
+      return [
+        ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
+        ...atCommands.map((command) => ({ kind: "command" as const, command })),
+        ...atMatches.map((entry) => ({ kind: "file" as const, entry })),
+        ...atSessions.map((session) => ({ kind: "session" as const, session })),
+      ];
+    },
+    [atFrag, includePastChatsItem, atCommands, atMatches, atSessions],
   );
   const atMenuItemKey = useCallback(
     (item: AtMenuItem) => {
@@ -1558,7 +1584,7 @@ export function Composer({
       : menuMode === "slasharg"
         ? argRes!.items.length
         : menuMode === "at"
-          ? atMenuItems.length
+          ? atFrag === "" ? AT_INTRO_ITEMS.length : atMenuItems.length
           : menuMode === "pastChats"
             ? pastChats.length
             : 0;
@@ -3412,6 +3438,14 @@ export function Composer({
         return;
       }
       if (menuMode === "pastChats") return;
+      if (atFrag === "") {
+        // Capability overview: selecting a card returns focus to the input so
+        // typing immediately switches to the grouped search.
+        const kind = AT_INTRO_ITEMS[active];
+        if (!kind) return;
+        requestActiveDraftFrame(focusComposerInput);
+        return;
+      }
       const item = atMenuItems[active];
       if (!item) return;
       if (item.kind === "pastChats") {
@@ -4334,7 +4368,39 @@ export function Composer({
             </button>
           </div>
         ) : menuMode === "at" ? (
-          atMenuItems.length === 0 && atFrag !== "" ? (
+          atFrag === "" ? (
+            <div className="slashmenu slashmenu--at slashmenu--at-intro" role="listbox">
+              <div className="slashmenu__group" role="separator">
+                {t("composer.atIntroTitle")}
+              </div>
+              {AT_INTRO_ITEMS.map((kind, i) => (
+                <button
+                  key={kind}
+                  role="option"
+                  aria-selected={i === active}
+                  className={`slashmenu__item ${i === active ? "slashmenu__item--active" : ""}`}
+                  onMouseDown={(ev) => {
+                    ev.preventDefault();
+                    requestActiveDraftFrame(focusComposerInput);
+                  }}
+                  onMouseMove={() => setActive(i)}
+                >
+                  {kind === "commands" ? (
+                    <Terminal size={13} className="filemenu__icon" />
+                  ) : kind === "files" ? (
+                    <FileText size={13} className="filemenu__icon" />
+                  ) : (
+                    <MessageSquare size={13} className="filemenu__icon" />
+                  )}
+                  <span className="slashmenu__name">{atIntroItemLabel(kind)}</span>
+                  <span className="slashmenu__desc">{atIntroItemDesc(kind)}</span>
+                </button>
+              ))}
+              <div className="slashmenu__hint" role="note">
+                {t("composer.atIntroHint")}
+              </div>
+            </div>
+          ) : atMenuItems.length === 0 && atFrag !== "" ? (
             <div className="slashmenu slashmenu--at" role="listbox">
               <div className="slashmenu__item slashmenu__item--empty">
                 <span className="slashmenu__name">{t("composer.atMenuNoMatches")}</span>
