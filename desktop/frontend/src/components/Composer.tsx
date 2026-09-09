@@ -3629,6 +3629,7 @@ export function Composer({
         aria-selected={itemActive}
         className={`composer-main-menu__results-item${itemActive ? " composer-main-menu__results-item--active" : ""}`}
         onClick={() => pickPanelItem(item)}
+        onMouseMove={() => setActive(row.itemIndex)}
       >
         <span className="composer-main-menu__results-icon">{icon}</span>
         <span className="composer-main-menu__results-text">{text}</span>
@@ -3673,6 +3674,7 @@ export function Composer({
         aria-selected={entryActive}
         className={`composer-main-menu__results-item${entryActive ? " composer-main-menu__results-item--active" : ""}`}
         onClick={() => pickMainMenuEntry(entry.kind)}
+        onMouseMove={() => setActive(itemIndex)}
       >
         <span className="composer-main-menu__results-icon">{icon}</span>
         <span className="composer-main-menu__results-text">
@@ -3741,7 +3743,7 @@ export function Composer({
     switch (entry.kind) {
       case "attach":
         return (
-          <button key="attach" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("attach")}>
+          <button key="attach" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("attach")} onMouseMove={() => setActive(i)}>
             <FilePlus2 size={16} aria-hidden="true" />
             <span className="composer-access-menu__copy">
               <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
@@ -3758,6 +3760,7 @@ export function Composer({
             aria-checked={planModeOn}
             className={base}
             onClick={() => pickMainMenuEntry("plan")}
+            onMouseMove={() => setActive(i)}
             disabled={modeControlsDisabled}
           >
             <List size={16} />
@@ -3776,6 +3779,7 @@ export function Composer({
             aria-checked={goalModeOn}
             className={base}
             onClick={() => pickMainMenuEntry("goal")}
+            onMouseMove={() => setActive(i)}
             disabled={modeControlsDisabled}
             title={activeGoal || undefined}
           >
@@ -3795,6 +3799,7 @@ export function Composer({
             aria-checked={floorOn}
             className={base}
             onClick={() => pickMainMenuEntry("quality")}
+            onMouseMove={() => setActive(i)}
             disabled={approvalBarDisabled || !onSetQualityFloor}
             title={t("composer.qualityFloorDeliveryTitle")}
           >
@@ -5089,10 +5094,10 @@ export function Composer({
                     type="button"
                     className="composer-goal-trigger"
                     onClick={() => chooseQualityFloor("standard")}
-                    aria-label={t("composer.qualityFloorDelivery")}
+                    aria-label={t("composer.qualityFloorDeliveryShort")}
                   >
                     <PackageCheck size={14} />
-                    <span className="composer-goal-trigger__label">{t("composer.qualityFloorDelivery")}</span>
+                    <span className="composer-goal-trigger__label">{t("composer.qualityFloorDeliveryShort")}</span>
                     <span className="composer-goal-trigger__remove" aria-hidden="true"><X size={12} /></span>
                   </button>
                 </Tooltip>
