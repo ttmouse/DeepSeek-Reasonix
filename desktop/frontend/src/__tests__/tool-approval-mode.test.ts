@@ -42,7 +42,7 @@ eq(en["composer.accessAskTitle"].includes("not read-only"), true, "English Ask c
 eq(zh["composer.accessAskTitle"].includes("不是只读"), true, "Simplified Chinese Ask copy is not presented as read-only");
 eq(zhTW["composer.accessAskTitle"].includes("不是唯讀"), true, "Traditional Chinese Ask copy is not presented as read-only");
 eq(en["heartbeat.approvalModeAskHint"].includes("not read-only"), true, "heartbeat Ask hint preserves the same boundary");
-eq(en["composer.taskModePlanDesc"].includes("permissions and sandbox"), true, "Plan copy names permissions and sandbox");
+eq(en["composer.taskModePlanDesc"].includes("execute after confirmation"), true, "Plan copy stays concise after simplification");
 eq(en["composer.accessFullDesc"].includes("ordinary") && en["composer.accessFullDesc"].includes("fresh reviews"), true, "English Full access preserves fresh-review boundary");
 eq(zh["composer.accessFullDesc"].includes("普通") && zh["composer.accessFullDesc"].includes("强制新鲜审查"), true, "Simplified Chinese Full access preserves fresh-review boundary");
 eq(zhTW["composer.accessFullDesc"].includes("普通") && zhTW["composer.accessFullDesc"].includes("強制新鮮審查"), true, "Traditional Chinese Full access preserves fresh-review boundary");
