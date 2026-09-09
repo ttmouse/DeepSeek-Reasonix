@@ -3802,7 +3802,7 @@ export function Composer({
             type="button"
             role="menuitemradio"
             aria-checked={planModeOn}
-            className={`${base}${planModeOn ? " composer-access-menu__item--active" : ""}`}
+            className={base}
             onClick={() => pickMainMenuEntry("plan")}
             disabled={modeControlsDisabled}
           >
@@ -3811,7 +3811,6 @@ export function Composer({
               <span className="composer-access-menu__title">{t("composer.taskModePlan")}</span>
               <span className="composer-access-menu__desc">{t("composer.taskModePlanDesc")}</span>
             </span>
-            {planModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
           </button>
         );
       case "goal":
@@ -3821,7 +3820,7 @@ export function Composer({
             type="button"
             role="menuitemradio"
             aria-checked={goalModeOn}
-            className={`${base}${goalModeOn ? " composer-access-menu__item--active" : ""}`}
+            className={base}
             onClick={() => pickMainMenuEntry("goal")}
             disabled={modeControlsDisabled}
             title={activeGoal || undefined}
@@ -3831,7 +3830,6 @@ export function Composer({
               <span className="composer-access-menu__title">{t("composer.taskModeGoal")}</span>
               <span className="composer-access-menu__desc">{activeGoal || t("composer.taskModeGoalDesc")}</span>
             </span>
-            {goalModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
           </button>
         );
       case "quality":
@@ -3841,7 +3839,7 @@ export function Composer({
             type="button"
             role="menuitemcheckbox"
             aria-checked={floorOn}
-            className={`${base}${floorOn ? " composer-access-menu__item--active" : ""}`}
+            className={base}
             onClick={() => pickMainMenuEntry("quality")}
             disabled={approvalBarDisabled || !onSetQualityFloor}
             title={t("composer.qualityFloorDeliveryTitle")}
@@ -3851,7 +3849,6 @@ export function Composer({
               <span className="composer-access-menu__title">{t("composer.qualityFloorDelivery")}</span>
               <span className="composer-access-menu__desc">{t("composer.qualityFloorDeliveryTitle")}</span>
             </span>
-            {floorOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
           </button>
         );
     }
