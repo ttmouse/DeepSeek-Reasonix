@@ -4918,11 +4918,6 @@ func topicTitleFromText(text string) string {
 	if text == "" {
 		return ""
 	}
-	const maxRunes = 18
-	runes := []rune(text)
-	if len(runes) > maxRunes {
-		text = strings.TrimRightFunc(string(runes[:maxRunes]), unicode.IsPunct) + "…"
-	}
 	if isDefaultTopicTitle(text) {
 		return ""
 	}
