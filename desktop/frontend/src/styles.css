@@ -7759,6 +7759,18 @@ body > .mermaid-diagram--fullscreen {
 .composer-main-menu__results-name--no-clip {
   flex: none;
 }
+.composer-main-menu__results-text--wrap {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+}
+.composer-main-menu__results-text--wrap .composer-main-menu__results-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  overflow: visible;
+}
 .composer-main-menu__results-hint {
   flex: none;
   color: var(--fg-faint);

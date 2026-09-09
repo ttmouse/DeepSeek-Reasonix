@@ -3631,8 +3631,8 @@ export function Composer({
         onClick={() => pickPanelItem(item)}
         onMouseMove={() => setActive(row.itemIndex)}
       >
-        <span className="composer-main-menu__results-icon">{icon}</span>
-        <span className="composer-main-menu__results-text">{text}</span>
+        <span className={`composer-main-menu__results-icon`}>{icon}</span>
+        <span className={`composer-main-menu__results-text${item.kind === "session" ? " composer-main-menu__results-text--wrap" : ""}`}>{text}</span>
       </button>
     );
   };
