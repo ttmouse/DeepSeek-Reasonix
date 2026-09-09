@@ -3244,6 +3244,17 @@ export function Composer({
     return () => cancelAnimationFrame(raf);
   }, [mainMenuOpen]);
 
+  // Keep the highlighted row visible while keyboard-navigating: scroll the
+  // results/entries container just enough to reveal the active item instead of
+  // letting it disappear below the fold.
+  useEffect(() => {
+    if (!mainMenuOpen) return;
+    const activeEl = mainMenuSectionRef.current?.querySelector<HTMLElement>(
+      ".composer-main-menu__results-item--active, .composer-access-menu__item--active",
+    );
+    activeEl?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active, mainMenuOpen, panelQuery]);
+
   useEffect(() => {
     if (!pastChatToken || directPastChats || dismissed || running || disabled || readOnly) return;
     setDirectPastChats(true);
