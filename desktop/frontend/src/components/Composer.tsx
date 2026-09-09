@@ -1515,14 +1515,14 @@ export function Composer({
   // while a search term is typed after @ they are matched (title/description)
   // and shown at the top of the results, before commands/files/sessions.
   // Referencing files/sessions needs no dedicated entry — typing after @
-  // already searches files and chat sessions (the footer hint says so).
-  type MainMenuEntryKind = "attach" | "useCommand" | "plan" | "goal" | "quality";
+  // already searches files and chat sessions (the inline hint says so), and
+  // commands/skills are triggered by typing "/" directly.
+  type MainMenuEntryKind = "attach" | "plan" | "goal" | "quality";
   type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
 
   // The + and @ panels show the exact same entries.
   const mainMenuEntries: MainMenuEntry[] = [
     { kind: "attach", section: "add" },
-    { kind: "useCommand", section: "add" },
     { kind: "plan", section: "execution" },
     { kind: "goal", section: "execution" },
     { kind: "quality", section: "delivery" },
@@ -1531,7 +1531,6 @@ export function Composer({
   const mainMenuEntrySearchText = (entry: MainMenuEntry): string => {
     switch (entry.kind) {
       case "attach": return `${t("composer.contentAddAttachment")} ${t("composer.contentAddAttachmentDesc")} attach attachment`;
-      case "useCommand": return `${t("composer.contentUseCommands")} ${t("composer.contentUseCommandsDesc")} useCommand command`;
       case "plan": return `${t("composer.taskModePlan")} ${t("composer.taskModePlanDesc")} plan`;
       case "goal": return `${t("composer.taskModeGoal")} ${t("composer.taskModeGoalDesc")} goal`;
       case "quality": return `${t("composer.qualityFloorDelivery")} ${t("composer.qualityFloorDeliveryTitle")} quality delivery`;
@@ -3631,7 +3630,6 @@ export function Composer({
     const entryActive = active === itemIndex;
     const icon =
       entry.kind === "attach" ? <FilePlus2 size={13} /> :
-      entry.kind === "useCommand" ? <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span> :
       entry.kind === "plan" ? <List size={13} /> :
       entry.kind === "goal" ? <Target size={13} /> :
       <PackageCheck size={13} />;
@@ -3641,10 +3639,6 @@ export function Composer({
       case "attach":
         title = t("composer.contentAddAttachment");
         desc = t("composer.contentAddAttachmentDesc");
-        break;
-      case "useCommand":
-        title = t("composer.contentUseCommands");
-        desc = !panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc");
         break;
       case "plan":
         title = t("composer.taskModePlan");
@@ -3694,14 +3688,6 @@ export function Composer({
         chooseAttachmentFiles();
         setMainMenuOpen(false);
         break;
-      case "useCommand":
-        // From the @-opened panel switch the trigger to "/"; from "+" insert it
-        // (only allowed while the composer is otherwise empty).
-        if (!panelAtSourceRef.current && text.trim().length > 0) return;
-        if (panelAtSourceRef.current) setText((prev) => removeAtToken(prev));
-        insertContentTrigger("/");
-        setMainMenuOpen(false);
-        break;
       case "plan":
         chooseTaskMode("plan");
         setMainMenuOpen(false);
@@ -3748,24 +3734,6 @@ export function Composer({
             <span className="composer-access-menu__copy">
               <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
               <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
-            </span>
-          </button>
-        );
-      case "useCommand":
-        return (
-          <button
-            key="useCommand"
-            type="button"
-            role="menuitem"
-            className={base}
-            onClick={() => pickMainMenuEntry("useCommand")}
-            disabled={!panelAtSourceRef.current && text.trim().length > 0}
-            title={!panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
-          >
-            <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
-              <span className="composer-access-menu__desc">{!panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
             </span>
           </button>
         );
