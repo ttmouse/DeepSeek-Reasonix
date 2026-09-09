@@ -3185,7 +3185,7 @@ export function Composer({
     const snapshotCwd = cwdRef.current;
     const sourceDraftKey = activeDraftKeyRef.current;
     try {
-      const sessions = await app.ListSessions();
+      const sessions = await app.ListAllSessions();
       if (cwdRef.current !== snapshotCwd || activeDraftKeyRef.current !== sourceDraftKey) return;
       setAtSessionsCache(
         asArray(sessions)
@@ -3594,12 +3594,23 @@ export function Composer({
     } else if (item.kind === "session") {
       icon = <MessageSquare size={13} />;
       const turnsLabel = sessionTurnsLabel(item.session, t);
+      const projectLabel = item.session.workspaceRoot
+        ? (item.session.workspaceRoot.split(/[\\/]/).filter(Boolean).pop() ?? item.session.workspaceRoot)
+        : "";
       text = (
         <span className="composer-main-menu__results-name">
           {pastChatTitle(item.session)}
           {turnsLabel ? ` (${turnsLabel})` : ""}
         </span>
       );
+      if (projectLabel) {
+        text = (
+          <>
+            {text}
+            <span className="composer-main-menu__results-hint">{projectLabel}</span>
+          </>
+        );
+      }
     } else {
       icon = item.entry.isDir ? <Folder size={13} /> : <FileText size={13} />;
       text = (

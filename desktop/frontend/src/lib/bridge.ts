@@ -350,6 +350,7 @@ export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganiza
   SummarizeUpTo(turn: number): Promise<void>;
   SummarizeUpToForTab(tabID: string, turn: number): Promise<void>;
   ListSessions(): Promise<SessionMeta[]>;
+  ListAllSessions(): Promise<SessionMeta[]>;
   ListSessionsForTab(tabID: string): Promise<SessionMeta[]>;
   ListTrashedSessions(): Promise<SessionMeta[]>;
   ResumeSession(path: string): Promise<HistoryMessage[]>;
@@ -3340,6 +3341,9 @@ function makeMockApp(): AppBindings {
           return out;
         },
     async ListSessions() {
+      return sessions.map((s) => ({ ...s }));
+    },
+    async ListAllSessions() {
       return sessions.map((s) => ({ ...s }));
     },
     async ListSessionsForTab() {
