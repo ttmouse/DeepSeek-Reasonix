@@ -1482,9 +1482,6 @@ func (c *Controller) submitCommandOrTurnReady(trimmed, input, display string, sc
 				c.notice("compaction failed: " + err.Error())
 			} else {
 				c.notice("compacted")
-				if err := c.SnapshotRewrite(); err != nil {
-					slog.Warn("controller: snapshot after compact", "err", err)
-				}
 			}
 		}()
 	case trimmed == "/context":
@@ -2941,8 +2938,11 @@ func (c *Controller) GoalStatus() string {
 	return c.goals.statusForDisplay()
 }
 
-// Compact runs one compaction pass on the executor's session on demand.
-// instructions is optional `/compact <focus>` guidance steering what to keep.
+// Compact runs one compaction pass on the executor's session on demand and
+// persists the compacted transcript. instructions is optional `/compact <focus>`
+// guidance steering what to keep. Persistence lives here so every entry point
+// (the ring's "compress now" button, the /compact slash command, CLI, and the
+// remote /compact endpoint) lands the rewrite once instead of at each caller.
 func (c *Controller) Compact(ctx context.Context, instructions string) error {
 	if c.executor == nil {
 		return nil
@@ -2956,7 +2956,13 @@ func (c *Controller) Compact(ctx context.Context, instructions string) error {
 		return err
 	}
 	defer c.endRotation()
-	return c.executor.CompactNow(ctx, instructions)
+	if err := c.executor.CompactNow(ctx, instructions); err != nil {
+		return err
+	}
+	if err := c.SnapshotRewrite(); err != nil {
+		slog.Warn("controller: snapshot after compact", "err", err)
+	}
+	return nil
 }
 
 // maybeSessionStart fires the SessionStart hook exactly once per session, lazily

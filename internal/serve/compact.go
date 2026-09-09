@@ -3,7 +3,6 @@ package serve
 import (
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -20,9 +19,7 @@ func (s *Server) compact(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// Persist the compacted session to disk — ctrl.Compact() only mutates in-memory.
-	if err := s.ctl().Snapshot(); err != nil {
-		slog.Warn("serve: snapshot after compact", "err", err)
-	}
+	// Controller.Compact persists the compacted session (SnapshotRewrite)
+	// before returning; no extra snapshot is needed here.
 	w.WriteHeader(http.StatusNoContent)
 }

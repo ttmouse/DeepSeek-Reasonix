@@ -1757,6 +1757,32 @@ a[href] {
   min-width: min(560px, 100vw);
   grid-template-columns: 0px minmax(0, 1fr) minmax(0, var(--workspace-width));
 }
+
+/* Overlay mode: when the viewport is too narrow for a dedicated dock column,
+   the workbench becomes a floating card over the transcript (codex-style).
+   The chat pane reclaims full width; the dock is absolutely positioned with
+   rounded corners, shadow, and inset margins so it reads as a true overlay
+   rather than a squeezed sidebar. The bottom inset accounts for the terminal
+   drawer so the card never covers it. */
+.layout--workspace-overlay .workbench-dock.workbench-dock--overlay {
+  position: absolute;
+  grid-row: auto;
+  grid-column: auto;
+  top: 12px;
+  bottom: calc(12px + var(--terminal-height, 0px));
+  right: 8px;
+  width: var(--workspace-overlay-width, 360px);
+  height: auto;
+  justify-self: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: var(--z-workspace-float);
+}
+
 /* Skip dock-column interpolation in creation mode. WebKit can mount the
 /* Skip dock-column interpolation in creation mode. WebKit can mount the
    overview at zero inline size and fail to repaint its text on reopen. */
@@ -35686,7 +35712,7 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 .instruction-panel__card-body {
   padding: 8px 12px;
-  background: var(--bg-soft);
+  /* background: var(--bg-soft); */
   border-radius: 8px;
   cursor: pointer;
   user-select: none;

@@ -479,8 +479,8 @@ const resetMouseTracking = ansi.ResetModeMouseX10 +
 	ansi.ResetModeMouseExtSgrPixel
 
 // compactDoneMsg reports that an async /compact pass returned. The card was
-// already drawn from the CompactionDone event; this only surfaces a failure and
-// snapshots on success.
+// already drawn from the CompactionDone event, and Controller.Compact persists
+// the rewrite; this only surfaces a failure.
 type compactDoneMsg struct{ err error }
 
 // tuiShutdownMsg asks the live TUI model to persist its current controller and
@@ -1926,7 +1926,6 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.notice(fmt.Sprintf("%s: %v", i18n.M.SlashCompactFailed, msg.err))
 		} else {
-			_ = m.ctrl.Snapshot()
 			m.followSessionLease()
 		}
 

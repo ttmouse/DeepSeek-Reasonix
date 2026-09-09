@@ -401,6 +401,15 @@ func TestCompactDoneKeepsLeaseOnRecoveryPathAfterSnapshotConflict(t *testing.T) 
 		t.Fatalf("seed active lease: %v", err)
 	}
 
+	// Controller.Compact persists the rewrite (SnapshotRewrite) internally, so by
+	// the time compactDoneMsg arrives the post-compact snapshot has already run.
+	// Drive the same divergence the compaction snapshot would hit: a snapshot on
+	// the diverged session retargets the controller to a recovery branch, then
+	// the done handler must re-follow the lease to that branch.
+	if err := m.ctrl.Snapshot(); err != nil {
+		t.Fatalf("snapshot before compact done: %v", err)
+	}
+
 	next, _ := m.Update(compactDoneMsg{})
 	m = next.(chatTUI)
 

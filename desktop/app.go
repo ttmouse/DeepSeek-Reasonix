@@ -2232,21 +2232,30 @@ func (a *App) Compact() error {
 }
 
 // CompactForTab compacts the requested tab without depending on which tab is
-// focused when the asynchronous frontend call reaches the backend.
+// focused when the asynchronous frontend call reaches the backend. Remote tabs
+// (cloud runtimes) are forwarded to their host; a missing local controller is
+// an error rather than a silent no-op, so the frontend can surface why the
+// click did not land (#3938 pattern).
 func (a *App) CompactForTab(tabID string) error {
+	if a.isRemoteTab(tabID) {
+		return a.CompactRemoteTab(tabID, "")
+	}
 	tab, ctrl := a.tabAndCtrlByID(tabID)
 	if a.tabIsReadOnly(tab) {
 		return readOnlyChannelErr()
 	}
 	if ctrl == nil {
-		return nil
+		if tab == nil {
+			return fmt.Errorf("no active runtime on tab %q to compact", tabID)
+		}
+		return a.workspaceNotReadyErr(tab)
 	}
 	if err := a.ensureTabControllerWorkspace(tab); err != nil {
 		return err
 	}
 	ctrl = a.controllerForTab(tab)
 	if ctrl == nil {
-		return nil
+		return a.workspaceNotReadyErr(tab)
 	}
 	return ctrl.Compact(a.ctx, "")
 }

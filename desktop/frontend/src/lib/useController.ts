@@ -4389,10 +4389,13 @@ export function useController() {
     return refreshWorkspaceState(next, navigationSeq);
   }, [beginActiveNavigation, refreshWorkspaceState]);
 
-  const compact = useCallback(() => {
+  const compact = useCallback(async (): Promise<void> => {
     const tabId = activeTabIdRef.current;
     if (!tabId) return;
-    void waitForTabReady(tabId).then(() => app.CompactForTab(tabId).catch(() => {}));
+    await waitForTabReady(tabId);
+    // Errors are deliberately propagated (not swallowed): the ring's "compress
+    // now" button and any other caller surface why the pass did not land.
+    await app.CompactForTab(tabId);
   }, [waitForTabReady]);
 
   const enqueueModelSwitch = useCallback((tabId: string, name: string, fallbackBalance?: BalanceInfo) => {

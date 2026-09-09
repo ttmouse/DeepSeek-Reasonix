@@ -3224,6 +3224,7 @@ export const en = {
   "questionNav.notLoaded": "Question {n} (click to load)",
   "compaction.working": "Compacting conversation…",
   "compaction.title": "Context compacted",
+  "compaction.failed": "Compaction failed: {error}",
   "compaction.messages": "{n} messages",
   "compaction.showSummary": "show summary",
   "compaction.hideSummary": "hide summary",

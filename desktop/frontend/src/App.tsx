@@ -1543,6 +1543,7 @@ export default function App() {
   const {
     renderWidth: workspacePanelRenderWidth,
     overlay: workspacePanelOverlay,
+    gridOpen: workspacePanelGridOpen,
     // The automation page fills the main content area; the workbench dock must
     // not overlay it. main-v2 keeps automation as a popup so its placement
     // helper has no view concept — apply the exclusion here on top.
@@ -1559,7 +1560,7 @@ export default function App() {
   // top-right corner opens it. Only the automation page (a full content
   // view) hides the panel entirely.
   const effectiveWorkspacePanelRenderable = automationView ? false : workspacePanelOpen;
-  const effectiveWorkspacePanelGridOpen = automationView ? false : workspacePanelOpen;
+  const effectiveWorkspacePanelGridOpen = automationView ? false : workspacePanelGridOpen;
   const resolveLiveWorkspacePanelRenderWidth = useCallback(
     (preferredWidth: number, nextSidebarWidth = sidebarWidth) =>
       resolveLiveWorkspacePanelWidth({
@@ -1581,6 +1582,20 @@ export default function App() {
   );
   const { active: remoteSurfaceActive, session: remoteSession, ready: remoteComposerReady, onSend: remoteSend, onCancel: remoteCancel } = useActiveRemoteSession(activeTab, showToast);
   const visibleRuntimeState = remoteSurfaceActive ? remoteSession.transcript : state;
+  // Ring "compress now" must behave exactly like /compact on both surfaces:
+  // remote tabs compact through their host session (CompactForTab has no local
+  // controller for them), and any failure is surfaced instead of swallowed.
+  const handleRingCompact = useCallback(() => {
+    if (remoteSurfaceActive) {
+      void remoteSession.compact("").catch((error) =>
+        showToast(error instanceof Error ? error.message : String(error), "error")
+      );
+      return;
+    }
+    void compact().catch((error) => {
+      notice(t("compaction.failed", { error: error instanceof Error ? error.message : String(error) }), "warn");
+    });
+  }, [compact, notice, remoteSession, remoteSurfaceActive, showToast, t]);
   const localWorkspaceDockBlocked = remoteSurfaceActive && (rightDockMode === "files" || rightDockMode === "changed");
   const surfaceWorkspacePanelRenderable = effectiveWorkspacePanelRenderable && !localWorkspaceDockBlocked;
   const surfaceWorkspacePanelGridOpen = effectiveWorkspacePanelGridOpen && !localWorkspaceDockBlocked;
@@ -3058,10 +3073,11 @@ export default function App() {
         "--sidebar-expanded-width": `${sidebarRenderWidth}px`,
         "--chat-min-width": `${chatReservedWidth}px`,
         "--workspace-width": `${effectiveWorkspacePanelGridOpen ? workspacePanelRenderWidth : 0}px`,
+        "--workspace-overlay-width": `${workspacePanelOverlay ? workspacePanelRenderWidth : 0}px`,
         "--workspace-resizer-width": `${WORKSPACE_RESIZER_WIDTH}px`,
         "--terminal-height": `${terminalSurfaceOpen ? liveTerminalHeight ?? terminalRenderHeight : 0}px`,
       }) as CSSProperties,
-    [chatReservedWidth, effectiveWorkspacePanelGridOpen, liveTerminalHeight, sidebarRenderWidth, terminalPanelOpen, terminalRenderHeight, workspacePanelRenderWidth, terminalSurfaceOpen],
+    [chatReservedWidth, effectiveWorkspacePanelGridOpen, liveTerminalHeight, sidebarRenderWidth, terminalPanelOpen, terminalRenderHeight, workspacePanelOverlay, workspacePanelRenderWidth, terminalSurfaceOpen],
 
   );
 
@@ -5119,7 +5135,7 @@ export default function App() {
               aria-hidden={composerSurfaceHidden ? true : undefined}
             >
             <Composer
-              onCompact={compact}
+              onCompact={handleRingCompact}
               running={remoteSurfaceActive ? remoteSession.running : state.running || rewindCommitting}
               collaborationMode={collaborationMode}
               toolApprovalMode={toolApprovalMode}

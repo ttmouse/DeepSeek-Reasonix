@@ -79,11 +79,17 @@ export function resolveWorkspacePanelPlacement({
   chatMinWidth: number; resizerWidth: number; open: boolean; maximized: boolean;
   preferredWidth: number; minWidth: number; minRenderWidth: number; liveWidth?: number | null;
 }) {
-  const resolvedWidth = resolveLiveWorkspacePanelWidth({
+  const availableWidth = availableWorkspacePanelWidth({
     viewportWidth, sidebarCollapsed, sidebarWidth, chatMinWidth, resizerWidth,
-    open, maximized, preferredWidth, minWidth,
   });
-  const overlay = open && !maximized && resolvedWidth < minRenderWidth;
+  const resolvedWidth = resolveWorkspacePanelWidth({
+    open, maximized, preferredWidth, minWidth, availableWidth,
+  });
+  // Overlay triggers when the viewport cannot fit a readable dock column
+  // (available space below minRenderWidth), regardless of the user's saved
+  // preferred width — a narrow saved preference must not force overlay mode
+  // on a wide viewport, and a wide preference must not delay it on a narrow one.
+  const overlay = open && !maximized && availableWidth < minRenderWidth;
   const storedWidth = maximized
     ? preferredWidth
     : overlay ? Math.min(preferredWidth, Math.max(minWidth, viewportWidth - 16)) : resolvedWidth;

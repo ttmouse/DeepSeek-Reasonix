@@ -2270,6 +2270,7 @@ export const zhTW: Record<DictKey, string> = {
   "questionNav.notLoaded": "第 {n} 個問題（點擊載入）",
   "compaction.working": "正在壓縮對話…",
   "compaction.title": "上下文已壓縮",
+  "compaction.failed": "壓縮失敗：{error}",
   "compaction.messages": "{n} 條訊息",
   "compaction.showSummary": "展開摘要",
   "compaction.hideSummary": "收起摘要",

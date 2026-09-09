@@ -170,7 +170,11 @@ console.log("\nbundle budgets");
 // compact shared helpers keep the combined initial path within the same gate.
 // Cmd/Ctrl+G next-unread + deep-link topic activation add routing to the
 // initial controller path; the measured gzip is 462.0 KiB, so retain 0.1 KiB.
-const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 462.1 : 462.1;
+// Compact-entry unification (ring "compress now" error surfacing + remote-tab
+// forwarding in the always-mounted composer path) plus the workbench overlay
+// grid state land on this startup graph; the measured local build is 469.1
+// KiB gzip, so retain 0.3 KiB of bounded build/toolchain headroom.
+const initialJSBudgetKiB = process.env.REASONIX_CHANNEL === "test" ? 469.4 : 469.4;
 assertBudget("initial JavaScript gzip", initialJSGzip, initialJSBudgetKiB * 1024);
 assertBudget("largest initial JavaScript chunk gzip", largestInitialJS, 280 * 1024);
 // Render-blocking CSS is intentionally absent: styles.css loads deferred via
