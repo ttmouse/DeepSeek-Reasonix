@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, List, MessageSquare, PackageCheck, Plus, Search, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
+import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, Search, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
@@ -3452,6 +3452,9 @@ export function Composer({
         return;
       }
       if (menuMode === "pastChats") return;
+      // The @-opened panel shows the original menu entries until a search term
+      // is typed — Enter must not pick a result that is not visible.
+      if (panelQuery.trim() === "") return;
       const item = atMenuItems[active];
       if (!item) return;
       if (item.kind === "pastChats") {
@@ -3502,6 +3505,14 @@ export function Composer({
   };
 
   const onMainMenuSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      setMainMenuOpen(false);
+      return;
+    }
+    // While the search box is empty the panel shows the original + menu
+    // entries, not the result list — ignore list navigation keys.
+    if (panelQuery.trim() === "") return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActive((prev) => Math.min(prev + 1, Math.max(0, atMenuItems.length - 1)));
@@ -3512,9 +3523,6 @@ export function Composer({
       e.preventDefault();
       const item = atMenuItems[active];
       if (item) pickPanelItem(item);
-    } else if (e.key === "Escape") {
-      e.stopPropagation();
-      setMainMenuOpen(false);
     }
   };
 
@@ -4197,14 +4205,18 @@ export function Composer({
               aria-label={t("composer.mainMenuSearchPlaceholder")}
             />
           </div>
-          <div className="composer-main-menu__results" role="listbox" aria-label={t("composer.mainMenuSearchResults")}>
-            {atMenuItems.length === 0 ? (
-              <div className="composer-main-menu__results-empty">{t("composer.atMenuNoMatches")}</div>
-            ) : (
-              atMenuRows.map((row) => renderAtResultRow(row))
-            )}
-          </div>
-          {/* Add section: attachments stay in the panel footer */}
+          {panelQuery.trim() !== "" ? (
+            <div className="composer-main-menu__results" role="listbox" aria-label={t("composer.mainMenuSearchResults")}>
+              {atMenuItems.length === 0 ? (
+                <div className="composer-main-menu__results-empty">{t("composer.atMenuNoMatches")}</div>
+              ) : (
+                atMenuRows.map((row) => renderAtResultRow(row))
+              )}
+            </div>
+          ) : (
+          <>
+          {/* Add section: the original + menu; the reference entries stay
+              hidden while the panel was opened by "@" (already referencing). */}
           <div className="composer-access-menu__label">{t("composer.menuSectionAdd")}</div>
           <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { chooseAttachmentFiles(); setMainMenuOpen(false); }}>
             <FilePlus2 size={16} aria-hidden="true" />
@@ -4213,6 +4225,38 @@ export function Composer({
               <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
             </span>
           </button>
+          {!panelAtSourceRef.current && (
+            <>
+            <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("@"); setMainMenuOpen(false); }}>
+              <AtSign size={16} aria-hidden="true" />
+              <span className="composer-access-menu__copy">
+                <span className="composer-access-menu__title">{t("composer.contentReferenceFiles")}</span>
+                <span className="composer-access-menu__desc">{t("composer.contentReferenceFilesDesc")}</span>
+              </span>
+            </button>
+            <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("#"); setMainMenuOpen(false); }}>
+              <Hash size={16} aria-hidden="true" />
+              <span className="composer-access-menu__copy">
+                <span className="composer-access-menu__title">{t("composer.contentReferenceSessions")}</span>
+                <span className="composer-access-menu__desc">{t("composer.contentReferenceSessionsDesc")}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="composer-access-menu__item composer-main-menu__item"
+              onClick={() => { insertContentTrigger("/"); setMainMenuOpen(false); }}
+              disabled={text.trim().length > 0}
+              title={text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
+            >
+              <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
+              <span className="composer-access-menu__copy">
+                <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
+                <span className="composer-access-menu__desc">{text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
+              </span>
+            </button>
+            </>
+          )}
           {/* Execution section */}
           <div className="composer-access-menu__label">{t("composer.menuSectionExecution")}</div>
           <button
@@ -4321,6 +4365,8 @@ export function Composer({
             </span>
             {floorOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
           </button>
+          </>
+          )}
           </div>
       </AnchoredPopover>
       {/* Approval popup menu (opens upward) */}
