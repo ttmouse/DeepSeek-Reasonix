@@ -2707,6 +2707,8 @@ export const zhTW: Record<DictKey, string> = {
   "composer.atGroupFiles": "檔案",
   "composer.atGroupSessions": "歷史會話",
   "composer.atMenuMore": "更多",
+  "composer.mainMenuSearchPlaceholder": "搜尋指令、檔案或會話…",
+  "composer.mainMenuSearchResults": "引用搜尋結果",
   "composer.atIntroTitle": "「@」可以做什麼？",
   "composer.atIntroCommands": "執行指令",
   "composer.atIntroCommandsDesc": "搜尋內建指令，如 /plan",

@@ -811,6 +811,8 @@ export const en = {
   "composer.atGroupFiles": "Files",
   "composer.atGroupSessions": "Recent sessions",
   "composer.atMenuMore": "More",
+  "composer.mainMenuSearchPlaceholder": "Search commands, files, or sessions…",
+  "composer.mainMenuSearchResults": "Reference search results",
   "composer.atIntroTitle": "What can @ do?",
   "composer.atIntroCommands": "Run a command",
   "composer.atIntroCommandsDesc": "Search built-in commands like /plan",

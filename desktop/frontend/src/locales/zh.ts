@@ -812,6 +812,8 @@ export const zh: Record<DictKey, string> = {
   "composer.atGroupFiles": "文件",
   "composer.atGroupSessions": "历史会话",
   "composer.atMenuMore": "更多",
+  "composer.mainMenuSearchPlaceholder": "搜索指令、文件或会话…",
+  "composer.mainMenuSearchResults": "引用检索结果",
   "composer.atIntroTitle": "「@」可以做什么？",
   "composer.atIntroCommands": "运行指令",
   "composer.atIntroCommandsDesc": "检索内置指令，如 /plan",
