@@ -7205,7 +7205,7 @@ body > .mermaid-diagram--fullscreen {
   user-select: none;
 }
 .composer__input-at-hint__text {
-  color: var(--fg-faint);
+  color: rgba(130, 138, 153, 0.4);
 }
 .composer__rich-input {
   width: 100%;
