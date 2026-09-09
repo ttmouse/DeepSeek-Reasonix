@@ -6971,6 +6971,32 @@ body > .mermaid-diagram--fullscreen {
 .slashmenu--at .slashmenu__item--empty .slashmenu__name {
   color: var(--fg-faint);
 }
+/* Footer action row of the unified @ panel: attachment + more menu. */
+.slashmenu__footer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  padding: 5px 6px 1px;
+  border-top: 1px solid var(--border-soft);
+}
+.slashmenu__footer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.slashmenu__footer-btn:hover {
+  color: var(--fg);
+  background: var(--hover-bg, rgba(127, 127, 127, 0.08));
+}
 .composer {
   display: flex;
   flex-direction: column;

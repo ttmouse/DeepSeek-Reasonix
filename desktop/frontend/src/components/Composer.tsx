@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
+import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, MoreHorizontal, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
@@ -1468,32 +1468,12 @@ export function Composer({
     [atRaw, atDir, atFrag, atSessionsCache],
   );
 
-  // Capability overview shown when the @ token has no fragment yet — a
-  // Codex-style "+" menu that introduces what @ can do. Selecting a card
-  // returns focus to the input so typing immediately starts searching.
-  type AtIntroKind = "commands" | "files" | "sessions";
-  const AT_INTRO_ITEMS: AtIntroKind[] = ["commands", "files", "sessions"];
-  const atIntroItemLabel = (kind: AtIntroKind): string => {
-    switch (kind) {
-      case "commands": return t("composer.atIntroCommands");
-      case "files": return t("composer.atIntroFiles");
-      case "sessions": return t("composer.atIntroSessions");
-    }
-  };
-  const atIntroItemDesc = (kind: AtIntroKind): string => {
-    switch (kind) {
-      case "commands": return t("composer.atIntroCommandsDesc");
-      case "files": return t("composer.atIntroFilesDesc");
-      case "sessions": return t("composer.atIntroSessionsDesc");
-    }
-  };
-
   const atMenuItems = useMemo<AtMenuItem[]>(
     () => {
-      // Empty fragment: show the capability overview instead of a dense list —
-      // a Codex-style "+" menu that explains what @ can do. Typing a fragment
-      // switches to the grouped search (commands / files / sessions).
-      if (atFrag === "") return [];
+      // Unified @ panel: opening with an empty fragment shows the full
+      // three-way list (commands / files / sessions) so the panel is
+      // immediately useful — typing a fragment then filters all three at
+      // once (the match helpers treat "" as match-everything).
       return [
         ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
         ...atCommands.map((command) => ({ kind: "command" as const, command })),
@@ -1501,7 +1481,7 @@ export function Composer({
         ...atSessions.map((session) => ({ kind: "session" as const, session })),
       ];
     },
-    [atFrag, includePastChatsItem, atCommands, atMatches, atSessions],
+    [includePastChatsItem, atCommands, atMatches, atSessions],
   );
   const atMenuItemKey = useCallback(
     (item: AtMenuItem) => {
@@ -1584,7 +1564,7 @@ export function Composer({
       : menuMode === "slasharg"
         ? argRes!.items.length
         : menuMode === "at"
-          ? atFrag === "" ? AT_INTRO_ITEMS.length : atMenuItems.length
+          ? atMenuItems.length
           : menuMode === "pastChats"
             ? pastChats.length
             : 0;
@@ -3316,6 +3296,19 @@ export function Composer({
     return value.replace(/[\r\n]+$/u, "").replace(activeRefTokenRe, "").trimEnd();
   };
 
+  // "More" from the unified @ panel opens the consolidated menu (attachments,
+  // task modes, delivery). The trailing @ token is removed first so the two
+  // surfaces never stack; typing @ again reopens the reference panel.
+  const openAtPanelMore = () => {
+    setText((prev) => removeAtToken(prev));
+    setDirectPastChats(false);
+    setShowPastChats(false);
+    setPastChatQuery("");
+    setActive(0);
+    setDismissed(true);
+    setMainMenuOpen(true);
+  };
+
   const pickSession = (session: SessionMeta) => {
     setSessionRefs((prev) => {
       if (prev.some((x) => x.path === session.path)) {
@@ -3438,14 +3431,6 @@ export function Composer({
         return;
       }
       if (menuMode === "pastChats") return;
-      if (atFrag === "") {
-        // Capability overview: selecting a card returns focus to the input so
-        // typing immediately switches to the grouped search.
-        const kind = AT_INTRO_ITEMS[active];
-        if (!kind) return;
-        requestActiveDraftFrame(focusComposerInput);
-        return;
-      }
       const item = atMenuItems[active];
       if (!item) return;
       if (item.kind === "pastChats") {
@@ -4368,45 +4353,14 @@ export function Composer({
             </button>
           </div>
         ) : menuMode === "at" ? (
-          atFrag === "" ? (
-            <div className="slashmenu slashmenu--at slashmenu--at-intro" role="listbox">
-              <div className="slashmenu__group" role="separator">
-                {t("composer.atIntroTitle")}
-              </div>
-              {AT_INTRO_ITEMS.map((kind, i) => (
-                <button
-                  key={kind}
-                  role="option"
-                  aria-selected={i === active}
-                  className={`slashmenu__item ${i === active ? "slashmenu__item--active" : ""}`}
-                  onMouseDown={(ev) => {
-                    ev.preventDefault();
-                    requestActiveDraftFrame(focusComposerInput);
-                  }}
-                  onMouseMove={() => setActive(i)}
-                >
-                  {kind === "commands" ? (
-                    <Terminal size={13} className="filemenu__icon" />
-                  ) : kind === "files" ? (
-                    <FileText size={13} className="filemenu__icon" />
-                  ) : (
-                    <MessageSquare size={13} className="filemenu__icon" />
-                  )}
-                  <span className="slashmenu__name">{atIntroItemLabel(kind)}</span>
-                  <span className="slashmenu__desc">{atIntroItemDesc(kind)}</span>
-                </button>
-              ))}
-              <div className="slashmenu__hint" role="note">
-                {t("composer.atIntroHint")}
-              </div>
-            </div>
-          ) : atMenuItems.length === 0 && atFrag !== "" ? (
+          atMenuItems.length === 0 ? (
             <div className="slashmenu slashmenu--at" role="listbox">
               <div className="slashmenu__item slashmenu__item--empty">
                 <span className="slashmenu__name">{t("composer.atMenuNoMatches")}</span>
               </div>
             </div>
           ) : (
+          <>
           <VirtualMenu
             items={atMenuRows}
             activeIndex={atMenuRows.findIndex((row) => row.type === "item" && row.itemIndex === active)}
@@ -4506,6 +4460,31 @@ export function Composer({
               );
             }}
           />
+          <div className="slashmenu__footer" role="note">
+            <button
+              type="button"
+              className="slashmenu__footer-btn"
+              onMouseDown={(ev) => {
+                ev.preventDefault();
+                chooseAttachmentFiles();
+              }}
+            >
+              <FilePlus2 size={13} aria-hidden="true" />
+              <span>{t("composer.contentAddAttachment")}</span>
+            </button>
+            <button
+              type="button"
+              className="slashmenu__footer-btn"
+              onMouseDown={(ev) => {
+                ev.preventDefault();
+                openAtPanelMore();
+              }}
+            >
+              <MoreHorizontal size={13} aria-hidden="true" />
+              <span>{t("composer.atMenuMore")}</span>
+            </button>
+          </div>
+          </>
           )
         ) : null
       )}
@@ -4835,7 +4814,10 @@ export function Composer({
                     ref={mainMenuAnchorRef}
                     type="button"
                     className={`composer-menu-trigger${mainMenuOpen ? " composer-menu-trigger--open" : ""}`}
-                    onClick={() => setMainMenuOpen((v) => !v)}
+                    onClick={() => {
+                      setMainMenuOpen(false);
+                      insertContentTrigger("@");
+                    }}
                     disabled={modeControlsDisabled || readOnly}
                     aria-haspopup="menu"
                     aria-expanded={mainMenuOpen}
