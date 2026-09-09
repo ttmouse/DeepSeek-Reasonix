@@ -1,8 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Trash2, X } from "lucide-react";
+import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
+import { atMenuSessionMatches } from "../lib/atSessions";
 import { DedupIndex, sha256 } from "../lib/attachDedup";
 import { app, onFilesDropped } from "../lib/bridge";
 import { enqueueInboxGuidanceForActiveTurn, steerInboxItemForActiveTurn } from "../lib/inboxSubmit";
@@ -44,7 +45,7 @@ import {
   readWorkspaceReferenceDrag,
   WORKSPACE_REF_DRAG_TYPE,
 } from "../lib/workspaceDrag";
-import { SlashMenu, sortSlashCommandsForMenu } from "./SlashMenu";
+import { SlashMenu, slashCommandKindTag, sortSlashCommandsForMenu } from "./SlashMenu";
 import { ArgMenu } from "./ArgMenu";
 import { ANCHORED_POPOVER_CLOSE_MS, AnchoredPopover } from "./AnchoredPopover";
 import { EffortSwitcher } from "./EffortSwitcher";
@@ -758,6 +759,8 @@ export function Composer({
   const [showPastChats, setShowPastChats] = useState(false);
   const [directPastChats, setDirectPastChats] = useState(false);
   const [pastChats, setPastChats] = useState<SessionMeta[]>([]);
+  const [atSessionsCache, setAtSessionsCache] = useState<SessionMeta[]>([]);
+  const atSessionsLoadedRef = useRef<string | null>(null);
   const [pastChatQuery, setPastChatQuery] = useState("");
   const [sessionRefs, setSessionRefs] = useState<SessionReference[]>([]);
   const [selectedTextRefs, setSelectedTextRefs] = useState<SelectedTextReference[]>([]);
@@ -1431,25 +1434,104 @@ export function Composer({
     [atRaw, atFrag, entries, searchEntries],
   );
 
-  // Unified menu item model for the @ menu. "past:chats" is a real selectable
-  // item (kind "pastChats"), not an active===0 special case.
+  // Unified menu item model for the @ menu — a Codex-style reference panel that
+  // merges slash commands, file refs, and recent sessions under one trigger.
+  // "past:chats" stays a real selectable item (kind "pastChats") that opens the
+  // full session list, not an active===0 special case.
   type AtMenuItem =
     | { kind: "pastChats" }
-    | { kind: "file"; entry: DirEntry };
+    | { kind: "command"; command: CommandInfo }
+    | { kind: "file"; entry: DirEntry }
+    | { kind: "session"; session: SessionMeta };
 
   const includePastChatsItem = atRaw !== null && atDir === "" && (atFrag === "" || PAST_CHATS_MENU_ITEM.startsWith(atFrag));
+
+  // Commands surface in the @ panel only at the root level (no path separators):
+  // once the user is browsing directories, every @-token is a file ref.
+  const atCommands = useMemo<CommandInfo[]>(
+    () => {
+      if (atRaw === null || atDir !== "") return [];
+      return sortSlashCommandsForMenu(
+        commands.filter((c) => c.name.toLowerCase().includes(atFrag)),
+      );
+    },
+    [atRaw, atDir, atFrag, commands],
+  );
+
+  // Sessions surface in the @ panel only at the root level, filtered by the
+  // same human-visible fields as the "#"-triggered session list.
+  const atSessions = useMemo<SessionMeta[]>(
+    () => {
+      if (atRaw === null || atDir !== "") return [];
+      return atMenuSessionMatches(atSessionsCache, atFrag);
+    },
+    [atRaw, atDir, atFrag, atSessionsCache],
+  );
 
   const atMenuItems = useMemo<AtMenuItem[]>(
     () => [
       ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
+      ...atCommands.map((command) => ({ kind: "command" as const, command })),
       ...atMatches.map((entry) => ({ kind: "file" as const, entry })),
+      ...atSessions.map((session) => ({ kind: "session" as const, session })),
     ],
-    [includePastChatsItem, atMatches],
+    [includePastChatsItem, atCommands, atMatches, atSessions],
   );
   const atMenuItemKey = useCallback(
-    (item: AtMenuItem) => item.kind === "pastChats" ? "past:chats" : (item.entry.isDir ? "d:" : "f:") + (item.entry.path || item.entry.name),
+    (item: AtMenuItem) => {
+      switch (item.kind) {
+        case "pastChats": return "past:chats";
+        case "command": return "c:" + item.command.kind + ":" + item.command.name;
+        case "file": return (item.entry.isDir ? "d:" : "f:") + (item.entry.path || item.entry.name);
+        case "session": return "s:" + item.session.path;
+      }
+    },
     [],
   );
+
+  // Grouped rows for the unified @ panel: commands, then files, then sessions.
+  // The row carries the flat atMenuItems index so keyboard navigation and the
+  // active highlight keep using the same flat index the Composer already owns.
+  type AtMenuGroup = "commands" | "files" | "sessions";
+  type AtMenuRow =
+    | { type: "group"; group: AtMenuGroup; label: string }
+    | { type: "item"; item: AtMenuItem; itemIndex: number };
+
+  function atMenuRowKey(row: AtMenuRow): string {
+    return row.type === "group" ? `group:${row.group}` : atMenuItemKey(row.item);
+  }
+
+  const atMenuGroupLabel = (group: AtMenuGroup): string => {
+    switch (group) {
+      case "commands": return t("composer.atGroupCommands");
+      case "files": return t("composer.atGroupFiles");
+      case "sessions": return t("composer.atGroupSessions");
+    }
+  };
+
+  const atMenuRows = useMemo<AtMenuRow[]>(() => {
+    const rows: AtMenuRow[] = [];
+    const pushGroup = (group: AtMenuGroup, items: Array<{ item: AtMenuItem; index: number }>) => {
+      if (items.length === 0) return;
+      rows.push({ type: "group", group, label: atMenuGroupLabel(group) });
+      for (const { item, index } of items) rows.push({ type: "item", item, itemIndex: index });
+    };
+    const commands: Array<{ item: AtMenuItem; index: number }> = [];
+    const files: Array<{ item: AtMenuItem; index: number }> = [];
+    const sessions: Array<{ item: AtMenuItem; index: number }> = [];
+    atMenuItems.forEach((item, index) => {
+      if (item.kind === "command") commands.push({ item, index });
+      else if (item.kind === "file" || item.kind === "pastChats") files.push({ item, index });
+      else if (item.kind === "session") sessions.push({ item, index });
+    });
+    pushGroup("commands", commands);
+    pushGroup("files", files);
+    pushGroup("sessions", sessions);
+    return rows;
+    // atMenuGroupLabel reads `t` and atMenuItemKey is stable; keep the memo keyed
+    // on the flat items so re-renders recompute when the panel contents change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atMenuItems, atMenuItemKey, t]);
 
   // --- which menu (if any) is open --- (slash command names win; then slash
   // arguments; then @-refs — they're rarely valid at once)
@@ -3041,6 +3123,42 @@ export function Composer({
     }
   }, []);
 
+  // Load the recent-session cache for the unified @ panel. Deliberately mirrors
+  // openPastChats' list shape (recency-sorted, excludes current, capped at 50)
+  // but writes into its own state so the "#"-triggered panel and the @ panel
+  // never clobber each other. Fires once per workspace scope, not per keystroke.
+  const loadAtSessions = useCallback(async () => {
+    const snapshotCwd = cwdRef.current;
+    const sourceDraftKey = activeDraftKeyRef.current;
+    try {
+      const sessions = await app.ListSessions();
+      if (cwdRef.current !== snapshotCwd || activeDraftKeyRef.current !== sourceDraftKey) return;
+      setAtSessionsCache(
+        asArray(sessions)
+          .filter((s) => !s.current)
+          .sort((a, b) => {
+            const at = a.lastActivityAt || a.modTime || a.createdAt || 0;
+            const bt = b.lastActivityAt || b.modTime || b.createdAt || 0;
+            return bt - at;
+          })
+          .slice(0, 50),
+      );
+    } catch {
+      if (cwdRef.current === snapshotCwd && activeDraftKeyRef.current === sourceDraftKey) setAtSessionsCache([]);
+    }
+  }, []);
+
+  // Load the @ panel session cache once per workspace scope when the user types
+  // "@" (root level only). The ref guards against re-fetching on every keystroke
+  // while the token is still being typed.
+  useEffect(() => {
+    const scope = fileRefScopeKey;
+    if (atRaw === null || atDir !== "") return;
+    if (atSessionsLoadedRef.current === scope) return;
+    atSessionsLoadedRef.current = scope;
+    void loadAtSessions();
+  }, [atRaw, atDir, fileRefScopeKey, loadAtSessions]);
+
   useEffect(() => {
     if (!pastChatToken || directPastChats || dismissed || running || disabled || readOnly) return;
     setDirectPastChats(true);
@@ -3211,6 +3329,71 @@ export function Composer({
     setTextCaretEnd(slashText.slice(0, argRes.from) + it.insert);
   };
 
+  // Picking a command from the unified @ panel turns the typed @token into a
+  // "/command " prefix (mirroring what the user would have typed). Structured
+  // invocations (skill/subagent) are inserted as invocations so the chip + args
+  // UI behaves exactly like a "/"-typed command.
+  const pickAtCommand = (c: CommandInfo) => {
+    const queryText = textRef.current.replace(/[\r\n]+$/u, "");
+    const atPos = queryText.length - (atRaw?.length ?? 0) - 1; // index of '@'
+    const targetDraftKey = activeDraftKeyRef.current;
+    if (!commandUsesStructuredInvocation(c)) {
+      const beforeEdit = composerEditSnapshot(targetDraftKey, { start: atPos, end: queryText.length });
+      const next = replaceInvocationTextRange(
+        textRef.current,
+        invocationsRef.current,
+        Math.max(0, atPos),
+        textRef.current.length,
+        `/${c.name} `,
+      );
+      textRef.current = next.text;
+      invocationsRef.current = next.invocations;
+      setText(next.text);
+      setInvocations(next.invocations);
+      setComposerSelection(atPos + c.name.length + 2);
+      recordComposerEdit(
+        targetDraftKey,
+        beforeEdit,
+        composerEditSnapshot(targetDraftKey, { start: atPos + c.name.length + 2, end: atPos + c.name.length + 2 }),
+      );
+      setDismissed(true);
+      requestActiveDraftFrame(focusComposerInput);
+      return;
+    }
+    const beforeEdit = composerEditSnapshot(targetDraftKey, { start: atPos, end: queryText.length });
+    const invocation: ComposerInvocation = {
+      id: `composer-invocation-${nextInvocationId.current++}`,
+      offset: Math.max(0, atPos),
+      command: c,
+    };
+    const next = replaceInvocationTextRange(
+      textRef.current,
+      invocationsRef.current,
+      Math.max(0, atPos),
+      textRef.current.length,
+      "",
+    );
+    textRef.current = next.text;
+    invocationsRef.current = [invocation];
+    setText(next.text);
+    setInvocations([invocation]);
+    recordComposerEdit(
+      targetDraftKey,
+      beforeEdit,
+      composerEditSnapshot(targetDraftKey, {
+        start: Math.max(0, atPos),
+        end: Math.max(0, atPos),
+        afterInvocationId: invocation.id,
+      }),
+    );
+    setDismissed(true);
+    requestActiveDraftFrame(() => richInputRef.current?.setSelectionRange(
+      Math.max(0, atPos),
+      Math.max(0, atPos),
+      invocation.id,
+    ));
+  };
+
   const pickActive = () => {
     if (menuMode === "slash") {
       const item = slashMatches[active];
@@ -3233,6 +3416,14 @@ export function Composer({
       if (!item) return;
       if (item.kind === "pastChats") {
         void openPastChats();
+        return;
+      }
+      if (item.kind === "command") {
+        pickAtCommand(item.command);
+        return;
+      }
+      if (item.kind === "session") {
+        pickSession(item.session);
         return;
       }
       pickEntry(item.entry);
@@ -4151,46 +4342,103 @@ export function Composer({
             </div>
           ) : (
           <VirtualMenu
-            items={atMenuItems}
-            activeIndex={active}
-            itemKey={atMenuItemKey}
+            items={atMenuRows}
+            activeIndex={atMenuRows.findIndex((row) => row.type === "item" && row.itemIndex === active)}
+            itemKey={atMenuRowKey}
             className="slashmenu--at"
-            renderItem={(it, i) =>
-              it.kind === "pastChats" ? (
-                <button
-                  className={`slashmenu__item${i === active ? " slashmenu__item--active" : ""}`}
-                  onMouseDown={(ev) => {
-                    ev.preventDefault();
-                    void openPastChats();
-                  }}
-                  onMouseMove={() => setActive(i)}
-                >
-                  <MessageSquare size={13} className="filemenu__icon" />
-                  <span className="slashmenu__name">{PAST_CHATS_MENU_ITEM}</span>
-                </button>
-              ) : (
+            estimateSize={(row) => row.type === "group" ? 26 : 34}
+            renderItem={(row) => {
+              if (row.type === "group") {
+                return (
+                  <div className="slashmenu__group" role="separator" aria-label={row.label}>
+                    {row.label}
+                  </div>
+                );
+              }
+              const item = row.item;
+              const itemActive = row.itemIndex === active;
+              if (item.kind === "pastChats") {
+                return (
+                  <button
+                    className={`slashmenu__item${itemActive ? " slashmenu__item--active" : ""}`}
+                    onMouseDown={(ev) => {
+                      ev.preventDefault();
+                      void openPastChats();
+                    }}
+                    onMouseMove={() => setActive(row.itemIndex)}
+                  >
+                    <MessageSquare size={13} className="filemenu__icon" />
+                    <span className="slashmenu__name">{PAST_CHATS_MENU_ITEM}</span>
+                  </button>
+                );
+              }
+              if (item.kind === "command") {
+                return (
+                  <button
+                    role="option"
+                    aria-selected={itemActive}
+                    className={`slashmenu__item ${itemActive ? "slashmenu__item--active" : ""}`}
+                    onMouseDown={(ev) => {
+                      ev.preventDefault();
+                      pickAtCommand(item.command);
+                    }}
+                    onMouseMove={() => setActive(row.itemIndex)}
+                  >
+                    <Terminal size={13} className="filemenu__icon" />
+                    <span className="slashmenu__name">/{item.command.name}</span>
+                    {item.command.hint && <span className="slashmenu__hint">{item.command.hint}</span>}
+                    <span className="slashmenu__desc">{item.command.description}</span>
+                    {slashCommandKindTag(item.command, t) && (
+                      <span className="slashmenu__kind">{slashCommandKindTag(item.command, t)}</span>
+                    )}
+                  </button>
+                );
+              }
+              if (item.kind === "session") {
+                const session = item.session;
+                const turnsLabel = sessionTurnsLabel(session, t);
+                return (
+                  <button
+                    role="option"
+                    aria-selected={itemActive}
+                    className={`slashmenu__item ${itemActive ? "slashmenu__item--active" : ""}`}
+                    onMouseDown={(ev) => {
+                      ev.preventDefault();
+                      pickSession(session);
+                    }}
+                    onMouseMove={() => setActive(row.itemIndex)}
+                  >
+                    <MessageSquare size={13} className="filemenu__icon" />
+                    <span className="slashmenu__name slashmenu__name--file">
+                      {pastChatTitle(session)}
+                      {turnsLabel ? ` (${turnsLabel})` : ""}
+                    </span>
+                  </button>
+                );
+              }
+              return (
                 <button
                   role="option"
-                  aria-selected={i === active}
-                  className={`slashmenu__item ${i === active ? "slashmenu__item--active" : ""}`}
+                  aria-selected={itemActive}
+                  className={`slashmenu__item ${itemActive ? "slashmenu__item--active" : ""}`}
                   onMouseDown={(ev) => {
                     ev.preventDefault();
-                    pickEntry(it.entry);
+                    pickEntry(item.entry);
                   }}
-                  onMouseMove={() => setActive(i)}
+                  onMouseMove={() => setActive(row.itemIndex)}
                 >
-                  {it.entry.isDir ? (
+                  {item.entry.isDir ? (
                     <Folder size={13} className="filemenu__icon filemenu__icon--dir" />
                   ) : (
                     <FileText size={13} className="filemenu__icon" />
                   )}
                   <span className="slashmenu__name slashmenu__name--file">
-                    {dirEntryMenuLabel(it.entry)}
-                    {it.entry.isDir ? "/" : ""}
+                    {dirEntryMenuLabel(item.entry)}
+                    {item.entry.isDir ? "/" : ""}
                   </span>
                 </button>
-              )
-            }
+              );
+            }}
           />
           )
         ) : null
