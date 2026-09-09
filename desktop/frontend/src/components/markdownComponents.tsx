@@ -6,17 +6,57 @@
 // Fenced code blocks go through CodeViewer for syntax highlighting; inline
 // code is a styled <code>. Mermaid fences lazy-load the diagram renderer.
 // Links open in the system browser via RichMarkdownLink. Oversized tables
-// virtualize their body rows.
+// virtualize their body rows. chat-path: links (chat path linkification)
+// open in the workspace panel via ChatPathMarkdownLink.
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import { CodeViewer } from "./CodeViewer";
 import { StreamWidget } from "./StreamWidget";
 import { RichMarkdownLink } from "./githubLink";
 import { MarkdownTable } from "./MarkdownTable";
 import { MarkdownImage } from "./MarkdownImage";
+import { useChatPathContext } from "../lib/chatPathContext";
+import {
+  chatPathFromHref,
+  isChatPathHref,
+  looksLikeFilePath,
+} from "../lib/chatPathLinkify";
 
 const MermaidDiagram = lazy(() => import("./MermaidDiagram"));
+
+// Renders a workspace file link produced by the chat-path linkification
+// plugin. Clicking resolves the path in the app (workspace panel); without a
+// provider (non-transcript surfaces) the link stays inert.
+function ChatPathMarkdownLink({ href, children }: { href: string; children: ReactNode }) {
+  const chatPath = useChatPathContext();
+  const path = chatPathFromHref(href);
+  const open = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (!chatPath) return;
+    const match = looksLikeFilePath(path, { roots: chatPath.roots });
+    if (!match) return;
+    chatPath.onOpenChatFile(match.raw, match.kind);
+  };
+  return (
+    <a
+      className="md-path-link"
+      href={href}
+      title={path}
+      onClick={open}
+      onAuxClick={(event) => {
+        if (event.button !== 1) return;
+        event.preventDefault();
+        open(event);
+      }}
+      onMouseDown={(event) => {
+        if (event.button === 1) event.preventDefault();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
 
 // The components map is shared by the main-thread react-markdown renderer
 // (streaming path) and the worker-parsed block renderer (history path), so
@@ -46,7 +86,9 @@ export function createComponents(): Components {
       }
       return <code className="md-code">{children}</code>;
     },
-    a: ({ href, children }) => <RichMarkdownLink href={href}>{children}</RichMarkdownLink>,
+    a: ({ href, children }) => isChatPathHref(href)
+      ? <ChatPathMarkdownLink href={href}>{children}</ChatPathMarkdownLink>
+      : <RichMarkdownLink href={href}>{children}</RichMarkdownLink>,
     img: ({ src, alt, title }) => <MarkdownImage src={src} alt={alt} title={title} />,
   };
 }

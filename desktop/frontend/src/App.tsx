@@ -39,6 +39,9 @@ import { useConfigLoadWarnings } from "./lib/useConfigLoadWarnings";
 import { generativeMusic, isGenerativeMusicEnabled } from "./lib/generative-music";
 import { clearAttentionChimeKeys, playAttentionChime, playSuccessChime, shouldPlayAttentionChimeForEvent } from "./lib/sound";
 import { NoticeCard, Transcript } from "./components/Transcript";
+import { ChatPathContext, type ChatPathContextValue } from "./lib/chatPathContext";
+import { resolveChatPathToWorkspacePath } from "./lib/chatPathResolve";
+import type { ChatPathKind } from "./lib/chatPathLinkify";
 import { Composer } from "./components/Composer";
 import { ACTIVITY_BAR_ENTRIES } from "./components/ActivityBar/activityBarConfig";
 import { useActivityBarStore } from "./store/activityBar";
@@ -2921,6 +2924,41 @@ export default function App() {
     [dockEntryLabel, dockOpenEntry, openWorkspacePanel],
   );
 
+  // ── Chat path links (docs/plan-file-open-in-chat.md) ─────────────────────
+  // History messages render file paths as links; clicking resolves the path
+  // against the current workspace, opens the right dock (files view) if it is
+  // closed, and routes the resolved relative path through WorkspacePanel's
+  // revealPathRequest channel. Missing files / cross-workspace paths resolve
+  // silently (Alma parity).
+  const chatRevealRequestIdRef = useRef(0);
+  const [chatRevealRequest, setChatRevealRequest] = useState<{ id: number; path: string } | null>(null);
+  const chatPathRoots = useMemo(() => {
+    const cwd = state.meta?.cwd?.trim();
+    return cwd ? [cwd] : [];
+  }, [state.meta?.cwd]);
+  const handleOpenChatFile = useCallback((pathText: string, kind: ChatPathKind) => {
+    const tabId = activeTabId;
+    const cwd = state.meta?.cwd?.trim();
+    if (!tabId || !cwd || !pathText) return;
+    void resolveChatPathToWorkspacePath(tabId, cwd, pathText, kind, {
+      searchFileRefs: (id, query) => app.SearchFileRefsForTab(id, query),
+      readFile: (id, rel) => app.ReadFileForTab(id, rel),
+    }).then((rel) => {
+      if (!rel) return;
+      // Open the right dock in files view if it is not already open, so the
+      // reveal effect inside WorkspacePanel (which gates on `open`) can run.
+      openRightDockMode("files");
+      chatRevealRequestIdRef.current += 1;
+      setChatRevealRequest({ id: chatRevealRequestIdRef.current, path: rel });
+    });
+  }, [activeTabId, state.meta?.cwd, openRightDockMode]);
+  const chatPathContextValue = useMemo<ChatPathContextValue | null>(() =>
+    chatPathRoots.length > 0 && activeTabId
+      ? { roots: chatPathRoots, onOpenChatFile: handleOpenChatFile }
+      : null,
+    [activeTabId, chatPathRoots, handleOpenChatFile],
+  );
+
   const handleActivitySelect = useCallback((entryId: string) => {
     const entry = ACTIVITY_BAR_ENTRIES.find((candidate) => candidate.id === entryId);
     if (!entry) return;
@@ -4887,41 +4925,43 @@ export default function App() {
                       (node as HTMLElement & { inert?: boolean }).inert = runtimeTransitioning;
                     }}
                   >
-                    <Transcript
-                      items={visibleTranscriptItems}
-                      live={runtimeTransitioning ? undefined : state.live}
-                      liveStore={liveStore}
-                      tabId={visibleTranscriptTabId}
-                      geometrySessionKey={visibleTranscriptGeometryKey}
-                      footerHeight={footerHeight}
-                      onPrompt={handleTranscriptPrompt}
-                      onDeliveryContinue={() => void handleDeliveryContinue()}
-                      onAcceptDelivery={() => void app.AcceptDeliveryToTab(activeTabIdRef.current ?? "")}
-                      onOpenChanges={() => openRightDockMode("changed")}
-                      onOpenVerification={openTurnVerification}
-                      onEditPrompt={handleEditPrompt}
-                      onRewind={handleMessageAction}
-                      checkpoints={state.checkpoints}
-                      actionPending={state.messageAction != null}
-                      rewindDisabled={Boolean(activeTab?.readOnly) || !controllerReady || hydratePlaceholderActive || rewindState != null || rewindCommitting || state.running || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending || runtimeTransitioning}
-                      running={state.running || rewindCommitting}
-                      turnStartAt={state.turnStartAt}
-                      contentRevision={state.historyLayoutRevision}
-                      historyMutation={state.historyMutation}
-                      actionHoverMenus={!hydratePlaceholderActive && !runtimeTransitioning}
-                      rewindSignal={rewindSignal}
-                      revealSignal={transcriptRevealSignal}
-                      hydrating={transcriptHydrating || (runtimeTransitioning && !navigationTargetDataReady)}
-                      hasOlderHistory={!runtimeTransitioning && state.historyHasOlder && !rewindState}
-                      historyStartTurn={state.historyStartTurn}
-                      historyTotalTurns={state.historyTotalTurns}
-                      loadingOlderHistory={state.historyOlderLoading}
-                      olderHistoryError={state.historyOlderError}
-                      onLoadOlderHistory={handleLoadOlderHistory}
-                      invocationMetadata={visibleTranscriptTabId ? invocationMetadataByTab[visibleTranscriptTabId] : undefined}
-                      surfaceCommitToken={surfaceCommitToken}
-                      onSurfacePaintReady={handleSurfacePaintReady}
-                    />
+                    <ChatPathContext.Provider value={chatPathContextValue}>
+                      <Transcript
+                        items={visibleTranscriptItems}
+                        live={runtimeTransitioning ? undefined : state.live}
+                        liveStore={liveStore}
+                        tabId={visibleTranscriptTabId}
+                        geometrySessionKey={visibleTranscriptGeometryKey}
+                        footerHeight={footerHeight}
+                        onPrompt={handleTranscriptPrompt}
+                        onDeliveryContinue={() => void handleDeliveryContinue()}
+                        onAcceptDelivery={() => void app.AcceptDeliveryToTab(activeTabIdRef.current ?? "")}
+                        onOpenChanges={() => openRightDockMode("changed")}
+                        onOpenVerification={openTurnVerification}
+                        onEditPrompt={handleEditPrompt}
+                        onRewind={handleMessageAction}
+                        checkpoints={state.checkpoints}
+                        actionPending={state.messageAction != null}
+                        rewindDisabled={Boolean(activeTab?.readOnly) || !controllerReady || hydratePlaceholderActive || rewindState != null || rewindCommitting || state.running || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending || runtimeTransitioning}
+                        running={state.running || rewindCommitting}
+                        turnStartAt={state.turnStartAt}
+                        contentRevision={state.historyLayoutRevision}
+                        historyMutation={state.historyMutation}
+                        actionHoverMenus={!hydratePlaceholderActive && !runtimeTransitioning}
+                        rewindSignal={rewindSignal}
+                        revealSignal={transcriptRevealSignal}
+                        hydrating={transcriptHydrating || (runtimeTransitioning && !navigationTargetDataReady)}
+                        hasOlderHistory={!runtimeTransitioning && state.historyHasOlder && !rewindState}
+                        historyStartTurn={state.historyStartTurn}
+                        historyTotalTurns={state.historyTotalTurns}
+                        loadingOlderHistory={state.historyOlderLoading}
+                        olderHistoryError={state.historyOlderError}
+                        onLoadOlderHistory={handleLoadOlderHistory}
+                        invocationMetadata={visibleTranscriptTabId ? invocationMetadataByTab[visibleTranscriptTabId] : undefined}
+                        surfaceCommitToken={surfaceCommitToken}
+                        onSurfacePaintReady={handleSurfacePaintReady}
+                      />
+                    </ChatPathContext.Provider>
                   </div>
                   {runtimeTransitioning ? (
                     <div className="transcript-navigation-overlay" role="status" aria-live="polite">
@@ -5319,6 +5359,7 @@ export default function App() {
                       completionSummary={state.completionSummary}
                       turnStartAt={state.turnStartAt}
                       verificationRevealRequest={verificationRevealRequest}
+                      revealPathRequest={chatRevealRequest}
                       qualityFloor={composerProfile.qualityFloor}
                       showViewTabs={false}
                       onOpenFilesChange={handleOpenFilesChange}
