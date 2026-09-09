@@ -7673,7 +7673,6 @@ body > .mermaid-diagram--fullscreen {
   padding: 8px 10px;
   color: var(--fg-faint);
   font-size: 11px;
-  border-top: 1px solid var(--border-soft);
 }
 .composer-main-menu__results-group {
   padding: 6px 8px 3px;
