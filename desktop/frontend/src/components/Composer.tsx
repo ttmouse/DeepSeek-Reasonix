@@ -3545,7 +3545,6 @@ export function Composer({
         aria-selected={itemActive}
         className={`composer-main-menu__results-item${itemActive ? " composer-main-menu__results-item--active" : ""}`}
         onClick={() => pickPanelItem(item)}
-        onMouseMove={() => setActive(row.itemIndex)}
       >
         <span className="composer-main-menu__results-icon">{icon}</span>
         <span className="composer-main-menu__results-text">{text}</span>
