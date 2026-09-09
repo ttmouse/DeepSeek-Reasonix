@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
+import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, List, MessageSquare, PackageCheck, Plus, Search, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
@@ -1513,15 +1513,14 @@ export function Composer({
   // selection and Enter confirms. The same entries participate in search:
   // while a search term is typed after @ they are matched (title/description)
   // and shown at the top of the results, before commands/files/sessions.
-  type MainMenuEntryKind = "attach" | "refFile" | "refSession" | "useCommand" | "plan" | "goal" | "quality";
+  // Referencing files/sessions needs no dedicated entry — typing after @
+  // already searches files and chat sessions (the footer hint says so).
+  type MainMenuEntryKind = "attach" | "useCommand" | "plan" | "goal" | "quality";
   type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
 
-  // The + and @ panels show the exact same entries: the @-opened panel keeps
-  // all of them too (picking a reference entry switches the trigger token).
+  // The + and @ panels show the exact same entries.
   const mainMenuEntries: MainMenuEntry[] = [
     { kind: "attach", section: "add" },
-    { kind: "refFile", section: "add" },
-    { kind: "refSession", section: "add" },
     { kind: "useCommand", section: "add" },
     { kind: "plan", section: "execution" },
     { kind: "goal", section: "execution" },
@@ -1531,8 +1530,6 @@ export function Composer({
   const mainMenuEntrySearchText = (entry: MainMenuEntry): string => {
     switch (entry.kind) {
       case "attach": return `${t("composer.contentAddAttachment")} ${t("composer.contentAddAttachmentDesc")} attach attachment`;
-      case "refFile": return `${t("composer.contentReferenceFiles")} ${t("composer.contentReferenceFilesDesc")} refFile file`;
-      case "refSession": return `${t("composer.contentReferenceSessions")} ${t("composer.contentReferenceSessionsDesc")} refSession session`;
       case "useCommand": return `${t("composer.contentUseCommands")} ${t("composer.contentUseCommandsDesc")} useCommand command`;
       case "plan": return `${t("composer.taskModePlan")} ${t("composer.taskModePlanDesc")} plan`;
       case "goal": return `${t("composer.taskModeGoal")} ${t("composer.taskModeGoalDesc")} goal`;
@@ -3633,8 +3630,6 @@ export function Composer({
     const entryActive = active === itemIndex;
     const icon =
       entry.kind === "attach" ? <FilePlus2 size={13} /> :
-      entry.kind === "refFile" ? <AtSign size={13} /> :
-      entry.kind === "refSession" ? <Hash size={13} /> :
       entry.kind === "useCommand" ? <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span> :
       entry.kind === "plan" ? <List size={13} /> :
       entry.kind === "goal" ? <Target size={13} /> :
@@ -3645,14 +3640,6 @@ export function Composer({
       case "attach":
         title = t("composer.contentAddAttachment");
         desc = t("composer.contentAddAttachmentDesc");
-        break;
-      case "refFile":
-        title = t("composer.contentReferenceFiles");
-        desc = t("composer.contentReferenceFilesDesc");
-        break;
-      case "refSession":
-        title = t("composer.contentReferenceSessions");
-        desc = t("composer.contentReferenceSessionsDesc");
         break;
       case "useCommand":
         title = t("composer.contentUseCommands");
@@ -3704,23 +3691,6 @@ export function Composer({
     switch (kind) {
       case "attach":
         chooseAttachmentFiles();
-        setMainMenuOpen(false);
-        break;
-      case "refFile":
-        // From the @-opened panel the "@" reference mode is already active
-        // (the token stays in the composer) — just close the menu and let the
-        // user keep typing the search. From "+" insert the "@" trigger.
-        if (!panelAtSourceRef.current) insertContentTrigger("@");
-        setMainMenuOpen(false);
-        break;
-      case "refSession":
-        // From the @-opened panel switch the trigger to "#"; from "+" insert it.
-        if (panelAtSourceRef.current) {
-          setText((prev) => removeAtToken(prev));
-          insertContentTrigger("#");
-        } else {
-          insertContentTrigger("#");
-        }
         setMainMenuOpen(false);
         break;
       case "useCommand":
@@ -3777,26 +3747,6 @@ export function Composer({
             <span className="composer-access-menu__copy">
               <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
               <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
-            </span>
-          </button>
-        );
-      case "refFile":
-        return (
-          <button key="refFile" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("refFile")}>
-            <AtSign size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentReferenceFiles")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentReferenceFilesDesc")}</span>
-            </span>
-          </button>
-        );
-      case "refSession":
-        return (
-          <button key="refSession" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("refSession")}>
-            <Hash size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentReferenceSessions")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentReferenceSessionsDesc")}</span>
             </span>
           </button>
         );
@@ -4589,6 +4539,11 @@ export function Composer({
               </button>
             </div>
           )}
+          {/* Footer hint: typing right away searches files and chat sessions. */}
+          <div className="composer-main-menu__hint">
+            <Search size={12} aria-hidden="true" />
+            {t("composer.menuFileChatSearch")}
+          </div>
           </>
           )}
           </div>
