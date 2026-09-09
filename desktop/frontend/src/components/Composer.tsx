@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, List, MessageSquare, PackageCheck, Plus, Search, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
+import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
@@ -4540,11 +4540,6 @@ export function Composer({
               </button>
             </div>
           )}
-          {/* Footer hint: typing right away searches files and chat sessions. */}
-          <div className="composer-main-menu__hint">
-            <Search size={12} aria-hidden="true" />
-            {t("composer.menuFileChatSearch")}
-          </div>
           </>
           )}
           </div>

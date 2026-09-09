@@ -7707,15 +7707,6 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg-faint);
   font-size: 12px;
 }
-.composer-main-menu__hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-  padding: 8px 10px;
-  color: var(--fg-faint);
-  font-size: 11px;
-}
 .composer-main-menu__results-group {
   padding: 6px 8px 3px;
   color: var(--fg-faint);
