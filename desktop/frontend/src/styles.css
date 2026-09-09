@@ -7650,38 +7650,6 @@ body > .mermaid-diagram--fullscreen {
   gap: 10px !important;
 }
 
-/* Unified reference search inside the + / @ panel. */
-.composer-main-menu__search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 6px;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-soft);
-}
-.composer-main-menu__search:focus-within {
-  border-color: var(--accent);
-}
-.composer-main-menu__search-icon {
-  flex: none;
-  color: var(--fg-faint);
-}
-.composer-main-menu__search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--fg);
-  font: inherit;
-  font-size: 12.5px;
-}
-.composer-main-menu__search input::placeholder {
-  color: var(--fg-faint);
-}
-
 /* Reference result list: three groups (commands / files / sessions) with an
    empty state; scrolls when the menu grows past the composer height. */
 .composer-main-menu__results {

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, Search, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
+import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
@@ -756,12 +756,12 @@ export function Composer({
   const moreMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
   const mainMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
   const approvalPopupAnchorRef = useRef<HTMLButtonElement | null>(null);
-  // Unified reference search inside the + / @ panel. "@" and the plus button
-  // open the same panel; typing here filters commands, files and sessions at
-  // once. panelAtSourceRef records whether the current panel was opened by an
-  // "@" token so deleting the token can close a panel that @ opened.
+  // Unified reference search state for the + / @ panel. "@" and the plus button
+  // open the same panel; typing in the composer input (after "@") filters
+  // commands, files and sessions at once. panelAtSourceRef records whether the
+  // current panel was opened by an "@" token so deleting the token can close a
+  // panel that @ opened.
   const [panelQuery, setPanelQuery] = useState("");
-  const mainMenuSearchRef = useRef<HTMLInputElement | null>(null);
   const panelAtSourceRef = useRef(false);
   const [contentMenuOpen, setContentMenuOpen] = useState(false);
   const [showPastChats, setShowPastChats] = useState(false);
@@ -3189,14 +3189,6 @@ export function Composer({
     setMainMenuOpen(false);
   }, [atRaw === null, setMainMenuOpen]);
 
-  // Focus the panel search box when the + / @ panel opens so typing starts the
-  // three-way reference search immediately.
-  useEffect(() => {
-    if (!mainMenuOpen) return;
-    const raf = requestAnimationFrame(() => mainMenuSearchRef.current?.focus());
-    return () => cancelAnimationFrame(raf);
-  }, [mainMenuOpen]);
-
   useEffect(() => {
     if (!pastChatToken || directPastChats || dismissed || running || disabled || readOnly) return;
     setDirectPastChats(true);
@@ -3501,28 +3493,6 @@ export function Composer({
     if (!panelAtSourceRef.current) {
       setMainMenuOpen(false);
       setPanelQuery("");
-    }
-  };
-
-  const onMainMenuSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      setMainMenuOpen(false);
-      return;
-    }
-    // While the search box is empty the panel shows the original + menu
-    // entries, not the result list — ignore list navigation keys.
-    if (panelQuery.trim() === "") return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((prev) => Math.min(prev + 1, Math.max(0, atMenuItems.length - 1)));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((prev) => Math.max(prev - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const item = atMenuItems[active];
-      if (item) pickPanelItem(item);
     }
   };
 
@@ -4189,22 +4159,8 @@ export function Composer({
         closeMs={0}
       >
         <div className="composer-access-menu__section" role="menu" aria-label={t("composer.menuLabel")}>
-          {/* Unified reference search: "@" and "+" open this same panel; typing
-              here filters commands, files and sessions at once. */}
-          <div className="composer-main-menu__search">
-            <Search size={14} className="composer-main-menu__search-icon" aria-hidden="true" />
-            <input
-              ref={mainMenuSearchRef}
-              value={panelQuery}
-              onChange={(event) => {
-                setPanelQuery(event.target.value);
-                setActive(0);
-              }}
-              onKeyDown={onMainMenuSearchKeyDown}
-              placeholder={t("composer.mainMenuSearchPlaceholder")}
-              aria-label={t("composer.mainMenuSearchPlaceholder")}
-            />
-          </div>
+          {/* No search box on the overlay: typing continues in the composer
+              input below ("@" filters commands/files/sessions live). */}
           {panelQuery.trim() !== "" ? (
             <div className="composer-main-menu__results" role="listbox" aria-label={t("composer.mainMenuSearchResults")}>
               {atMenuItems.length === 0 ? (
