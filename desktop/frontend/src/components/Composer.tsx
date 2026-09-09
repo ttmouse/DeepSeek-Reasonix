@@ -1508,12 +1508,54 @@ export function Composer({
     [],
   );
 
+  // --- original + menu entries ---
+  // The first entry is selected when the panel opens; ArrowUp/Down move the
+  // selection and Enter confirms. The same entries participate in search:
+  // while a search term is typed after @ they are matched (title/description)
+  // and shown at the top of the results, before commands/files/sessions.
+  type MainMenuEntryKind = "attach" | "refFile" | "refSession" | "useCommand" | "plan" | "goal" | "quality";
+  type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
+
+  const mainMenuEntries: MainMenuEntry[] = [
+    { kind: "attach", section: "add" },
+    ...(panelAtSourceRef.current ? [] : ([
+      { kind: "refFile" as const, section: "add" as const },
+      { kind: "refSession" as const, section: "add" as const },
+      { kind: "useCommand" as const, section: "add" as const },
+    ] as MainMenuEntry[])),
+    { kind: "plan", section: "execution" },
+    { kind: "goal", section: "execution" },
+    { kind: "quality", section: "delivery" },
+  ];
+
+  const mainMenuEntrySearchText = (entry: MainMenuEntry): string => {
+    switch (entry.kind) {
+      case "attach": return `${t("composer.contentAddAttachment")} ${t("composer.contentAddAttachmentDesc")} attach attachment`;
+      case "refFile": return `${t("composer.contentReferenceFiles")} ${t("composer.contentReferenceFilesDesc")} refFile file`;
+      case "refSession": return `${t("composer.contentReferenceSessions")} ${t("composer.contentReferenceSessionsDesc")} refSession session`;
+      case "useCommand": return `${t("composer.contentUseCommands")} ${t("composer.contentUseCommandsDesc")} useCommand command`;
+      case "plan": return `${t("composer.taskModePlan")} ${t("composer.taskModePlanDesc")} plan`;
+      case "goal": return `${t("composer.taskModeGoal")} ${t("composer.taskModeGoalDesc")} goal`;
+      case "quality": return `${t("composer.qualityFloorDelivery")} ${t("composer.qualityFloorDeliveryTitle")} quality delivery`;
+    }
+  };
+
+  const mainMenuEntryMatches = useMemo<MainMenuEntry[]>(() => {
+    const q = panelQuery.trim().toLowerCase();
+    if (q === "") return [];
+    return mainMenuEntries.filter((entry) => mainMenuEntrySearchText(entry).toLowerCase().includes(q));
+    // mainMenuEntrySearchText reads `t`; recompute whenever the panel query or
+    // the locale-driven entries change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelQuery, mainMenuEntries, t]);
+
   // Grouped rows for the unified @ panel: commands, then files, then sessions.
   // The row carries the flat atMenuItems index so keyboard navigation and the
   // active highlight keep using the same flat index the Composer already owns.
   type AtMenuGroup = "commands" | "files" | "sessions";
   type AtMenuRow =
     | { type: "group"; group: AtMenuGroup; label: string }
+    | { type: "entry"; entry: MainMenuEntry; itemIndex: number }
     | { type: "item"; item: AtMenuItem; itemIndex: number };
 
   const atMenuGroupLabel = (group: AtMenuGroup): string => {
@@ -1573,7 +1615,7 @@ export function Composer({
       : menuMode === "slasharg"
         ? argRes!.items.length
         : menuMode === "at"
-          ? atMenuItems.length
+          ? atMenuItems.length + mainMenuEntryMatches.length
           : menuMode === "pastChats"
             ? pastChats.length
             : 0;
@@ -3458,9 +3500,17 @@ export function Composer({
       }
       if (menuMode === "pastChats") return;
       // The @-opened panel shows the original menu entries until a search term
-      // is typed — Enter must not pick a result that is not visible.
+      // is typed — Enter must not pick a result that is not visible. Once a
+      // term is present, the first rows are the matching menu entries (e.g.
+      // goal/plan/delivery) and the remaining rows are commands/files/sessions.
       if (panelQuery.trim() === "") return;
-      const item = atMenuItems[active];
+      const entryCount = mainMenuEntryMatches.length;
+      if (active < entryCount) {
+        const entry = mainMenuEntryMatches[active];
+        if (entry) pickMainMenuEntry(entry.kind);
+        return;
+      }
+      const item = atMenuItems[active - entryCount];
       if (!item) return;
       if (item.kind === "pastChats") {
         void openPastChats();
@@ -3510,6 +3560,7 @@ export function Composer({
   };
 
   const renderAtResultRow = (row: AtMenuRow): React.ReactNode => {
+    if (row.type === "entry") return null;
     if (row.type === "group") {
       return (
         <div key={row.group} className="composer-main-menu__results-group" role="separator">
@@ -3565,25 +3616,80 @@ export function Composer({
     );
   };
 
-  // --- original + menu entries (shown while the panel search is empty) ---
-  // The first entry is selected when the panel opens; ArrowUp/Down move the
-  // selection and Enter confirms, matching the results-list navigation.
-  type MainMenuEntryKind = "attach" | "refFile" | "refSession" | "useCommand" | "plan" | "goal" | "quality";
-  type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
+  // Entry rows rendered inside the results list while a search term is active
+  // (matching menu entries sit above commands/files/sessions).
+  const renderPanelEntryRow = (entry: MainMenuEntry, itemIndex: number): React.ReactNode => {
+    const entryActive = active === itemIndex;
+    const icon =
+      entry.kind === "attach" ? <FilePlus2 size={13} /> :
+      entry.kind === "refFile" ? <AtSign size={13} /> :
+      entry.kind === "refSession" ? <Hash size={13} /> :
+      entry.kind === "useCommand" ? <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span> :
+      entry.kind === "plan" ? <List size={13} /> :
+      entry.kind === "goal" ? <Target size={13} /> :
+      <PackageCheck size={13} />;
+    let title: string;
+    let desc: string;
+    switch (entry.kind) {
+      case "attach":
+        title = t("composer.contentAddAttachment");
+        desc = t("composer.contentAddAttachmentDesc");
+        break;
+      case "refFile":
+        title = t("composer.contentReferenceFiles");
+        desc = t("composer.contentReferenceFilesDesc");
+        break;
+      case "refSession":
+        title = t("composer.contentReferenceSessions");
+        desc = t("composer.contentReferenceSessionsDesc");
+        break;
+      case "useCommand":
+        title = t("composer.contentUseCommands");
+        desc = text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc");
+        break;
+      case "plan":
+        title = t("composer.taskModePlan");
+        desc = t("composer.taskModePlanDesc");
+        break;
+      case "goal":
+        title = t("composer.taskModeGoal");
+        desc = activeGoal || t("composer.taskModeGoalDesc");
+        break;
+      case "quality":
+        title = t("composer.qualityFloorDelivery");
+        desc = t("composer.qualityFloorDeliveryTitle");
+        break;
+    }
+    return (
+      <button
+        key={"entry:" + entry.kind}
+        type="button"
+        role="option"
+        aria-selected={entryActive}
+        className={`composer-main-menu__results-item${entryActive ? " composer-main-menu__results-item--active" : ""}`}
+        onClick={() => pickMainMenuEntry(entry.kind)}
+      >
+        <span className="composer-main-menu__results-icon">{icon}</span>
+        <span className="composer-main-menu__results-text">
+          <span className="composer-main-menu__results-name">{title}</span>
+          <span className="composer-main-menu__results-hint">{desc}</span>
+        </span>
+      </button>
+    );
+  };
 
-  const mainMenuEntries: MainMenuEntry[] = [
-    { kind: "attach", section: "add" },
-    ...(panelAtSourceRef.current ? [] : ([
-      { kind: "refFile" as const, section: "add" as const },
-      { kind: "refSession" as const, section: "add" as const },
-      { kind: "useCommand" as const, section: "add" as const },
-    ] as MainMenuEntry[])),
-    { kind: "plan", section: "execution" },
-    { kind: "goal", section: "execution" },
-    { kind: "quality", section: "delivery" },
+  // Combined rows for the search-active panel: matching menu entries first,
+  // then the grouped commands/files/sessions rows (their flat indices are
+  // offset by the entry count so keyboard navigation stays contiguous).
+  const panelRows: AtMenuRow[] = [
+    ...mainMenuEntryMatches.map((entry, i) => ({ type: "entry" as const, entry, itemIndex: i })),
+    ...atMenuRows.map((row) => (row.type === "group" || row.type === "entry" ? row : { ...row, itemIndex: row.itemIndex + mainMenuEntryMatches.length })),
   ];
 
   const pickMainMenuEntry = (kind: MainMenuEntryKind) => {
+    // Confirming an entry from the @-opened panel must also drop the trailing
+    // "@" token (or "@query") so the composer text is left clean.
+    if (panelAtSourceRef.current) setText((prev) => removeAtToken(prev));
     switch (kind) {
       case "attach":
         chooseAttachmentFiles();
@@ -4388,10 +4494,10 @@ export function Composer({
               input below ("@" filters commands/files/sessions live). */}
           {panelQuery.trim() !== "" ? (
             <div className="composer-main-menu__results" role="listbox" aria-label={t("composer.mainMenuSearchResults")}>
-              {atMenuItems.length === 0 ? (
+              {panelRows.length === 0 ? (
                 <div className="composer-main-menu__results-empty">{t("composer.atMenuNoMatches")}</div>
               ) : (
-                atMenuRows.map((row) => renderAtResultRow(row))
+                panelRows.map((row) => (row.type === "entry" ? renderPanelEntryRow(row.entry, row.itemIndex) : renderAtResultRow(row)))
               )}
             </div>
           ) : (
