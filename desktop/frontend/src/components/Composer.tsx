@@ -764,6 +764,7 @@ export function Composer({
   const [panelQuery, setPanelQuery] = useState("");
   const panelAtSourceRef = useRef(false);
   const mainMenuSectionRef = useRef<HTMLDivElement | null>(null);
+  const atHintRef = useRef<HTMLDivElement | null>(null);
   const [contentMenuOpen, setContentMenuOpen] = useState(false);
   const [showPastChats, setShowPastChats] = useState(false);
   const [directPastChats, setDirectPastChats] = useState(false);
@@ -4991,11 +4992,23 @@ export function Composer({
                     onContextMenu={openInputMenu}
                     onPaste={onPaste}
                     onKeyDown={onKeyDown}
+                    onScroll={(e) => {
+                      // Keep the @ hint overlay glued to the typed text.
+                      if (atHintRef.current) {
+                        atHintRef.current.style.transform = `translateY(${-e.currentTarget.scrollTop}px)`;
+                      }
+                    }}
                     style={textareaStyle}
                     placeholder={composerPlaceholder}
                     rows={1}
                     disabled={disabled || readOnly}
                   />
+                  {menuMode === "at" && panelQuery.trim() === "" && !composingRef.current && (
+                    <div ref={atHintRef} className="composer__input-at-hint" aria-hidden="true">
+                      <span>{text}</span>
+                      <span className="composer__input-at-hint__text">{t("composer.menuFileChatSearch")}</span>
+                    </div>
+                  )}
                   <textarea
                     ref={measureTaRef} className="composer__input composer__input--measure"
                     value={text} readOnly aria-hidden="true" tabIndex={-1}

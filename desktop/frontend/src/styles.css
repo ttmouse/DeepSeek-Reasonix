@@ -7160,10 +7160,34 @@ body > .mermaid-diagram--fullscreen {
   font: inherit;
   font-size: var(--font-content);
   line-height: 1.55;
+  padding: 2px 1px;
   min-height: calc(var(--font-content) * 1.55);
   outline: none;
   overflow-y: hidden;
   scrollbar-width: none;           /* Firefox */
+}
+/* Overlay that renders the typed text invisibly and shows a grey hint right
+   after a bare "@" (e.g. "搜索文件或聊天会话") — the hint looks like an
+   inline placeholder and disappears as soon as the user types. */
+.composer__input-at-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font: inherit;
+  font-size: var(--font-content);
+  line-height: 1.55;
+  padding: 2px 1px;
+  color: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.composer__input-at-hint__text {
+  color: var(--fg-faint);
 }
 .composer__rich-input {
   width: 100%;
