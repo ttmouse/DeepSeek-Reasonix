@@ -3587,7 +3587,7 @@ export function Composer({
       icon = <Terminal size={13} />;
       text = (
         <>
-          <span className="composer-main-menu__results-name">/{item.command.name}</span>
+          <span className="composer-main-menu__results-name composer-main-menu__results-name--no-clip">/{item.command.name}</span>
           {item.command.hint && <span className="composer-main-menu__results-hint">{item.command.hint}</span>}
           {item.command.description && <span className="composer-main-menu__results-desc">{item.command.description}</span>}
         </>
