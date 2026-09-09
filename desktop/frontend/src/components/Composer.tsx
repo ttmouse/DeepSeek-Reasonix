@@ -1516,13 +1516,13 @@ export function Composer({
   type MainMenuEntryKind = "attach" | "refFile" | "refSession" | "useCommand" | "plan" | "goal" | "quality";
   type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
 
+  // The + and @ panels show the exact same entries: the @-opened panel keeps
+  // all of them too (picking a reference entry switches the trigger token).
   const mainMenuEntries: MainMenuEntry[] = [
     { kind: "attach", section: "add" },
-    ...(panelAtSourceRef.current ? [] : ([
-      { kind: "refFile" as const, section: "add" as const },
-      { kind: "refSession" as const, section: "add" as const },
-      { kind: "useCommand" as const, section: "add" as const },
-    ] as MainMenuEntry[])),
+    { kind: "refFile", section: "add" },
+    { kind: "refSession", section: "add" },
+    { kind: "useCommand", section: "add" },
     { kind: "plan", section: "execution" },
     { kind: "goal", section: "execution" },
     { kind: "quality", section: "delivery" },
@@ -3645,7 +3645,7 @@ export function Composer({
         break;
       case "useCommand":
         title = t("composer.contentUseCommands");
-        desc = text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc");
+        desc = !panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc");
         break;
       case "plan":
         title = t("composer.taskModePlan");
@@ -3696,15 +3696,27 @@ export function Composer({
         setMainMenuOpen(false);
         break;
       case "refFile":
-        insertContentTrigger("@");
+        // From the @-opened panel the "@" reference mode is already active
+        // (the token stays in the composer) — just close the menu and let the
+        // user keep typing the search. From "+" insert the "@" trigger.
+        if (!panelAtSourceRef.current) insertContentTrigger("@");
         setMainMenuOpen(false);
         break;
       case "refSession":
-        insertContentTrigger("#");
+        // From the @-opened panel switch the trigger to "#"; from "+" insert it.
+        if (panelAtSourceRef.current) {
+          setText((prev) => removeAtToken(prev));
+          insertContentTrigger("#");
+        } else {
+          insertContentTrigger("#");
+        }
         setMainMenuOpen(false);
         break;
       case "useCommand":
-        if (text.trim().length > 0) return;
+        // From the @-opened panel switch the trigger to "/"; from "+" insert it
+        // (only allowed while the composer is otherwise empty).
+        if (!panelAtSourceRef.current && text.trim().length > 0) return;
+        if (panelAtSourceRef.current) setText((prev) => removeAtToken(prev));
         insertContentTrigger("/");
         setMainMenuOpen(false);
         break;
@@ -3785,13 +3797,13 @@ export function Composer({
             role="menuitem"
             className={base}
             onClick={() => pickMainMenuEntry("useCommand")}
-            disabled={text.trim().length > 0}
-            title={text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
+            disabled={!panelAtSourceRef.current && text.trim().length > 0}
+            title={!panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
           >
             <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
             <span className="composer-access-menu__copy">
               <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
-              <span className="composer-access-menu__desc">{text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
+              <span className="composer-access-menu__desc">{!panelAtSourceRef.current && text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
             </span>
           </button>
         );
@@ -4500,9 +4512,8 @@ export function Composer({
           ) : (
           <>
           {/* Original + menu entries; the first one is selected when the panel
-              opens and ArrowUp/Down + Enter navigate it. The reference entries
-              stay hidden while the panel was opened by "@" (already
-              referencing). */}
+              opens and ArrowUp/Down + Enter navigate it. The + and @ panels
+              show the same full entry list. */}
           {mainMenuEntries.map((entry, i) => {
             const sectionLabel = entry.section === "add" ? t("composer.menuSectionAdd") : entry.section === "execution" ? t("composer.menuSectionExecution") : t("composer.menuSectionDelivery");
             const showLabel = i === 0 || mainMenuEntries[i - 1].section !== entry.section;
