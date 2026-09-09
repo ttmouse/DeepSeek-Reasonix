@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
@@ -763,6 +763,7 @@ export function Composer({
   // panel that @ opened.
   const [panelQuery, setPanelQuery] = useState("");
   const panelAtSourceRef = useRef(false);
+  const mainMenuSectionRef = useRef<HTMLDivElement | null>(null);
   const [contentMenuOpen, setContentMenuOpen] = useState(false);
   const [showPastChats, setShowPastChats] = useState(false);
   const [directPastChats, setDirectPastChats] = useState(false);
@@ -3189,6 +3190,18 @@ export function Composer({
     setMainMenuOpen(false);
   }, [atRaw === null, setMainMenuOpen]);
 
+  // Focus the first entry when the + panel opens so Arrow keys and Enter
+  // navigate the original menu. The @-opened panel keeps focus in the composer
+  // input (the user is typing a reference); its first entry is still visually
+  // selected via the active index.
+  useEffect(() => {
+    if (!mainMenuOpen || panelAtSourceRef.current) return;
+    const raf = requestAnimationFrame(() => {
+      mainMenuSectionRef.current?.querySelector<HTMLButtonElement>(".composer-main-menu__item")?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [mainMenuOpen]);
+
   useEffect(() => {
     if (!pastChatToken || directPastChats || dismissed || running || disabled || readOnly) return;
     setDirectPastChats(true);
@@ -3552,6 +3565,192 @@ export function Composer({
     );
   };
 
+  // --- original + menu entries (shown while the panel search is empty) ---
+  // The first entry is selected when the panel opens; ArrowUp/Down move the
+  // selection and Enter confirms, matching the results-list navigation.
+  type MainMenuEntryKind = "attach" | "refFile" | "refSession" | "useCommand" | "plan" | "goal" | "quality";
+  type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
+
+  const mainMenuEntries: MainMenuEntry[] = [
+    { kind: "attach", section: "add" },
+    ...(panelAtSourceRef.current ? [] : ([
+      { kind: "refFile" as const, section: "add" as const },
+      { kind: "refSession" as const, section: "add" as const },
+      { kind: "useCommand" as const, section: "add" as const },
+    ] as MainMenuEntry[])),
+    { kind: "plan", section: "execution" },
+    { kind: "goal", section: "execution" },
+    { kind: "quality", section: "delivery" },
+  ];
+
+  const pickMainMenuEntry = (kind: MainMenuEntryKind) => {
+    switch (kind) {
+      case "attach":
+        chooseAttachmentFiles();
+        setMainMenuOpen(false);
+        break;
+      case "refFile":
+        insertContentTrigger("@");
+        setMainMenuOpen(false);
+        break;
+      case "refSession":
+        insertContentTrigger("#");
+        setMainMenuOpen(false);
+        break;
+      case "useCommand":
+        if (text.trim().length > 0) return;
+        insertContentTrigger("/");
+        setMainMenuOpen(false);
+        break;
+      case "plan":
+        chooseTaskMode("plan");
+        setMainMenuOpen(false);
+        break;
+      case "goal":
+        chooseTaskMode("goal");
+        setMainMenuOpen(false);
+        break;
+      case "quality":
+        chooseQualityFloor(floorOn ? "standard" : "delivery");
+        setMainMenuOpen(false);
+        break;
+    }
+  };
+
+  const onMainMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // While a search term is active the panel shows results; those navigate
+    // from the composer input instead.
+    if (panelQuery.trim() !== "") return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % mainMenuEntries.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i - 1 + mainMenuEntries.length) % mainMenuEntries.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const entry = mainMenuEntries[active];
+      if (entry) pickMainMenuEntry(entry.kind);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMainMenuOpen(false);
+    }
+  };
+
+  const renderMainMenuEntry = (entry: MainMenuEntry, i: number): React.ReactNode => {
+    const entryActive = active === i;
+    const base = `composer-access-menu__item composer-main-menu__item${entryActive ? " composer-access-menu__item--active" : ""}`;
+    switch (entry.kind) {
+      case "attach":
+        return (
+          <button key="attach" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("attach")}>
+            <FilePlus2 size={16} aria-hidden="true" />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
+              <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
+            </span>
+          </button>
+        );
+      case "refFile":
+        return (
+          <button key="refFile" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("refFile")}>
+            <AtSign size={16} aria-hidden="true" />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.contentReferenceFiles")}</span>
+              <span className="composer-access-menu__desc">{t("composer.contentReferenceFilesDesc")}</span>
+            </span>
+          </button>
+        );
+      case "refSession":
+        return (
+          <button key="refSession" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("refSession")}>
+            <Hash size={16} aria-hidden="true" />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.contentReferenceSessions")}</span>
+              <span className="composer-access-menu__desc">{t("composer.contentReferenceSessionsDesc")}</span>
+            </span>
+          </button>
+        );
+      case "useCommand":
+        return (
+          <button
+            key="useCommand"
+            type="button"
+            role="menuitem"
+            className={base}
+            onClick={() => pickMainMenuEntry("useCommand")}
+            disabled={text.trim().length > 0}
+            title={text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
+          >
+            <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
+              <span className="composer-access-menu__desc">{text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
+            </span>
+          </button>
+        );
+      case "plan":
+        return (
+          <button
+            key="plan"
+            type="button"
+            role="menuitemradio"
+            aria-checked={planModeOn}
+            className={`${base}${planModeOn ? " composer-access-menu__item--active" : ""}`}
+            onClick={() => pickMainMenuEntry("plan")}
+            disabled={modeControlsDisabled}
+          >
+            <List size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.taskModePlan")}</span>
+              <span className="composer-access-menu__desc">{t("composer.taskModePlanDesc")}</span>
+            </span>
+            {planModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
+          </button>
+        );
+      case "goal":
+        return (
+          <button
+            key="goal"
+            type="button"
+            role="menuitemradio"
+            aria-checked={goalModeOn}
+            className={`${base}${goalModeOn ? " composer-access-menu__item--active" : ""}`}
+            onClick={() => pickMainMenuEntry("goal")}
+            disabled={modeControlsDisabled}
+            title={activeGoal || undefined}
+          >
+            <Target size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.taskModeGoal")}</span>
+              <span className="composer-access-menu__desc">{activeGoal || t("composer.taskModeGoalDesc")}</span>
+            </span>
+            {goalModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
+          </button>
+        );
+      case "quality":
+        return (
+          <button
+            key="quality"
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={floorOn}
+            className={`${base}${floorOn ? " composer-access-menu__item--active" : ""}`}
+            onClick={() => pickMainMenuEntry("quality")}
+            disabled={approvalBarDisabled || !onSetQualityFloor}
+            title={t("composer.qualityFloorDeliveryTitle")}
+          >
+            <PackageCheck size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.qualityFloorDelivery")}</span>
+              <span className="composer-access-menu__desc">{t("composer.qualityFloorDeliveryTitle")}</span>
+            </span>
+            {floorOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
+          </button>
+        );
+    }
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement | HTMLDivElement>) => {
     const composing = isImeKeyEvent(e.nativeEvent, composingRef.current, lastCompositionEndAt.current);
     const native = e.nativeEvent as globalThis.KeyboardEvent & {
@@ -3677,6 +3876,32 @@ export function Composer({
     }
 
     if (menuMode && !composing) {
+      // @ with an empty fragment shows the original + menu entries: Arrow keys
+      // and Enter navigate those entries (results navigation kicks in as soon
+      // as a search term is typed after @).
+      if (menuMode === "at" && panelQuery.trim() === "") {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setActive((i) => (i + 1) % mainMenuEntries.length);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setActive((i) => (i - 1 + mainMenuEntries.length) % mainMenuEntries.length);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const entry = mainMenuEntries[active];
+          if (entry) pickMainMenuEntry(entry.kind);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setMainMenuOpen(false);
+          return;
+        }
+      }
       if (e.key === "ArrowDown" && count > 0) {
         e.preventDefault();
         if (menuMode === "slash") {
@@ -3723,6 +3948,7 @@ export function Composer({
           setActive(0);
         } else {
           setDismissed(true);
+          if (menuMode === "at") setMainMenuOpen(false);
         }
         return;
       }
@@ -4157,7 +4383,7 @@ export function Composer({
         matchAnchorWidth
         closeMs={0}
       >
-        <div className="composer-access-menu__section" role="menu" aria-label={t("composer.menuLabel")}>
+        <div ref={mainMenuSectionRef} className="composer-access-menu__section" role="menu" aria-label={t("composer.menuLabel")} onKeyDown={onMainMenuKeyDown}>
           {/* No search box on the overlay: typing continues in the composer
               input below ("@" filters commands/files/sessions live). */}
           {panelQuery.trim() !== "" ? (
@@ -4170,81 +4396,20 @@ export function Composer({
             </div>
           ) : (
           <>
-          {/* Add section: the original + menu; the reference entries stay
-              hidden while the panel was opened by "@" (already referencing). */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionAdd")}</div>
-          <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { chooseAttachmentFiles(); setMainMenuOpen(false); }}>
-            <FilePlus2 size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
-            </span>
-          </button>
-          {!panelAtSourceRef.current && (
-            <>
-            <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("@"); setMainMenuOpen(false); }}>
-              <AtSign size={16} aria-hidden="true" />
-              <span className="composer-access-menu__copy">
-                <span className="composer-access-menu__title">{t("composer.contentReferenceFiles")}</span>
-                <span className="composer-access-menu__desc">{t("composer.contentReferenceFilesDesc")}</span>
-              </span>
-            </button>
-            <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("#"); setMainMenuOpen(false); }}>
-              <Hash size={16} aria-hidden="true" />
-              <span className="composer-access-menu__copy">
-                <span className="composer-access-menu__title">{t("composer.contentReferenceSessions")}</span>
-                <span className="composer-access-menu__desc">{t("composer.contentReferenceSessionsDesc")}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="composer-access-menu__item composer-main-menu__item"
-              onClick={() => { insertContentTrigger("/"); setMainMenuOpen(false); }}
-              disabled={text.trim().length > 0}
-              title={text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
-            >
-              <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
-              <span className="composer-access-menu__copy">
-                <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
-                <span className="composer-access-menu__desc">{text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
-              </span>
-            </button>
-            </>
-          )}
-          {/* Execution section */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionExecution")}</div>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={planModeOn}
-            className={`composer-access-menu__item composer-main-menu__item${planModeOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => { chooseTaskMode("plan"); setMainMenuOpen(false); }}
-            disabled={modeControlsDisabled}
-          >
-            <List size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.taskModePlan")}</span>
-              <span className="composer-access-menu__desc">{t("composer.taskModePlanDesc")}</span>
-            </span>
-            {planModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={goalModeOn}
-            className={`composer-access-menu__item composer-main-menu__item${goalModeOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => { chooseTaskMode("goal"); setMainMenuOpen(false); }}
-            disabled={modeControlsDisabled}
-            title={activeGoal || undefined}
-          >
-            <Target size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.taskModeGoal")}</span>
-              <span className="composer-access-menu__desc">{activeGoal || t("composer.taskModeGoalDesc")}</span>
-            </span>
-            {goalModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
+          {/* Original + menu entries; the first one is selected when the panel
+              opens and ArrowUp/Down + Enter navigate it. The reference entries
+              stay hidden while the panel was opened by "@" (already
+              referencing). */}
+          {mainMenuEntries.map((entry, i) => {
+            const sectionLabel = entry.section === "add" ? t("composer.menuSectionAdd") : entry.section === "execution" ? t("composer.menuSectionExecution") : t("composer.menuSectionDelivery");
+            const showLabel = i === 0 || mainMenuEntries[i - 1].section !== entry.section;
+            return (
+              <Fragment key={entry.kind}>
+                {showLabel && <div className="composer-access-menu__label">{sectionLabel}</div>}
+                {renderMainMenuEntry(entry, i)}
+              </Fragment>
+            );
+          })}
             {goalModeOn && activeGoal && (
             <div className="composer-main-menu__goal-actions">
               <div className="composer-main-menu__goal-runtime">
@@ -4299,27 +4464,6 @@ export function Composer({
               </button>
             </div>
           )}
-          {/* Delivery section */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionDelivery")}</div>
-          <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={floorOn}
-            className={`composer-access-menu__item composer-main-menu__item${floorOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => {
-              chooseQualityFloor(floorOn ? "standard" : "delivery");
-              setMainMenuOpen(false);
-            }}
-            disabled={approvalBarDisabled || !onSetQualityFloor}
-            title={t("composer.qualityFloorDeliveryTitle")}
-          >
-            <PackageCheck size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.qualityFloorDelivery")}</span>
-              <span className="composer-access-menu__desc">{t("composer.qualityFloorDeliveryTitle")}</span>
-            </span>
-            {floorOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
           </>
           )}
           </div>
