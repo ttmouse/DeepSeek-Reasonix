@@ -7681,7 +7681,7 @@ body > .mermaid-diagram--fullscreen {
   flex-direction: column;
   max-height: 280px;
   overflow-y: auto;
-  margin: 0 -8px 4px;
+  margin: 0 -8px;
   padding: 2px 4px;
 }
 .composer-main-menu__results-empty {
