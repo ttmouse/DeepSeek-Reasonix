@@ -95,5 +95,10 @@ export function resolveWorkspacePanelPlacement({
     : overlay ? Math.min(preferredWidth, Math.max(minWidth, viewportWidth - 16)) : resolvedWidth;
   const renderWidth = liveWidth ?? storedWidth;
   const renderable = open && (maximized || overlay || renderWidth >= minRenderWidth);
-  return { renderWidth, overlay, renderable, gridOpen: renderable && !maximized && !overlay };
+  // The dock occupies a grid column whenever it is open and not in overlay
+  // mode. The width floor for a readable column (minRenderWidth) governs
+  // overlay only; it must not suppress the grid column itself, or a narrow
+  // saved dock width (< minRenderWidth) would render the dock at zero width.
+  const gridOpen = open && !maximized && !overlay;
+  return { renderWidth, overlay, renderable, gridOpen };
 }

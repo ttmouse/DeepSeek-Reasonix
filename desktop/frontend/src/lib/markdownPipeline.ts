@@ -27,12 +27,13 @@ import { urlAttributes } from "html-url-attributes";
 import { visit } from "unist-util-visit";
 import type { Element as HastElement, Root as HastRoot, RootContent as HastRootContent } from "hast";
 import { normalizeMath } from "../components/mathNormalize";
-import { reasonixRemarkPlugins } from "../components/markdownRemarkPlugins";
+import { createReasonixRemarkPlugins } from "../components/markdownRemarkPlugins";
 import { reasonixRehypePlugins } from "../components/rehypeReasonixKatex";
 import {
   extractLargePlainMarkdownTables,
   type VirtualMarkdownTableData,
 } from "./largeMarkdownTable";
+import { CHAT_PATH_PROTOCOL, type ChatPathLinkifyContext } from "./chatPathLinkify";
 import { isLocalFileHref } from "./localFileUrl";
 import { contentRevision } from "./contentRevision";
 import { markdownSelectionTextFromBlocks } from "./markdownSelectionProjection";
@@ -84,8 +85,11 @@ export function defaultMarkdownUrlTransform(value: string): string {
 
 // Local file hrefs come from local-path linkification (remarkLocalPathLinks)
 // or explicit Markdown links and must survive URL sanitisation, which would
-// otherwise blank them along with javascript: and friends.
+// otherwise blank them along with javascript: and friends. chat-path: hrefs
+// come from chat path linkification (remarkChatPathLinks) and route to the
+// workspace panel renderer, never the system browser.
 export function markdownUrlTransform(value: string): string {
+  if (value.startsWith(CHAT_PATH_PROTOCOL)) return value;
   return isLocalFileHref(value) ? value : defaultMarkdownUrlTransform(value);
 }
 
@@ -130,15 +134,17 @@ function applyReactMarkdownTransforms(tree: HastRoot): void {
  * Parse markdown text into a render-ready HAST root using the exact chain the
  * main-thread renderer uses. Synchronous (unified runSync), DOM-free, safe to
  * run inside a Web Worker.
+ *
+ * `pathCtx` enables chat-path linkification; omitted keeps legacy behavior.
  */
-export function parseMarkdownToHast(text: string): HastRoot {
-  return parseNormalizedMarkdownToHast(normalizeMath(text));
+export function parseMarkdownToHast(text: string, pathCtx?: ChatPathLinkifyContext): HastRoot {
+  return parseNormalizedMarkdownToHast(normalizeMath(text), pathCtx);
 }
 
-function parseNormalizedMarkdownToHast(normalized: string): HastRoot {
+function parseNormalizedMarkdownToHast(normalized: string, pathCtx?: ChatPathLinkifyContext): HastRoot {
   const processor = unified()
     .use(remarkParse)
-    .use(reasonixRemarkPlugins)
+    .use(createReasonixRemarkPlugins(pathCtx))
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(reasonixRehypePlugins);
   // The same VFile must flow through parse and runSync: remarkMathPolicy
@@ -213,14 +219,14 @@ export function sliceHastBlocks(root: HastRoot): MarkdownBlock[] {
 }
 
 /** Parse + slice in one call (the worker entry point). */
-export function parseMarkdownToBlocks(text: string): MarkdownBlock[] {
+export function parseMarkdownToBlocks(text: string, pathCtx?: ChatPathLinkifyContext): MarkdownBlock[] {
   const normalized = normalizeMath(text);
   const extracted = extractLargePlainMarkdownTables(normalized);
-  if (extracted.tables.length === 0) return sliceHastBlocks(parseNormalizedMarkdownToHast(normalized));
+  if (extracted.tables.length === 0) return sliceHastBlocks(parseNormalizedMarkdownToHast(normalized, pathCtx));
 
   const processor = unified()
     .use(remarkParse)
-    .use(reasonixRemarkPlugins)
+    .use(createReasonixRemarkPlugins(pathCtx))
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(reasonixRehypePlugins);
   const file = new VFile({ value: extracted.text });
@@ -243,8 +249,8 @@ export function parseMarkdownToBlocks(text: string): MarkdownBlock[] {
 }
 
 /** Parse once and derive both the render tree and copy projection. */
-export function parseMarkdown(text: string): MarkdownParseResult {
-  const blocks = parseMarkdownToBlocks(text);
+export function parseMarkdown(text: string, pathCtx?: ChatPathLinkifyContext): MarkdownParseResult {
+  const blocks = parseMarkdownToBlocks(text, pathCtx);
   const selectionText = markdownSelectionTextFromBlocks(blocks);
   return {
     blocks,
@@ -255,9 +261,13 @@ export function parseMarkdown(text: string): MarkdownParseResult {
 
 /**
  * Content-derived cache revision for the transcript markdown cache: an FNV-1a
- * fingerprint of the source text. Cache entries also store the source itself,
- * so a (practically impossible) hash collision is caught by comparison.
+ * fingerprint of the source text. The chat-path context folds into the
+ * fingerprint when present, so the same text parsed under different workspace
+ * roots never reuses a stale linkified tree across sessions.
  */
-export function markdownContentRevision(text: string): number {
+export function markdownContentRevision(text: string, pathCtx?: ChatPathLinkifyContext): number {
+  if (pathCtx) {
+    return contentRevision(text + "\u0000chat-path\u0000" + pathCtx.roots.join("\u0000"));
+  }
   return contentRevision(text);
 }

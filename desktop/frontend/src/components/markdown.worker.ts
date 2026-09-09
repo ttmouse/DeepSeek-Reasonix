@@ -13,9 +13,9 @@ const workerScope = globalThis as unknown as {
 };
 
 workerScope.onmessage = (event) => {
-  const { id, text } = event.data;
+  const { id, text, pathCtx } = event.data;
   try {
-    workerScope.postMessage({ id, result: parseMarkdown(text) });
+    workerScope.postMessage({ id, result: parseMarkdown(text, pathCtx) });
   } catch (error) {
     workerScope.postMessage({
       id,

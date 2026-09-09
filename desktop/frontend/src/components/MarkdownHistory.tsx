@@ -26,6 +26,8 @@ import { getTranscriptStore } from "../lib/transcriptStore";
 import { createComponents } from "./markdownComponents";
 import { VirtualMarkdownSourceTable } from "./MarkdownTable";
 import { useTranscriptScrollOffsetWrite } from "./TranscriptLayoutIntentContext";
+import { useChatPathContext } from "../lib/chatPathContext";
+import type { ChatPathLinkifyContext } from "../lib/chatPathLinkify";
 
 // A history surface opens at the newest transcript content. Keep the same
 // ownership inside a giant Markdown row: mount a small tail, then move a
@@ -155,7 +157,15 @@ export const MarkdownHistory = memo(function MarkdownHistory({
   onError?: () => void;
 }) {
   const stableCacheKey = cacheKey ?? entryId;
-  const revision = useMemo(() => markdownContentRevision(text), [text]);
+  const chatPath = useChatPathContext();
+  const pathCtx = useMemo<ChatPathLinkifyContext | undefined>(
+    () => (chatPath ? { roots: chatPath.roots } : undefined),
+    [chatPath],
+  );
+  // The chat-path context folds into the revision: the same text parsed under
+  // different workspace roots must not reuse a linkified tree from another
+  // session (transcriptStore keys on cacheKey + revision).
+  const revision = useMemo(() => markdownContentRevision(text, pathCtx), [text, pathCtx]);
   // Parsed state is keyed by its source text: a text change renders the
   // fallback (never stale blocks) until the new parse lands.
   const [parsed, setParsed] = useState<{ text: string; blocks: MarkdownBlock[] } | undefined>(() => {
@@ -172,7 +182,7 @@ export const MarkdownHistory = memo(function MarkdownHistory({
       onParsed?.();
       return;
     }
-    const handle = getMarkdownWorkerClient().parse(text);
+    const handle = getMarkdownWorkerClient().parse(text, pathCtx);
     let cancelled = false;
     let releaseDeferredCommit: (() => void) | undefined;
     handle.promise

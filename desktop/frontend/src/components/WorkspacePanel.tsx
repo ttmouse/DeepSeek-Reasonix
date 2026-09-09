@@ -1266,7 +1266,19 @@ export function WorkspacePanel({
     }
     const actual = element.scrollTop; // read forces layout: post-clamp value
     if (virtualizer.scrollOffset == null || Math.abs(virtualizer.scrollOffset - actual) < 1) return;
-    element.dispatchEvent(new Event("scroll"));
+    // Defer the re-dispatch out of the layout phase: react-virtual's scroll
+    // listener notifies onChange through flushSync, which React forbids while
+    // a commit's lifecycle effects are still running ("flushSync was called
+    // from inside a lifecycle method"). A microtask runs after the commit
+    // settles, so the resync still happens before the next paint and before
+    // any user scroll, but flushSync is legal there.
+    queueMicrotask(() => {
+      const current = treeRef.current;
+      if (!current) return;
+      const now = current.scrollTop;
+      if (virtualizer.scrollOffset == null || Math.abs(virtualizer.scrollOffset - now) < 1) return;
+      current.dispatchEvent(new Event("scroll"));
+    });
   }); // no dep array: the stale-height commit can be the only one (see above)
   // Restore the persisted scroll position once the tree has grown tall enough
   // to actually reach it. The tree loads asynchronously layer by layer: the

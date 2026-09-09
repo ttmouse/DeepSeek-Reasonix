@@ -5247,6 +5247,24 @@ button.reasoning-summary:focus-visible {
 .md a:hover {
   text-decoration: underline;
 }
+/* Chat path links (docs/plan-file-open-in-chat.md): workspace file paths
+   inside history messages render as underlined links that open the file in
+   the right workspace panel. Underline is always visible (Alma parity) but
+   toned down until hover. */
+.md .md-path-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.md .md-path-link:hover {
+  text-decoration-color: var(--accent);
+}
+.md .md-path-link:active {
+  opacity: 0.8;
+}
 .md .md-rich-link {
   display: inline-flex;
   align-items: baseline;

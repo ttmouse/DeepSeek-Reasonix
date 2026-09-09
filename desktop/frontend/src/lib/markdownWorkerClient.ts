@@ -22,6 +22,7 @@
 // remark+katex stack only ever lands in lazy chunks / the inline worker.
 
 import type { MarkdownParseResult } from "./markdownPipeline";
+import type { ChatPathLinkifyContext } from "./chatPathLinkify";
 import { addBreadcrumb } from "./breadcrumbs";
 import { registerMarkdownWorkerDiagnostics } from "./sessionDiagnostics";
 
@@ -35,6 +36,8 @@ function loadPipeline(): Promise<MarkdownPipelineModule> {
 export interface MarkdownParseRequest {
   id: number;
   text: string;
+  /** Workspace roots enabling chat-path linkification (optional). */
+  pathCtx?: ChatPathLinkifyContext;
 }
 
 export interface MarkdownParseResponse {
@@ -61,7 +64,7 @@ export interface MarkdownWorkerClientOptions {
   /** Override worker creation (tests inject a synchronous fake). */
   createWorker?: () => Promise<MarkdownWorkerLike>;
   /** Override the in-process fallback parse (tests inject a spy). */
-  parseInProcess?: (text: string) => MarkdownParseResult;
+  parseInProcess?: (text: string, pathCtx?: ChatPathLinkifyContext) => MarkdownParseResult;
 }
 
 interface PendingRequest {
@@ -70,6 +73,7 @@ interface PendingRequest {
   /** performance.now() at parse() time, for parse-latency diagnostics. */
   startedAt: number;
   text: string;
+  pathCtx?: ChatPathLinkifyContext;
   state: "queued" | "worker" | "fallback";
   /** performance.now() when the request was posted to the worker (worker path). */
   postedAt?: number;
@@ -92,7 +96,7 @@ function noteFallbackParseBreadcrumb(durationMs: number): void {
 
 export class MarkdownWorkerClient {
   private readonly createWorker?: () => Promise<MarkdownWorkerLike>;
-  private readonly parseInProcess?: (text: string) => MarkdownParseResult;
+  private readonly parseInProcess?: (text: string, pathCtx?: ChatPathLinkifyContext) => MarkdownParseResult;
   private worker: MarkdownWorkerLike | null = null;
   private workerPromise: Promise<MarkdownWorkerLike | null> | null = null;
   private readonly pending = new Map<number, PendingRequest>();
@@ -145,14 +149,14 @@ export class MarkdownWorkerClient {
     this.parseInProcess = options.parseInProcess;
   }
 
-  parse(text: string): MarkdownParseHandle {
+  parse(text: string, pathCtx?: ChatPathLinkifyContext): MarkdownParseHandle {
     if (this.disposed) {
       return { promise: Promise.resolve(undefined), cancel: () => {} };
     }
     const id = this.nextId;
     this.nextId += 1;
     const promise = new Promise<MarkdownParseResult | undefined>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, startedAt: nowMs(), text, state: "queued" });
+      this.pending.set(id, { resolve, reject, startedAt: nowMs(), text, pathCtx, state: "queued" });
     });
     const cancel = () => {
       const entry = this.pending.get(id);
@@ -185,12 +189,12 @@ export class MarkdownWorkerClient {
       this.activeRequestId = id;
       if (!worker) {
         entry.state = "fallback";
-        this.parseInProcessAsync(id, entry.text);
+        this.parseInProcessAsync(id, entry.text, entry.pathCtx);
         return;
       }
       entry.state = "worker";
       entry.postedAt = nowMs();
-      worker.postMessage({ id, text: entry.text } satisfies MarkdownParseRequest);
+      worker.postMessage({ id, text: entry.text, pathCtx: entry.pathCtx } satisfies MarkdownParseRequest);
     } finally {
       this.pumping = false;
       if (
@@ -225,15 +229,15 @@ export class MarkdownWorkerClient {
     }
   }
 
-  private parseInProcessAsync(id: number, text: string): void {
+  private parseInProcessAsync(id: number, text: string, pathCtx?: ChatPathLinkifyContext): void {
     // Async even though the work is synchronous: callers attach handlers
     // after parse() returns, and main-thread fallback should never parse
     // synchronously inside a React effect commit.
     this.fallbackActive = true;
     const injected = this.parseInProcess;
     const run = injected
-      ? async () => injected(text)
-      : () => loadPipeline().then((pipeline) => pipeline.parseMarkdown(text));
+      ? async () => injected(text, pathCtx)
+      : () => loadPipeline().then((pipeline) => pipeline.parseMarkdown(text, pathCtx));
     // The first fallback parse may spend its window waiting on the dynamic
     // pipeline import (async, does not block the loop); every subsequent one
     // is a synchronous main-thread parse. Either way the measured window is
