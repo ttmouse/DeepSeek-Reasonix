@@ -4,6 +4,7 @@ import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileTe
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
 import { atMenuSessionMatches } from "../lib/atSessions";
+import { topicActivityLabel } from "../lib/projectTreeTopic";
 import { DedupIndex, sha256 } from "../lib/attachDedup";
 import { app, onFilesDropped } from "../lib/bridge";
 import { enqueueInboxGuidanceForActiveTurn, steerInboxItemForActiveTurn } from "../lib/inboxSubmit";
@@ -3598,17 +3599,20 @@ export function Composer({
       const projectLabel = item.session.workspaceRoot
         ? (item.session.workspaceRoot.split(/[\\/]/).filter(Boolean).pop() ?? item.session.workspaceRoot)
         : "";
+      const activityAt = item.session.lastActivityAt || item.session.createdAt || 0;
+      const timeLabel = activityAt ? topicActivityLabel(activityAt, t, true) : "";
+      const metaBits = [timeLabel, projectLabel].filter(Boolean).join(" · ");
       text = (
         <span className="composer-main-menu__results-name">
           {pastChatTitle(item.session)}
           {turnsLabel ? ` (${turnsLabel})` : ""}
         </span>
       );
-      if (projectLabel) {
+      if (metaBits) {
         text = (
           <>
             {text}
-            <span className="composer-main-menu__results-hint">{projectLabel}</span>
+            <span className="composer-main-menu__results-hint">{metaBits}</span>
           </>
         );
       }
