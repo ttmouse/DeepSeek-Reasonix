@@ -3589,6 +3589,7 @@ export function Composer({
         <>
           <span className="composer-main-menu__results-name">/{item.command.name}</span>
           {item.command.hint && <span className="composer-main-menu__results-hint">{item.command.hint}</span>}
+          {item.command.description && <span className="composer-main-menu__results-desc">{item.command.description}</span>}
         </>
       );
     } else if (item.kind === "session") {

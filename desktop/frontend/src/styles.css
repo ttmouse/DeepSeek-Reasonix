@@ -7764,6 +7764,14 @@ body > .mermaid-diagram--fullscreen {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.composer-main-menu__results-desc {
+  color: var(--fg-dim);
+  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Approval popup menu */
 .composer-approval-popup {
