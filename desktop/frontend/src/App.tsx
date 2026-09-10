@@ -2930,6 +2930,15 @@ export default function App() {
   // closed, and routes the resolved relative path through WorkspacePanel's
   // revealPathRequest channel. Missing files / cross-workspace paths resolve
   // silently (Alma parity).
+  //
+  // openRightDockMode is read through a ref so handleOpenChatFile stays
+  // reference-stable: openRightDockMode transitively depends on workspacePanelOpen
+  // (via openWorkspacePanel), and a new identity on every dock toggle would
+  // churn chatPathContextValue → re-parse every history message.
+  const openRightDockModeRef = useRef(openRightDockMode);
+  useEffect(() => {
+    openRightDockModeRef.current = openRightDockMode;
+  }, [openRightDockMode]);
   const chatRevealRequestIdRef = useRef(0);
   const [chatRevealRequest, setChatRevealRequest] = useState<{ id: number; path: string } | null>(null);
   const chatPathRoots = useMemo(() => {
@@ -2947,11 +2956,11 @@ export default function App() {
       if (!rel) return;
       // Open the right dock in files view if it is not already open, so the
       // reveal effect inside WorkspacePanel (which gates on `open`) can run.
-      openRightDockMode("files");
+      openRightDockModeRef.current("files");
       chatRevealRequestIdRef.current += 1;
       setChatRevealRequest({ id: chatRevealRequestIdRef.current, path: rel });
     });
-  }, [activeTabId, state.meta?.cwd, openRightDockMode]);
+  }, [activeTabId, state.meta?.cwd]);
   const chatPathContextValue = useMemo<ChatPathContextValue | null>(() =>
     chatPathRoots.length > 0 && activeTabId
       ? { roots: chatPathRoots, onOpenChatFile: handleOpenChatFile }
