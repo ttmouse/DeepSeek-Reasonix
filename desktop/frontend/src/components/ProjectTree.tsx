@@ -9,7 +9,7 @@ import { onProjectTreeChangedV2 } from "../lib/sessionCatalogBridge";
 import { sessionCatalogNotice } from "../lib/sessionCatalogPresentation";
 import { isRuntimeSessionNode, isTopicNode, loadWorkbenchOrganizeMode, loadWorkbenchSortMode, mergeIncompleteProjectTopicPage, mergeProjectTopicPage, projectTreeDedupedExactTime, projectTreeEventAffectsFolder, projectTreeFolderDisclosure, projectTreeReadActivityKey, projectTreeRevisionIsFresh, projectTreeShellChildren, projectTreeShellSignature, projectTreeShouldApplyShellSnapshot, projectTreeShouldRenderTopicActions, projectTreeShouldSuppressOpenForRename, projectTreeTopicArchiveBlocked, projectTreeTopicHasUnreadActivity, projectTreeTopicHoverCardModel, projectTreeTopicMenuOffersPin, projectTreeTopicMetaLine, projectTreeTopicOpenRequest, projectTreeTopicPageIsFresh, projectTreeTopicPageSignature, projectTreeWithoutTopic, projectTreeWithTopicTitle, topicActivityAt, topicActivityDateLabel, topicActivityLabel, topicIsActive, topicStatus, topicStatusLabel, topicUnknownTimeLabel, WORKBENCH_ORGANIZE_KEY, WORKBENCH_SORT_KEY, type ProjectTreePendingTopicOpen, type ProjectTreeReadActivity, type ProjectTreeTopicHoverCard, type WorkbenchOrganizeMode, type WorkbenchSortMode } from "../lib/projectTreeTopic";
 export * from "../lib/projectTreeTopic";
-import { arrangeClassicProjectTree, arrangeWorkbenchTree, classicTopicWindow, CLASSIC_TOPIC_PREVIEW_LIMIT, splitPinnedProjectTree, type PinnedTreeSections } from "../lib/projectTreePresentation";
+import { arrangeClassicProjectTree, arrangeWorkbenchTree, topicPreviewActive, topicPreviewWindow, TOPIC_PREVIEW_LIMIT, splitPinnedProjectTree, type PinnedTreeSections } from "../lib/projectTreePresentation";
 export * from "../lib/projectTreePresentation";
 import type { ProjectNode, SessionCatalogStatus } from "../lib/types";
 import { topicActivityTime } from "../lib/session";
@@ -962,7 +962,9 @@ export function ProjectTree({
   }, [compactTopics, visibleTree, workbenchSortMode]);
 
   const classicTopics = !compactTopics;
-  const classicTruncationActive = classicTopics && query.trim() === "" && timeFilter === "all";
+  // Per-folder "show 5 conversations then expand" preview; only disabled
+  // while the tree is filtered by search query or time range.
+  const previewActive = topicPreviewActive(query, timeFilter);
 
   const projectLabelByRoot = useMemo(() => {
     const map = new Map<string, string>();
@@ -995,9 +997,9 @@ export function ProjectTree({
   }, [menuNodeKey, menuProject, editingTopic, editingProject, dragProjectRoot, projectLabelByRoot, t]);
 
   // Opening an old session from history can land on a topic hidden behind the
-  // classic show-more window; reveal that folder so the active row stays visible.
+  // topic preview window; reveal that folder so the active row stays visible.
   useEffect(() => {
-    if (!classicTruncationActive) return;
+    if (!previewActive) return;
     const revealKeys: string[] = [];
     for (const nodeItem of visibleTree) {
       if (!nodeItem || (nodeItem.kind !== "project" && nodeItem.kind !== "global_folder")) continue;
@@ -1005,7 +1007,7 @@ export function ProjectTree({
       const activeIndex = children.findIndex((child) =>
         topicIsActive(child, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath) ||
         asArray(child.children).some((grand) => topicIsActive(grand, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath)));
-      if (activeIndex >= CLASSIC_TOPIC_PREVIEW_LIMIT) revealKeys.push(projectNodeKey(nodeItem, 0));
+      if (activeIndex >= TOPIC_PREVIEW_LIMIT) revealKeys.push(projectNodeKey(nodeItem, 0));
     }
     if (revealKeys.length === 0) return;
     setShowAllTopics((prev) => {
@@ -1014,7 +1016,7 @@ export function ProjectTree({
       for (const key of revealKeys) next.add(key);
       return next;
     });
-  }, [classicTruncationActive, visibleTree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath]);
+  }, [previewActive, visibleTree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath]);
 
   const projectDragEnabled = query.trim() === "";
 
@@ -1594,10 +1596,14 @@ export function ProjectTree({
     ];
 
     const folderShowAll = showAllTopics.has(key);
-    const { visible: windowedChildren, hiddenCount } = classicTruncationActive
-      ? classicTopicWindow(children, folderShowAll)
+    const { visible: windowedChildren, hiddenCount } = previewActive
+      ? topicPreviewWindow(children, folderShowAll)
       : { visible: children, hiddenCount: 0 };
-    const windowToggleVisible = classicTruncationActive && (hiddenCount > 0 || (folderShowAll && children.length > CLASSIC_TOPIC_PREVIEW_LIMIT));
+    const windowToggleVisible = previewActive && (hiddenCount > 0 || (folderShowAll && children.length > TOPIC_PREVIEW_LIMIT));
+    // While the preview window hides rows, a backend "load more" page would
+    // land entirely behind it and appear to do nothing; only offer paging
+    // once the folder is expanded (or the window is not truncating).
+    const previewHidesRows = previewActive && !folderShowAll && children.length > TOPIC_PREVIEW_LIMIT;
     // Filtering (search query or time range) narrows the page to a closed view;
     // paging through a filtered result adds little value, so hide load-more.
     const filtering = query.trim() !== "" || timeFilter !== "all";
@@ -1647,12 +1653,13 @@ export function ProjectTree({
                 type="button"
                 className="project-tree__topic-window-toggle"
                 style={{ paddingLeft: 14 + (depth + 1) * 16 }}
+                aria-expanded={folderShowAll}
                 onClick={() => toggleShowAllTopics(key)}
               >
                 {hiddenCount > 0 ? t("projectTree.showMoreTopics", { n: hiddenCount }) : t("projectTree.showFewerTopics")}
               </button>
             )}
-            {backendPage?.nextCursor && !filtering && (
+            {backendPage?.nextCursor && !filtering && !previewHidesRows && (
               <button
                 type="button"
                 className="project-tree__topic-window-toggle"

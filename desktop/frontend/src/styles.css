@@ -24877,7 +24877,7 @@ body > .mermaid-diagram--fullscreen {
   flex: 0 0 auto;
 }
 
-/* Classic per-folder show-more toggle and empty-folder placeholder rows. */
+/* Per-folder show-more toggle and empty-folder placeholder rows. */
 .project-tree__topic-window-toggle {
   --wails-draggable: no-drag;
   display: flex;

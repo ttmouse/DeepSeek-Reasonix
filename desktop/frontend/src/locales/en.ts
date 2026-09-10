@@ -1450,7 +1450,7 @@ export const en = {
   "projectTree.restoreCollapsedTooltip": "Restore previous view",
   "projectTree.timeFilter": "Filter by time",
   "projectTree.filterAndSort": "Filter & sort",
-  "projectTree.showMoreTopics": "Show more (+{n})",
+  "projectTree.showMoreTopics": "Show more conversations (+{n})",
   "projectTree.showFewerTopics": "Show fewer",
   "projectTree.noTopics": "No sessions",
   "projectTree.remoteConnect": "Connect",

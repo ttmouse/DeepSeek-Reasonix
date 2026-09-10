@@ -2,6 +2,7 @@ import type { RemoteTabRefView } from "../lib/types";
 import type { ShortcutPlatform } from "../lib/keyboardShortcuts";
 import type { TopicShortcutEntry } from "../lib/topicShortcuts";
 import type { ProjectTreeVariant } from "../lib/projectTreeTopic";
+import type { TimeFilterValue } from "../lib/projectTreePresentation";
 
 type ProjectTreeImTopicSource = {
   platform?: string;
@@ -25,8 +26,8 @@ export interface ProjectTreeProps {
   onRenameTopic?: (topicId: string, title: string) => Promise<void> | void;
   onTopicsChanged?: () => Promise<void> | void;
   refreshSignal?: number;
-  timeFilter: "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d";
-  onTimeFilterChange: (filter: "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d") => void;
+  timeFilter: TimeFilterValue;
+  onTimeFilterChange: (filter: TimeFilterValue) => void;
   searchExpanded?: boolean;
   searchFocusSignal?: number;
   showShortcutBadges?: boolean;

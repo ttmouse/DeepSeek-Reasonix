@@ -22,7 +22,8 @@ import {
   projectTreeTopicMetaLine,
   arrangeClassicProjectTree,
   splitPinnedProjectTree,
-  classicTopicWindow,
+  topicPreviewWindow,
+  topicPreviewActive,
   projectTreeTopicHoverCardModel,
   projectTreeTopicMenuOffersPin,
   projectTreeDedupedExactTime,
@@ -558,32 +559,58 @@ eq(
   "workbench pinned section still extracts pinned projects",
 );
 
-console.log("\nclassic topic window and hover card");
+console.log("\ntopic preview window and hover card");
 
 const windowTopics = Array.from({ length: 7 }, (_, i) => classicTopic(`t${i}`, { lastActivityAt: 1000 - i }));
 
 eq(
   (() => {
-    const { visible, hiddenCount } = classicTopicWindow(windowTopics, false);
+    const { visible, hiddenCount } = topicPreviewWindow(windowTopics, false);
     return { ids: visible.map((node) => node.topicId), hiddenCount };
   })(),
   { ids: ["t0", "t1", "t2", "t3", "t4"], hiddenCount: 2 },
-  "classic window previews the first five topics and reports the hidden count",
+  "topic preview window shows the first five topics and reports the hidden count",
 );
 
 eq(
   (() => {
-    const { visible, hiddenCount } = classicTopicWindow(windowTopics, true);
+    const { visible, hiddenCount } = topicPreviewWindow(windowTopics, true);
     return { count: visible.length, hiddenCount };
   })(),
   { count: 7, hiddenCount: 0 },
-  "classic window shows everything once the folder is toggled open",
+  "topic preview window shows everything once the folder is toggled open",
 );
 
 eq(
-  classicTopicWindow(windowTopics.slice(0, 4), false),
+  topicPreviewWindow(windowTopics.slice(0, 4), false),
   { visible: windowTopics.slice(0, 4), hiddenCount: 0 },
-  "classic window leaves short folders untouched",
+  "topic preview window leaves short folders untouched",
+);
+
+console.log("\ntopic preview gating");
+
+eq(
+  topicPreviewActive("", "all"),
+  true,
+  "unfiltered tree keeps the topic preview active",
+);
+
+eq(
+  topicPreviewActive("   ", "all"),
+  true,
+  "whitespace-only query still counts as unfiltered",
+);
+
+eq(
+  topicPreviewActive("search", "all"),
+  false,
+  "search query disables the topic preview so filtered results stay complete",
+);
+
+eq(
+  topicPreviewActive("", "1h"),
+  false,
+  "time-range filter disables the topic preview so filtered results stay complete",
 );
 
 eq(

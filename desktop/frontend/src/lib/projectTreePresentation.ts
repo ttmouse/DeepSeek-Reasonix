@@ -61,13 +61,24 @@ export function arrangeClassicProjectTree(nodes: ProjectNode[], sortMode: Workbe
   return arrangeWorkbenchTree(nodes, "project", sortMode);
 }
 
-export const CLASSIC_TOPIC_PREVIEW_LIMIT = 5;
+export const TOPIC_PREVIEW_LIMIT = 5;
 
-export function classicTopicWindow(children: ProjectNode[], showAll: boolean): { visible: ProjectNode[]; hiddenCount: number } {
-  if (showAll || children.length <= CLASSIC_TOPIC_PREVIEW_LIMIT) return { visible: children, hiddenCount: 0 };
+export type TimeFilterValue = "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d";
+
+/**
+ * Whether the per-folder "show 5 conversations then expand" preview is active.
+ * Disabled while the tree is filtered by a search query or time range so a
+ * filtered result is never silently cut off behind the preview window.
+ */
+export function topicPreviewActive(query: string, timeFilter: TimeFilterValue): boolean {
+  return query.trim() === "" && timeFilter === "all";
+}
+
+export function topicPreviewWindow(children: ProjectNode[], showAll: boolean): { visible: ProjectNode[]; hiddenCount: number } {
+  if (showAll || children.length <= TOPIC_PREVIEW_LIMIT) return { visible: children, hiddenCount: 0 };
   return {
-    visible: children.slice(0, CLASSIC_TOPIC_PREVIEW_LIMIT),
-    hiddenCount: children.length - CLASSIC_TOPIC_PREVIEW_LIMIT,
+    visible: children.slice(0, TOPIC_PREVIEW_LIMIT),
+    hiddenCount: children.length - TOPIC_PREVIEW_LIMIT,
   };
 }
 
