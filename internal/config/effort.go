@@ -474,13 +474,37 @@ func modelReasoningCapabilityForEntry(e *ProviderEntry) (modelReasoningCapabilit
 	// Some gateways list models with a vendor/protocol prefix (e.g.
 	// "deepseek/deepseek-v4-flash"). Match the bare model name too so those
 	// entries inherit the built-in reasoning capability instead of being
-	// reported as unsupported (which hides the effort UI entirely).
+	// reported as unsupported (which hides the effort UI entirely). Gate on
+	// host compatibility so third-party gateways serving DeepSeek/GLM/Kimi
+	// models through an OpenAI-compatible endpoint don't inherit a vendor
+	// wire protocol they may not support.
 	if _, model, ok := strings.Cut(name, "/"); ok {
 		if cap, found := modelReasoningCapabilities[model]; found {
+			if !hostSupportsBareModelProtocol(e, cap.Protocol) {
+				return modelReasoningCapability{}, false
+			}
 			return cap, true
 		}
 	}
 	return modelReasoningCapability{}, false
+}
+
+// hostSupportsBareModelProtocol reports whether the entry's host supports
+// the wire protocol inferred from a bare model name via the vendor-prefix
+// fallback (e.g. "deepseek/deepseek-v4-flash" → model="deepseek-v4-flash").
+// Third-party gateways routing DeepSeek/GLM/Kimi models through an
+// OpenAI-compatible endpoint must not inherit the model's native protocol.
+func hostSupportsBareModelProtocol(e *ProviderEntry, protocol string) bool {
+	switch protocol {
+	case ReasoningProtocolDeepSeek:
+		return isDeepSeekEntry(e)
+	case ReasoningProtocolGLM:
+		return isZhipuEntry(e) || isTokenRhythmGLMEntry(e)
+	case ReasoningProtocolKimiK3:
+		return e != nil && openai.IsKimiAPI(e.BaseURL)
+	default:
+		return true
+	}
 }
 
 func normalizeBuiltInModelEffortAlias(e *ProviderEntry, supported []string, level string) string {
