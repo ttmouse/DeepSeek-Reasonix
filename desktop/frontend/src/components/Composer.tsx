@@ -5065,7 +5065,7 @@ export function Composer({
                     aria-label={t("composer.taskModeGoalShort")}
                   >
                     <Target size={14} />
-                    <span className="composer-goal-trigger__label">{activeGoal || t("composer.taskModeGoalShort")}</span>
+                    <span className="composer-goal-trigger__label">{t("composer.taskModeGoalShort")}</span>
                     <span className="composer-goal-trigger__remove" aria-hidden="true"><X size={12} /></span>
                   </button>
                 </Tooltip>
