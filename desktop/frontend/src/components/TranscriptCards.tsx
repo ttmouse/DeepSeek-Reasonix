@@ -129,9 +129,9 @@ export function CompactionCard({ item }: { item: CompactionItem }) {
         <ProcessCompactIcon size={12} />
         <span>{t("compaction.title")}</span>
         <span className="compaction__meta">{t("compaction.messages", { n: item.messages })}{item.trigger ? ` · ${item.trigger}` : ""}</span>
-        <ChevronRight className={open ? "compaction__chevron--open" : ""} size={12} />
+        <ChevronRight className={`compaction__chevron${open ? " compaction__chevron--open" : ""}`} size={12} />
       </button>
-      {open && <pre className="compaction__body">{item.summary}</pre>}
+      {open && <pre className="compaction__summary">{item.summary}</pre>}
     </div>
   );
 }

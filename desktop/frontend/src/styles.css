@@ -6676,15 +6676,62 @@ body > .mermaid-diagram--fullscreen {
 .notice--warn .notice__body {
   color: color-mix(in srgb, var(--warn) 78%, var(--fg));
 }
+.compaction {
+  margin: 6px auto;
+}
+.compaction--pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  color: var(--fg-faint);
+  font-size: var(--text-md);
+}
+.compaction__head {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  background: none;
+  border: none;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: 560;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  -webkit-app-region: no-drag;
+}
+.compaction__head:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+.compaction__meta {
+  color: color-mix(in srgb, var(--fg-faint) 88%, transparent);
+  font-weight: 500;
+}
+.compaction__chevron {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--fg-faint) 76%, transparent);
+  transition: transform 0.2s;
+}
+.compaction__chevron--open {
+  transform: rotate(90deg);
+}
 .compaction__summary {
-  margin: 0;
-  padding: 12px 16px;
+  margin: 4px 0 6px 8px;
+  padding: 10px 14px;
   color: var(--fg-dim);
   font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  border-left: 2px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 0 4px 4px 0;
 }
 
 /* ── footer: composer + status line ──────────────────────────────────────── */
