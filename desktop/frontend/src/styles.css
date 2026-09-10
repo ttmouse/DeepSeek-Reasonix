@@ -6077,14 +6077,19 @@ body > .mermaid-diagram--fullscreen {
    Labels only expand for keyboard focus, open menus, or the confirm state. */
 .turn-actions .copybtn {
   border: none;
-  transition: none;
+  background: transparent;
+  transition: background 0.12s, color 0.12s;
+}
+.turn-actions .copybtn:hover {
+  color: var(--fg);
+  background: var(--button-bg-hover);
 }
 .turn-actions__btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   min-height: 24px;
-  background: var(--bg-elev-2);
+  background: transparent;
   border: none;
   color: var(--fg-faint);
   border-radius: 6px;
@@ -6092,6 +6097,11 @@ body > .mermaid-diagram--fullscreen {
   font: inherit;
   font-size: 11px;
   line-height: 1.25;
+  transition: background 0.12s, color 0.12s;
+}
+.turn-actions__btn:hover:not(:disabled) {
+  color: var(--fg);
+  background: var(--button-bg-hover);
 }
 .turn-actions__label-inline {
   display: inline-flex;
@@ -6118,7 +6128,7 @@ body > .mermaid-diagram--fullscreen {
 .turn-actions__btn:focus-visible:not(:disabled),
 .turn-actions__group--open .turn-actions__btn {
   color: var(--fg);
-  background: var(--bg-elev);
+  background: var(--button-bg-hover);
 }
 .turn-actions__btn:disabled {
   cursor: not-allowed;
