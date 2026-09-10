@@ -1,8 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, AtSign, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, Hash, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Trash2, X } from "lucide-react";
+import { ArrowUp, Check, ChevronsUpDown, CornerDownRight, Eye, FilePlus2, FileText, Folder, Gauge, Hand, List, MessageSquare, PackageCheck, Plus, ShieldAlert, ShieldCheck, Square, Target, Terminal, Trash2, X } from "lucide-react";
 import { asArray } from "../lib/array";
 import { filterAtMatches } from "../lib/atMatches";
+import { atMenuSessionMatches } from "../lib/atSessions";
+import { topicActivityLabel } from "../lib/projectTreeTopic";
 import { DedupIndex, sha256 } from "../lib/attachDedup";
 import { app, onFilesDropped } from "../lib/bridge";
 import { enqueueInboxGuidanceForActiveTurn, steerInboxItemForActiveTurn } from "../lib/inboxSubmit";
@@ -64,7 +66,6 @@ import {
   type RichComposerSelection,
   type RichSlashQuery,
 } from "./RichComposerInput";
-import { VirtualMenu } from "./VirtualMenu";
 import { activeFileReferenceToken, dirEntryMenuLabel, dirEntrySubmitPath } from "./FileReferenceMenu";
 import { activeRefTokenRe, escapeRefPath, unescapeRefPath } from "../lib/refToken";
 import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type ContextMenuPoint } from "./ContextMenu";
@@ -275,7 +276,9 @@ export function composerPickFileEntry(
   entry: DirEntry,
 ): { text: string; workspaceRef?: WorkspaceReference } {
   const queryText = text.replace(/[\r\n]+$/u, "");
-  const atPos = queryText.length - (atRaw?.length ?? 0) - 1; // index of '@'
+  // With no trailing @ token (panel opened via "+"), append the reference at
+  // the end of the draft; with an @ token, replace it.
+  const atPos = atRaw === null ? queryText.length : queryText.length - (atRaw?.length ?? 0) - 1; // index of '@'
   const prefix = queryText.slice(0, Math.max(0, atPos));
   const refPath = dirEntrySubmitPath(entry, atDir);
   if (entry.path || entry.displayPath) {
@@ -754,10 +757,21 @@ export function Composer({
   const moreMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
   const mainMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
   const approvalPopupAnchorRef = useRef<HTMLButtonElement | null>(null);
+  // Unified reference search state for the + / @ panel. "@" and the plus button
+  // open the same panel; typing in the composer input (after "@") filters
+  // commands, files and sessions at once. panelAtSourceRef records whether the
+  // current panel was opened by an "@" token so deleting the token can close a
+  // panel that @ opened.
+  const [panelQuery, setPanelQuery] = useState("");
+  const panelAtSourceRef = useRef(false);
+  const mainMenuSectionRef = useRef<HTMLDivElement | null>(null);
+  const atHintRef = useRef<HTMLDivElement | null>(null);
   const [contentMenuOpen, setContentMenuOpen] = useState(false);
   const [showPastChats, setShowPastChats] = useState(false);
   const [directPastChats, setDirectPastChats] = useState(false);
   const [pastChats, setPastChats] = useState<SessionMeta[]>([]);
+  const [atSessionsCache, setAtSessionsCache] = useState<SessionMeta[]>([]);
+  const atSessionsLoadedRef = useRef<string | null>(null);
   const [pastChatQuery, setPastChatQuery] = useState("");
   const [sessionRefs, setSessionRefs] = useState<SessionReference[]>([]);
   const [selectedTextRefs, setSelectedTextRefs] = useState<SelectedTextReference[]>([]);
@@ -1374,7 +1388,7 @@ export function Composer({
   }, [clearFileRefState, fileRefRefreshKey]);
 
   useEffect(() => {
-    if (atRaw === null) return;
+    if (atRaw === null && !mainMenuOpen) return;
     const cached = dirCache.current[atDir];
     if (cached) {
       setEntries(cached);
@@ -1396,13 +1410,15 @@ export function Composer({
     };
     // Re-fetch when the menu opens, the directory level changes, or the
     // workspace tree refreshes; cached data is only a fast first paint.
-  }, [atRaw === null, atDir, fileRefRefreshKey, fileRefScopeKey, fileRefTabId]);
+  }, [atRaw === null, mainMenuOpen, atDir, fileRefRefreshKey, fileRefScopeKey, fileRefTabId]);
   useEffect(() => {
-    if (atRaw === null || atDir !== "" || atFrag === "") {
+    const searching = (atRaw !== null || mainMenuOpen) && atDir === "" && panelQuery !== "";
+    if (!searching) {
       setSearchEntries([]);
       return;
     }
-    const cached = searchCache.current[atFrag];
+    const q = panelQuery;
+    const cached = searchCache.current[q];
     if (cached) {
       setSearchEntries(cached.entries);
       if (Date.now() - cached.cachedAt < FILE_REF_SEARCH_CACHE_TTL_MS) return;
@@ -1411,45 +1427,166 @@ export function Composer({
     }
     let live = true;
     app
-      .SearchFileRefsForTab(fileRefTabId, atFrag)
+      .SearchFileRefsForTab(fileRefTabId, q)
       .then((es) => {
         const list = asArray(es);
         if (!live) return;
-        searchCache.current[atFrag] = { entries: list, cachedAt: Date.now() };
+        searchCache.current[q] = { entries: list, cachedAt: Date.now() };
         setSearchEntries(list);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [atRaw === null, atDir, atFrag, fileRefRefreshKey, fileRefScopeKey, fileRefTabId]);
+  }, [atRaw === null, mainMenuOpen, atDir, panelQuery, fileRefRefreshKey, fileRefScopeKey, fileRefTabId]);
   const atMatches = useMemo(
     () => {
-      if (atRaw === null) return [];
-      return filterAtMatches(entries, searchEntries, atFrag);
+      if (atRaw === null && !mainMenuOpen) return [];
+      return filterAtMatches(entries, searchEntries, panelQuery);
     },
-    [atRaw, atFrag, entries, searchEntries],
+    [atRaw === null, mainMenuOpen, panelQuery, entries, searchEntries],
   );
 
-  // Unified menu item model for the @ menu. "past:chats" is a real selectable
-  // item (kind "pastChats"), not an active===0 special case.
+  // Unified menu item model for the @ menu — a Codex-style reference panel that
+  // merges slash commands, file refs, and recent sessions under one trigger.
+  // "past:chats" stays a real selectable item (kind "pastChats") that opens the
+  // full session list, not an active===0 special case.
   type AtMenuItem =
     | { kind: "pastChats" }
-    | { kind: "file"; entry: DirEntry };
+    | { kind: "command"; command: CommandInfo }
+    | { kind: "file"; entry: DirEntry }
+    | { kind: "session"; session: SessionMeta };
 
-  const includePastChatsItem = atRaw !== null && atDir === "" && (atFrag === "" || PAST_CHATS_MENU_ITEM.startsWith(atFrag));
+  const includePastChatsItem = (atRaw !== null || mainMenuOpen) && atDir === "" && (panelQuery === "" || PAST_CHATS_MENU_ITEM.startsWith(panelQuery));
+
+  // Commands surface in the reference panel only at the root level (no path
+  // separators): once the user is browsing directories, every @-token is a
+  // file ref. The filter is driven by the panel search box (panelQuery), which
+  // "@" pre-fills from the text after the token.
+  const atCommands = useMemo<CommandInfo[]>(
+    () => {
+      if ((atRaw === null && !mainMenuOpen) || atDir !== "") return [];
+      return sortSlashCommandsForMenu(
+        commands.filter((c) => c.name.toLowerCase().includes(panelQuery)),
+      );
+    },
+    [atRaw === null, mainMenuOpen, atDir, panelQuery, commands],
+  );
+
+  // Sessions surface in the reference panel only at the root level, filtered by
+  // the same human-visible fields as the "#"-triggered session list.
+  const atSessions = useMemo<SessionMeta[]>(
+    () => {
+      if ((atRaw === null && !mainMenuOpen) || atDir !== "") return [];
+      return atMenuSessionMatches(atSessionsCache, panelQuery);
+    },
+    [atRaw === null, mainMenuOpen, atDir, panelQuery, atSessionsCache],
+  );
 
   const atMenuItems = useMemo<AtMenuItem[]>(
-    () => [
-      ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
-      ...atMatches.map((entry) => ({ kind: "file" as const, entry })),
-    ],
-    [includePastChatsItem, atMatches],
+    () => {
+      // Unified reference panel (opened by both "@" and "+"): an empty search
+      // shows the full three-way list (commands / files / sessions) so the
+      // panel is immediately useful — typing then filters all three at once
+      // (the match helpers treat "" as match-everything).
+      return [
+        ...(includePastChatsItem ? [{ kind: "pastChats" as const }] : []),
+        ...atCommands.map((command) => ({ kind: "command" as const, command })),
+        ...atMatches.map((entry) => ({ kind: "file" as const, entry })),
+        ...atSessions.map((session) => ({ kind: "session" as const, session })),
+      ];
+    },
+    [includePastChatsItem, atCommands, atMatches, atSessions],
   );
   const atMenuItemKey = useCallback(
-    (item: AtMenuItem) => item.kind === "pastChats" ? "past:chats" : (item.entry.isDir ? "d:" : "f:") + (item.entry.path || item.entry.name),
+    (item: AtMenuItem) => {
+      switch (item.kind) {
+        case "pastChats": return "past:chats";
+        case "command": return "c:" + item.command.kind + ":" + item.command.name;
+        case "file": return (item.entry.isDir ? "d:" : "f:") + (item.entry.path || item.entry.name);
+        case "session": return "s:" + item.session.path;
+      }
+    },
     [],
   );
+
+  // --- original + menu entries ---
+  // The first entry is selected when the panel opens; ArrowUp/Down move the
+  // selection and Enter confirms. The same entries participate in search:
+  // while a search term is typed after @ they are matched (title/description)
+  // and shown at the top of the results, before commands/files/sessions.
+  // Referencing files/sessions needs no dedicated entry — typing after @
+  // already searches files and chat sessions (the inline hint says so), and
+  // commands/skills are triggered by typing "/" directly.
+  type MainMenuEntryKind = "attach" | "plan" | "goal" | "quality";
+  type MainMenuEntry = { kind: MainMenuEntryKind; section: "add" | "execution" | "delivery" };
+
+  // The + and @ panels show the exact same entries.
+  const mainMenuEntries: MainMenuEntry[] = [
+    { kind: "attach", section: "add" },
+    { kind: "plan", section: "execution" },
+    { kind: "goal", section: "execution" },
+    { kind: "quality", section: "delivery" },
+  ];
+
+  const mainMenuEntrySearchText = (entry: MainMenuEntry): string => {
+    switch (entry.kind) {
+      case "attach": return `${t("composer.contentAddAttachment")} ${t("composer.contentAddAttachmentDesc")} attach attachment`;
+      case "plan": return `${t("composer.taskModePlan")} ${t("composer.taskModePlanDesc")} plan`;
+      case "goal": return `${t("composer.taskModeGoal")} ${t("composer.taskModeGoalDesc")} goal`;
+      case "quality": return `${t("composer.qualityFloorDelivery")} ${t("composer.qualityFloorDeliveryTitle")} quality delivery`;
+    }
+  };
+
+  const mainMenuEntryMatches = useMemo<MainMenuEntry[]>(() => {
+    const q = panelQuery.trim().toLowerCase();
+    if (q === "") return [];
+    return mainMenuEntries.filter((entry) => mainMenuEntrySearchText(entry).toLowerCase().includes(q));
+    // mainMenuEntrySearchText reads `t`; recompute whenever the panel query or
+    // the locale-driven entries change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelQuery, mainMenuEntries, t]);
+
+  // Grouped rows for the unified @ panel: commands, then files, then sessions.
+  // The row carries the flat atMenuItems index so keyboard navigation and the
+  // active highlight keep using the same flat index the Composer already owns.
+  type AtMenuGroup = "commands" | "files" | "sessions";
+  type AtMenuRow =
+    | { type: "group"; group: AtMenuGroup; label: string }
+    | { type: "entry"; entry: MainMenuEntry; itemIndex: number }
+    | { type: "item"; item: AtMenuItem; itemIndex: number };
+
+  const atMenuGroupLabel = (group: AtMenuGroup): string => {
+    switch (group) {
+      case "commands": return t("composer.atGroupCommands");
+      case "files": return t("composer.atGroupFiles");
+      case "sessions": return t("composer.atGroupSessions");
+    }
+  };
+
+  const atMenuRows = useMemo<AtMenuRow[]>(() => {
+    const rows: AtMenuRow[] = [];
+    const pushGroup = (group: AtMenuGroup, items: Array<{ item: AtMenuItem; index: number }>) => {
+      if (items.length === 0) return;
+      rows.push({ type: "group", group, label: atMenuGroupLabel(group) });
+      for (const { item, index } of items) rows.push({ type: "item", item, itemIndex: index });
+    };
+    const commands: Array<{ item: AtMenuItem; index: number }> = [];
+    const files: Array<{ item: AtMenuItem; index: number }> = [];
+    const sessions: Array<{ item: AtMenuItem; index: number }> = [];
+    atMenuItems.forEach((item, index) => {
+      if (item.kind === "command") commands.push({ item, index });
+      else if (item.kind === "file" || item.kind === "pastChats") files.push({ item, index });
+      else if (item.kind === "session") sessions.push({ item, index });
+    });
+    pushGroup("commands", commands);
+    pushGroup("files", files);
+    pushGroup("sessions", sessions);
+    return rows;
+    // atMenuGroupLabel reads `t` and atMenuItemKey is stable; keep the memo keyed
+    // on the flat items so re-renders recompute when the panel contents change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atMenuItems, atMenuItemKey, t]);
 
   // --- which menu (if any) is open --- (slash command names win; then slash
   // arguments; then @-refs — they're rarely valid at once)
@@ -1476,7 +1613,7 @@ export function Composer({
       : menuMode === "slasharg"
         ? argRes!.items.length
         : menuMode === "at"
-          ? atMenuItems.length
+          ? atMenuItems.length + mainMenuEntryMatches.length
           : menuMode === "pastChats"
             ? pastChats.length
             : 0;
@@ -3041,6 +3178,81 @@ export function Composer({
     }
   }, []);
 
+  // Load the recent-session cache for the unified @ panel. Deliberately mirrors
+  // openPastChats' list shape (recency-sorted, excludes current, capped at 50)
+  // but writes into its own state so the "#"-triggered panel and the @ panel
+  // never clobber each other. Fires once per workspace scope, not per keystroke.
+  const loadAtSessions = useCallback(async () => {
+    const snapshotCwd = cwdRef.current;
+    const sourceDraftKey = activeDraftKeyRef.current;
+    try {
+      const sessions = await app.ListAllSessions();
+      if (cwdRef.current !== snapshotCwd || activeDraftKeyRef.current !== sourceDraftKey) return;
+      setAtSessionsCache(
+        asArray(sessions)
+          .filter((s) => !s.current)
+          .sort((a, b) => {
+            const at = a.lastActivityAt || a.modTime || a.createdAt || 0;
+            const bt = b.lastActivityAt || b.modTime || b.createdAt || 0;
+            return bt - at;
+          })
+          .slice(0, 50),
+      );
+    } catch {
+      if (cwdRef.current === snapshotCwd && activeDraftKeyRef.current === sourceDraftKey) setAtSessionsCache([]);
+    }
+  }, []);
+
+  // Load the @ panel session cache once per workspace scope when the user types
+  // "@" or opens the + panel (root level only). The ref guards against
+  // re-fetching on every keystroke while the token is still being typed.
+  useEffect(() => {
+    const scope = fileRefScopeKey;
+    if ((atRaw === null && !mainMenuOpen) || atDir !== "") return;
+    if (atSessionsLoadedRef.current === scope) return;
+    atSessionsLoadedRef.current = scope;
+    void loadAtSessions();
+  }, [atRaw === null, mainMenuOpen, atDir, fileRefScopeKey, loadAtSessions]);
+
+  // "@" opens the same panel as "+": the trailing @ token becomes the
+  // reference marker, the panel search box pre-fills with whatever follows the
+  // token, and the panel opens. Deleting the @ closes a panel that @ opened.
+  useEffect(() => {
+    if (atRaw === null) return;
+    panelAtSourceRef.current = true;
+    setPanelQuery(atFrag);
+    setActive(0);
+    setMainMenuOpen(true);
+  }, [atRaw, atFrag, setMainMenuOpen, setPanelQuery]);
+  useEffect(() => {
+    if (atRaw !== null || !panelAtSourceRef.current) return;
+    panelAtSourceRef.current = false;
+    setMainMenuOpen(false);
+  }, [atRaw === null, setMainMenuOpen]);
+
+  // Focus the first entry when the + panel opens so Arrow keys and Enter
+  // navigate the original menu. The @-opened panel keeps focus in the composer
+  // input (the user is typing a reference); its first entry is still visually
+  // selected via the active index.
+  useEffect(() => {
+    if (!mainMenuOpen || panelAtSourceRef.current) return;
+    const raf = requestAnimationFrame(() => {
+      mainMenuSectionRef.current?.querySelector<HTMLButtonElement>(".composer-main-menu__item")?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [mainMenuOpen]);
+
+  // Keep the highlighted row visible while keyboard-navigating: scroll the
+  // results/entries container just enough to reveal the active item instead of
+  // letting it disappear below the fold.
+  useEffect(() => {
+    if (!mainMenuOpen) return;
+    const activeEl = mainMenuSectionRef.current?.querySelector<HTMLElement>(
+      ".composer-main-menu__results-item--active, .composer-access-menu__item--active",
+    );
+    activeEl?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active, mainMenuOpen, panelQuery]);
+
   useEffect(() => {
     if (!pastChatToken || directPastChats || dismissed || running || disabled || readOnly) return;
     setDirectPastChats(true);
@@ -3211,6 +3423,73 @@ export function Composer({
     setTextCaretEnd(slashText.slice(0, argRes.from) + it.insert);
   };
 
+  // Picking a command from the unified @ panel turns the typed @token into a
+  // "/command " prefix (mirroring what the user would have typed). Structured
+  // invocations (skill/subagent) are inserted as invocations so the chip + args
+  // UI behaves exactly like a "/"-typed command.
+  const pickAtCommand = (c: CommandInfo) => {
+    const queryText = textRef.current.replace(/[\r\n]+$/u, "");
+    // With no trailing @ token (panel opened via "+"), append the command at
+    // the end of the draft; with an @ token, replace the token.
+    const atPos = atRaw === null ? queryText.length : queryText.length - (atRaw?.length ?? 0) - 1; // index of '@'
+    const targetDraftKey = activeDraftKeyRef.current;
+    if (!commandUsesStructuredInvocation(c)) {
+      const beforeEdit = composerEditSnapshot(targetDraftKey, { start: atPos, end: queryText.length });
+      const next = replaceInvocationTextRange(
+        textRef.current,
+        invocationsRef.current,
+        Math.max(0, atPos),
+        textRef.current.length,
+        `/${c.name} `,
+      );
+      textRef.current = next.text;
+      invocationsRef.current = next.invocations;
+      setText(next.text);
+      setInvocations(next.invocations);
+      setComposerSelection(atPos + c.name.length + 2);
+      recordComposerEdit(
+        targetDraftKey,
+        beforeEdit,
+        composerEditSnapshot(targetDraftKey, { start: atPos + c.name.length + 2, end: atPos + c.name.length + 2 }),
+      );
+      setDismissed(true);
+      requestActiveDraftFrame(focusComposerInput);
+      return;
+    }
+    const beforeEdit = composerEditSnapshot(targetDraftKey, { start: atPos, end: queryText.length });
+    const invocation: ComposerInvocation = {
+      id: `composer-invocation-${nextInvocationId.current++}`,
+      offset: Math.max(0, atPos),
+      command: c,
+    };
+    const next = replaceInvocationTextRange(
+      textRef.current,
+      invocationsRef.current,
+      Math.max(0, atPos),
+      textRef.current.length,
+      "",
+    );
+    textRef.current = next.text;
+    invocationsRef.current = [invocation];
+    setText(next.text);
+    setInvocations([invocation]);
+    recordComposerEdit(
+      targetDraftKey,
+      beforeEdit,
+      composerEditSnapshot(targetDraftKey, {
+        start: Math.max(0, atPos),
+        end: Math.max(0, atPos),
+        afterInvocationId: invocation.id,
+      }),
+    );
+    setDismissed(true);
+    requestActiveDraftFrame(() => richInputRef.current?.setSelectionRange(
+      Math.max(0, atPos),
+      Math.max(0, atPos),
+      invocation.id,
+    ));
+  };
+
   const pickActive = () => {
     if (menuMode === "slash") {
       const item = slashMatches[active];
@@ -3229,13 +3508,312 @@ export function Composer({
         return;
       }
       if (menuMode === "pastChats") return;
-      const item = atMenuItems[active];
+      // The @-opened panel shows the original menu entries until a search term
+      // is typed — Enter must not pick a result that is not visible. Once a
+      // term is present, the first rows are the matching menu entries (e.g.
+      // goal/plan/delivery) and the remaining rows are commands/files/sessions.
+      if (panelQuery.trim() === "") return;
+      const entryCount = mainMenuEntryMatches.length;
+      if (active < entryCount) {
+        const entry = mainMenuEntryMatches[active];
+        if (entry) pickMainMenuEntry(entry.kind);
+        return;
+      }
+      const item = atMenuItems[active - entryCount];
       if (!item) return;
       if (item.kind === "pastChats") {
         void openPastChats();
         return;
       }
+      if (item.kind === "command") {
+        pickAtCommand(item.command);
+        return;
+      }
+      if (item.kind === "session") {
+        pickSession(item.session);
+        return;
+      }
       pickEntry(item.entry);
+    }
+  };
+
+  // --- unified + / @ panel interactions ---
+  // Picking a result from the shared panel. With a trailing @ token the pick
+  // replaces the token (commands/files) or adds a session ref; without one
+  // (panel opened via "+") the same pick functions append at the end of the
+  // draft. Directories keep the @-opened panel open for browsing.
+  const pickPanelItem = (item: AtMenuItem) => {
+    if (item.kind === "pastChats") {
+      setMainMenuOpen(false);
+      setPanelQuery("");
+      void openPastChats();
+      return;
+    }
+    if (item.kind === "command") {
+      pickAtCommand(item.command);
+      setMainMenuOpen(false);
+      setPanelQuery("");
+      return;
+    }
+    if (item.kind === "session") {
+      pickSession(item.session);
+      setMainMenuOpen(false);
+      setPanelQuery("");
+      return;
+    }
+    pickEntry(item.entry);
+    if (!panelAtSourceRef.current) {
+      setMainMenuOpen(false);
+      setPanelQuery("");
+    }
+  };
+
+  const renderAtResultRow = (row: AtMenuRow): React.ReactNode => {
+    if (row.type === "entry") return null;
+    if (row.type === "group") {
+      return (
+        <div key={row.group} className="composer-main-menu__results-group" role="separator">
+          {row.label}
+        </div>
+      );
+    }
+    const item = row.item;
+    const itemActive = active === row.itemIndex;
+    let icon: React.ReactNode;
+    let text: React.ReactNode;
+    if (item.kind === "pastChats") {
+      icon = <MessageSquare size={13} />;
+      text = <span className="composer-main-menu__results-name">{PAST_CHATS_MENU_ITEM}</span>;
+    } else if (item.kind === "command") {
+      icon = <Terminal size={13} />;
+      text = (
+        <>
+          <span className="composer-main-menu__results-name composer-main-menu__results-name--no-clip">/{item.command.name}</span>
+          {item.command.hint && <span className="composer-main-menu__results-hint">{item.command.hint}</span>}
+          {item.command.description && <span className="composer-main-menu__results-desc">{item.command.description}</span>}
+        </>
+      );
+    } else if (item.kind === "session") {
+      icon = <MessageSquare size={13} />;
+      const turnsLabel = sessionTurnsLabel(item.session, t);
+      const projectLabel = item.session.workspaceRoot
+        ? (item.session.workspaceRoot.split(/[\\/]/).filter(Boolean).pop() ?? item.session.workspaceRoot)
+        : "";
+      const activityAt = item.session.lastActivityAt || item.session.createdAt || 0;
+      const timeLabel = activityAt ? topicActivityLabel(activityAt, t, true) : "";
+      const metaBits = [timeLabel, projectLabel].filter(Boolean).join(" · ");
+      text = (
+        <span className="composer-main-menu__results-name">
+          {pastChatTitle(item.session)}
+          {turnsLabel ? ` (${turnsLabel})` : ""}
+        </span>
+      );
+      if (metaBits) {
+        text = (
+          <>
+            {text}
+            <span className="composer-main-menu__results-hint">{metaBits}</span>
+          </>
+        );
+      }
+    } else {
+      icon = item.entry.isDir ? <Folder size={13} /> : <FileText size={13} />;
+      text = (
+        <span className="composer-main-menu__results-name">
+          {dirEntryMenuLabel(item.entry)}
+          {item.entry.isDir ? "/" : ""}
+        </span>
+      );
+    }
+    return (
+      <button
+        key={atMenuItemKey(item)}
+        type="button"
+        role="option"
+        aria-selected={itemActive}
+        className={`composer-main-menu__results-item${itemActive ? " composer-main-menu__results-item--active" : ""}`}
+        onClick={() => pickPanelItem(item)}
+        onMouseMove={() => setActive(row.itemIndex)}
+      >
+        <span className={`composer-main-menu__results-icon`}>{icon}</span>
+        <span className={`composer-main-menu__results-text${item.kind === "session" ? " composer-main-menu__results-text--wrap" : ""}`}>{text}</span>
+      </button>
+    );
+  };
+
+  // Entry rows rendered inside the results list while a search term is active
+  // (matching menu entries sit above commands/files/sessions).
+  const renderPanelEntryRow = (entry: MainMenuEntry, itemIndex: number): React.ReactNode => {
+    const entryActive = active === itemIndex;
+    const icon =
+      entry.kind === "attach" ? <FilePlus2 size={13} /> :
+      entry.kind === "plan" ? <List size={13} /> :
+      entry.kind === "goal" ? <Target size={13} /> :
+      <PackageCheck size={13} />;
+    let title: string;
+    let desc: string;
+    switch (entry.kind) {
+      case "attach":
+        title = t("composer.contentAddAttachment");
+        desc = t("composer.contentAddAttachmentDesc");
+        break;
+      case "plan":
+        title = t("composer.taskModePlan");
+        desc = t("composer.taskModePlanDesc");
+        break;
+      case "goal":
+        title = t("composer.taskModeGoal");
+        desc = activeGoal || t("composer.taskModeGoalDesc");
+        break;
+      case "quality":
+        title = t("composer.qualityFloorDelivery");
+        desc = t("composer.qualityFloorDeliveryTitle");
+        break;
+    }
+    return (
+      <button
+        key={"entry:" + entry.kind}
+        type="button"
+        role="option"
+        aria-selected={entryActive}
+        className={`composer-main-menu__results-item${entryActive ? " composer-main-menu__results-item--active" : ""}`}
+        onClick={() => pickMainMenuEntry(entry.kind)}
+        onMouseMove={() => setActive(itemIndex)}
+      >
+        <span className="composer-main-menu__results-icon">{icon}</span>
+        <span className="composer-main-menu__results-text">
+          <span className="composer-main-menu__results-name">{title}</span>
+          <span className="composer-main-menu__results-hint">{desc}</span>
+        </span>
+      </button>
+    );
+  };
+
+  // Combined rows for the search-active panel: matching menu entries first,
+  // then the grouped commands/files/sessions rows (their flat indices are
+  // offset by the entry count so keyboard navigation stays contiguous).
+  const panelRows: AtMenuRow[] = [
+    ...mainMenuEntryMatches.map((entry, i) => ({ type: "entry" as const, entry, itemIndex: i })),
+    ...atMenuRows.map((row) => (row.type === "group" || row.type === "entry" ? row : { ...row, itemIndex: row.itemIndex + mainMenuEntryMatches.length })),
+  ];
+
+  const pickMainMenuEntry = (kind: MainMenuEntryKind) => {
+    // Confirming an entry from the @-opened panel must also drop the trailing
+    // "@" token (or "@query") so the composer text is left clean.
+    if (panelAtSourceRef.current) setText((prev) => removeAtToken(prev));
+    switch (kind) {
+      case "attach":
+        chooseAttachmentFiles();
+        setMainMenuOpen(false);
+        break;
+      case "plan":
+        chooseTaskMode("plan");
+        setMainMenuOpen(false);
+        break;
+      case "goal":
+        chooseTaskMode("goal");
+        setMainMenuOpen(false);
+        break;
+      case "quality":
+        chooseQualityFloor(floorOn ? "standard" : "delivery");
+        setMainMenuOpen(false);
+        break;
+    }
+  };
+
+  const onMainMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // While a search term is active the panel shows results; those navigate
+    // from the composer input instead.
+    if (panelQuery.trim() !== "") return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % mainMenuEntries.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i - 1 + mainMenuEntries.length) % mainMenuEntries.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const entry = mainMenuEntries[active];
+      if (entry) pickMainMenuEntry(entry.kind);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMainMenuOpen(false);
+    }
+  };
+
+  const renderMainMenuEntry = (entry: MainMenuEntry, i: number): React.ReactNode => {
+    const entryActive = active === i;
+    const base = `composer-access-menu__item composer-main-menu__item${entryActive ? " composer-access-menu__item--active" : ""}`;
+    switch (entry.kind) {
+      case "attach":
+        return (
+          <button key="attach" type="button" role="menuitem" className={base} onClick={() => pickMainMenuEntry("attach")} onMouseMove={() => setActive(i)}>
+            <FilePlus2 size={16} aria-hidden="true" />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
+              <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
+            </span>
+          </button>
+        );
+      case "plan":
+        return (
+          <button
+            key="plan"
+            type="button"
+            role="menuitemradio"
+            aria-checked={planModeOn}
+            className={base}
+            onClick={() => pickMainMenuEntry("plan")}
+            onMouseMove={() => setActive(i)}
+            disabled={modeControlsDisabled}
+          >
+            <List size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.taskModePlan")}</span>
+              <span className="composer-access-menu__desc">{t("composer.taskModePlanDesc")}</span>
+            </span>
+          </button>
+        );
+      case "goal":
+        return (
+          <button
+            key="goal"
+            type="button"
+            role="menuitemradio"
+            aria-checked={goalModeOn}
+            className={base}
+            onClick={() => pickMainMenuEntry("goal")}
+            onMouseMove={() => setActive(i)}
+            disabled={modeControlsDisabled}
+            title={activeGoal || undefined}
+          >
+            <Target size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.taskModeGoal")}</span>
+              <span className="composer-access-menu__desc">{activeGoal || t("composer.taskModeGoalDesc")}</span>
+            </span>
+          </button>
+        );
+      case "quality":
+        return (
+          <button
+            key="quality"
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={floorOn}
+            className={base}
+            onClick={() => pickMainMenuEntry("quality")}
+            onMouseMove={() => setActive(i)}
+            disabled={approvalBarDisabled || !onSetQualityFloor}
+            title={t("composer.qualityFloorDeliveryTitle")}
+          >
+            <PackageCheck size={16} />
+            <span className="composer-access-menu__copy">
+              <span className="composer-access-menu__title">{t("composer.qualityFloorDelivery")}</span>
+              <span className="composer-access-menu__desc">{t("composer.qualityFloorDeliveryTitle")}</span>
+            </span>
+          </button>
+        );
     }
   };
 
@@ -3364,6 +3942,32 @@ export function Composer({
     }
 
     if (menuMode && !composing) {
+      // @ with an empty fragment shows the original + menu entries: Arrow keys
+      // and Enter navigate those entries (results navigation kicks in as soon
+      // as a search term is typed after @).
+      if (menuMode === "at" && panelQuery.trim() === "") {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setActive((i) => (i + 1) % mainMenuEntries.length);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setActive((i) => (i - 1 + mainMenuEntries.length) % mainMenuEntries.length);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const entry = mainMenuEntries[active];
+          if (entry) pickMainMenuEntry(entry.kind);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setMainMenuOpen(false);
+          return;
+        }
+      }
       if (e.key === "ArrowDown" && count > 0) {
         e.preventDefault();
         if (menuMode === "slash") {
@@ -3410,6 +4014,7 @@ export function Composer({
           setActive(0);
         } else {
           setDismissed(true);
+          if (menuMode === "at") setMainMenuOpen(false);
         }
         return;
       }
@@ -3844,77 +4449,32 @@ export function Composer({
         matchAnchorWidth
         closeMs={0}
       >
-        <div className="composer-access-menu__section" role="menu" aria-label={t("composer.menuLabel")}>
-          {/* Add section */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionAdd")}</div>
-          <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { chooseAttachmentFiles(); setMainMenuOpen(false); }}>
-            <FilePlus2 size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentAddAttachment")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentAddAttachmentDesc")}</span>
-            </span>
-          </button>
-          <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("@"); setMainMenuOpen(false); }}>
-            <AtSign size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentReferenceFiles")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentReferenceFilesDesc")}</span>
-            </span>
-          </button>
-          <button type="button" role="menuitem" className="composer-access-menu__item composer-main-menu__item" onClick={() => { insertContentTrigger("#"); setMainMenuOpen(false); }}>
-            <Hash size={16} aria-hidden="true" />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentReferenceSessions")}</span>
-              <span className="composer-access-menu__desc">{t("composer.contentReferenceSessionsDesc")}</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="composer-access-menu__item composer-main-menu__item"
-            onClick={() => { insertContentTrigger("/"); setMainMenuOpen(false); }}
-            disabled={text.trim().length > 0}
-            title={text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : undefined}
-          >
-            <span className="composer-content-menu__trigger-icon" aria-hidden="true">/</span>
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.contentUseCommands")}</span>
-              <span className="composer-access-menu__desc">{text.trim().length > 0 ? t("composer.contentUseCommandsEmptyOnly") : t("composer.contentUseCommandsDesc")}</span>
-            </span>
-          </button>
-          {/* Execution section */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionExecution")}</div>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={planModeOn}
-            className={`composer-access-menu__item composer-main-menu__item${planModeOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => { chooseTaskMode("plan"); setMainMenuOpen(false); }}
-            disabled={modeControlsDisabled}
-          >
-            <List size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.taskModePlan")}</span>
-              <span className="composer-access-menu__desc">{t("composer.taskModePlanDesc")}</span>
-            </span>
-            {planModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={goalModeOn}
-            className={`composer-access-menu__item composer-main-menu__item${goalModeOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => { chooseTaskMode("goal"); setMainMenuOpen(false); }}
-            disabled={modeControlsDisabled}
-            title={activeGoal || undefined}
-          >
-            <Target size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.taskModeGoal")}</span>
-              <span className="composer-access-menu__desc">{activeGoal || t("composer.taskModeGoalDesc")}</span>
-            </span>
-            {goalModeOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
+        <div ref={mainMenuSectionRef} className="composer-access-menu__section" role="menu" aria-label={t("composer.menuLabel")} onKeyDown={onMainMenuKeyDown}>
+          {/* No search box on the overlay: typing continues in the composer
+              input below ("@" filters commands/files/sessions live). */}
+          {panelQuery.trim() !== "" ? (
+            <div className="composer-main-menu__results" role="listbox" aria-label={t("composer.mainMenuSearchResults")}>
+              {panelRows.length === 0 ? (
+                <div className="composer-main-menu__results-empty">{t("composer.atMenuNoMatches")}</div>
+              ) : (
+                panelRows.map((row) => (row.type === "entry" ? renderPanelEntryRow(row.entry, row.itemIndex) : renderAtResultRow(row)))
+              )}
+            </div>
+          ) : (
+          <>
+          {/* Original + menu entries; the first one is selected when the panel
+              opens and ArrowUp/Down + Enter navigate it. The + and @ panels
+              show the same full entry list. */}
+          {mainMenuEntries.map((entry, i) => {
+            const sectionLabel = entry.section === "add" ? t("composer.menuSectionAdd") : entry.section === "execution" ? t("composer.menuSectionExecution") : t("composer.menuSectionDelivery");
+            const showLabel = i === 0 || mainMenuEntries[i - 1].section !== entry.section;
+            return (
+              <Fragment key={entry.kind}>
+                {showLabel && <div className="composer-access-menu__label">{sectionLabel}</div>}
+                {renderMainMenuEntry(entry, i)}
+              </Fragment>
+            );
+          })}
             {goalModeOn && activeGoal && (
             <div className="composer-main-menu__goal-actions">
               <div className="composer-main-menu__goal-runtime">
@@ -3969,27 +4529,8 @@ export function Composer({
               </button>
             </div>
           )}
-          {/* Delivery section */}
-          <div className="composer-access-menu__label">{t("composer.menuSectionDelivery")}</div>
-          <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={floorOn}
-            className={`composer-access-menu__item composer-main-menu__item${floorOn ? " composer-access-menu__item--active" : ""}`}
-            onClick={() => {
-              chooseQualityFloor(floorOn ? "standard" : "delivery");
-              setMainMenuOpen(false);
-            }}
-            disabled={approvalBarDisabled || !onSetQualityFloor}
-            title={t("composer.qualityFloorDeliveryTitle")}
-          >
-            <PackageCheck size={16} />
-            <span className="composer-access-menu__copy">
-              <span className="composer-access-menu__title">{t("composer.qualityFloorDelivery")}</span>
-              <span className="composer-access-menu__desc">{t("composer.qualityFloorDeliveryTitle")}</span>
-            </span>
-            {floorOn && <Check className="composer-intent-menu__check" size={16} aria-hidden="true" />}
-          </button>
+          </>
+          )}
           </div>
       </AnchoredPopover>
       {/* Approval popup menu (opens upward) */}
@@ -4134,6 +4675,7 @@ export function Composer({
                   setPastChatQuery("");
                   setShowPastChats(false);
                   setActive(0);
+                  setMainMenuOpen(true);
                 }
               }}
             >
@@ -4142,57 +4684,6 @@ export function Composer({
               </span>
             </button>
           </div>
-        ) : menuMode === "at" ? (
-          atMenuItems.length === 0 && atFrag !== "" ? (
-            <div className="slashmenu slashmenu--at" role="listbox">
-              <div className="slashmenu__item slashmenu__item--empty">
-                <span className="slashmenu__name">{t("composer.atMenuNoMatches")}</span>
-              </div>
-            </div>
-          ) : (
-          <VirtualMenu
-            items={atMenuItems}
-            activeIndex={active}
-            itemKey={atMenuItemKey}
-            className="slashmenu--at"
-            renderItem={(it, i) =>
-              it.kind === "pastChats" ? (
-                <button
-                  className={`slashmenu__item${i === active ? " slashmenu__item--active" : ""}`}
-                  onMouseDown={(ev) => {
-                    ev.preventDefault();
-                    void openPastChats();
-                  }}
-                  onMouseMove={() => setActive(i)}
-                >
-                  <MessageSquare size={13} className="filemenu__icon" />
-                  <span className="slashmenu__name">{PAST_CHATS_MENU_ITEM}</span>
-                </button>
-              ) : (
-                <button
-                  role="option"
-                  aria-selected={i === active}
-                  className={`slashmenu__item ${i === active ? "slashmenu__item--active" : ""}`}
-                  onMouseDown={(ev) => {
-                    ev.preventDefault();
-                    pickEntry(it.entry);
-                  }}
-                  onMouseMove={() => setActive(i)}
-                >
-                  {it.entry.isDir ? (
-                    <Folder size={13} className="filemenu__icon filemenu__icon--dir" />
-                  ) : (
-                    <FileText size={13} className="filemenu__icon" />
-                  )}
-                  <span className="slashmenu__name slashmenu__name--file">
-                    {dirEntryMenuLabel(it.entry)}
-                    {it.entry.isDir ? "/" : ""}
-                  </span>
-                </button>
-              )
-            }
-          />
-          )
         ) : null
       )}
       {pendingGuidance.length > 0 && (
@@ -4485,11 +4976,23 @@ export function Composer({
                     onContextMenu={openInputMenu}
                     onPaste={onPaste}
                     onKeyDown={onKeyDown}
+                    onScroll={(e) => {
+                      // Keep the @ hint overlay glued to the typed text.
+                      if (atHintRef.current) {
+                        atHintRef.current.style.transform = `translateY(${-e.currentTarget.scrollTop}px)`;
+                      }
+                    }}
                     style={textareaStyle}
                     placeholder={composerPlaceholder}
                     rows={1}
                     disabled={disabled || readOnly}
                   />
+                  {menuMode === "at" && panelQuery.trim() === "" && !composingRef.current && (
+                    <div ref={atHintRef} className="composer__input-at-hint" aria-hidden="true">
+                      <span>{text}</span>
+                      <span className="composer__input-at-hint__text">{t("composer.menuFileChatSearch")}</span>
+                    </div>
+                  )}
                   <textarea
                     ref={measureTaRef} className="composer__input composer__input--measure"
                     value={text} readOnly aria-hidden="true" tabIndex={-1}
@@ -4521,7 +5024,14 @@ export function Composer({
                     ref={mainMenuAnchorRef}
                     type="button"
                     className={`composer-menu-trigger${mainMenuOpen ? " composer-menu-trigger--open" : ""}`}
-                    onClick={() => setMainMenuOpen((v) => !v)}
+                    onClick={() => {
+                      if (!mainMenuOpen) {
+                        panelAtSourceRef.current = false;
+                        setPanelQuery("");
+                        setActive(0);
+                      }
+                      setMainMenuOpen((v) => !v);
+                    }}
                     disabled={modeControlsDisabled || readOnly}
                     aria-haspopup="menu"
                     aria-expanded={mainMenuOpen}
@@ -4588,10 +5098,10 @@ export function Composer({
                     type="button"
                     className="composer-goal-trigger"
                     onClick={() => chooseQualityFloor("standard")}
-                    aria-label={t("composer.qualityFloorDelivery")}
+                    aria-label={t("composer.qualityFloorDeliveryShort")}
                   >
                     <PackageCheck size={14} />
-                    <span className="composer-goal-trigger__label">{t("composer.qualityFloorDelivery")}</span>
+                    <span className="composer-goal-trigger__label">{t("composer.qualityFloorDeliveryShort")}</span>
                     <span className="composer-goal-trigger__remove" aria-hidden="true"><X size={12} /></span>
                   </button>
                 </Tooltip>

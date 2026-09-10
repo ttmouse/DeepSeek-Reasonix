@@ -3151,6 +3151,51 @@ func (a *App) ListSessions() []SessionMeta {
 	return a.listSessionsFromDir(dir, a.activeSessionPath(dir))
 }
 
+// ListAllSessions returns saved sessions across every known project plus the
+// global/legacy session dir, newest-first — the cross-project source for the
+// @ panel's chat search. Only the active conversation stays marked as current.
+func (a *App) ListAllSessions() []SessionMeta {
+	activeDir := a.activeSessionDir()
+	active := a.activeSessionPath(activeDir)
+	seen := map[string]bool{}
+	out := []SessionMeta{}
+	for _, dir := range a.knownSessionDirs() {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		if abs, err := filepath.Abs(dir); err == nil {
+			dir = abs
+		}
+		if seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		dirActive := ""
+		if sameProjectRoot(dir, activeDir) {
+			dirActive = active
+		}
+		for _, meta := range a.listSessionsFromDir(dir, dirActive) {
+			out = append(out, meta)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		at := out[i].LastActivityAt
+		if at == 0 {
+			at = out[i].CreatedAt
+		}
+		bt := out[j].LastActivityAt
+		if bt == 0 {
+			bt = out[j].CreatedAt
+		}
+		return at > bt
+	})
+	if len(out) > 200 {
+		out = out[:200]
+	}
+	return out
+}
+
 // ListSessionsForTab returns sessions from the directory owned by tabID. Task
 // Monitor uses this stable target after asynchronous control lookups so a tab
 // switch cannot redirect the eventual session lookup to another workspace.

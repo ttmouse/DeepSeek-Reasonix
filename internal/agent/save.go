@@ -2205,12 +2205,9 @@ func previewProse(s string) string {
 	return rest
 }
 
-// truncatePreview clamps a preview line to 80 runes with an ellipsis, matching
-// what the pickers render.
+// truncatePreview returns the preview line as-is: pickers render the full
+// title with their own ellipsis, so the stored preview must not lose bytes.
 func truncatePreview(s string) string {
-	if r := []rune(s); len(r) > 80 {
-		return string(r[:77]) + "…"
-	}
 	return s
 }
 

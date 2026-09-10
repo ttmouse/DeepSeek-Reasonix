@@ -6999,6 +6999,32 @@ body > .mermaid-diagram--fullscreen {
 .slashmenu--at .slashmenu__item--empty .slashmenu__name {
   color: var(--fg-faint);
 }
+/* Footer action row of the unified @ panel: attachment + more menu. */
+.slashmenu__footer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  padding: 5px 6px 1px;
+  border-top: 1px solid var(--border-soft);
+}
+.slashmenu__footer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.slashmenu__footer-btn:hover {
+  color: var(--fg);
+  background: var(--hover-bg, rgba(127, 127, 127, 0.08));
+}
 .composer {
   display: flex;
   flex-direction: column;
@@ -7162,10 +7188,34 @@ body > .mermaid-diagram--fullscreen {
   font: inherit;
   font-size: var(--font-content);
   line-height: 1.55;
+  padding: 2px 1px;
   min-height: calc(var(--font-content) * 1.55);
   outline: none;
   overflow-y: hidden;
   scrollbar-width: none;           /* Firefox */
+}
+/* Overlay that renders the typed text invisibly and shows a grey hint right
+   after a bare "@" (e.g. "搜索文件或聊天会话") — the hint looks like an
+   inline placeholder and disappears as soon as the user types. */
+.composer__input-at-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font: inherit;
+  font-size: var(--font-content);
+  line-height: 1.55;
+  padding: 2px 1px;
+  color: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.composer__input-at-hint__text {
+  color: rgba(130, 138, 153, 0.4);
 }
 .composer__rich-input {
   width: 100%;
@@ -7650,6 +7700,99 @@ body > .mermaid-diagram--fullscreen {
 
 .composer-main-menu__item {
   gap: 10px !important;
+}
+
+/* Reference result list: three groups (commands / files / sessions) with an
+   empty state; scrolls when the menu grows past the composer height. */
+.composer-main-menu__results {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0 -8px;
+  padding: 4px;
+}
+.composer-main-menu__results-empty {
+  padding: 10px 12px;
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+.composer-main-menu__results-group {
+  padding: 6px 8px 3px;
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.composer-main-menu__results-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.composer-main-menu__results-item:hover,
+.composer-main-menu__results-item:focus-visible,
+.composer-main-menu__results-item--active {
+  outline: none;
+  background: var(--bg-elev-2);
+  color: var(--fg);
+}
+.composer-main-menu__results-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--fg-faint);
+}
+.composer-main-menu__results-item--active .composer-main-menu__results-icon {
+  color: var(--accent);
+}
+.composer-main-menu__results-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.composer-main-menu__results-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-main-menu__results-name--no-clip {
+  flex: none;
+}
+.composer-main-menu__results-text--wrap {
+  overflow: hidden;
+}
+.composer-main-menu__results-text--wrap .composer-main-menu__results-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+.composer-main-menu__results-hint {
+  flex: none;
+  color: var(--fg-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-main-menu__results-desc {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--fg-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Approval popup menu */
