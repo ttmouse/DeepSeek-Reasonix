@@ -3,8 +3,12 @@ package openai
 import "strings"
 
 // canonicalKnownVendorChatURL rewrites official-vendor bases whose documented
-// form differs from the OpenAI-compatible shape (Token Rhythm, StepFun step_plan).
+// form differs from the OpenAI-compatible shape (Model Studio compatible-mode,
+// Token Rhythm, StepFun step_plan).
 func canonicalKnownVendorChatURL(raw string) (string, bool) {
+	if canonical, ok := canonicalDashScopeCompatibleChatURL(raw); ok {
+		return canonical, true
+	}
 	if canonical, ok := canonicalTokenRhythmChatURL(raw); ok {
 		return canonical, true
 	}

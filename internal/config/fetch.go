@@ -114,8 +114,12 @@ func BuildModelFetchURLs(baseURL, override string) ([]string, error) {
 }
 
 // canonicalVendorModelsURL rewrites official vendor bases whose documented
-// form differs from the OpenAI-compatible shape (Token Rhythm, StepFun step_plan).
+// form differs from the OpenAI-compatible shape (Model Studio compatible-mode,
+// Token Rhythm, StepFun step_plan).
 func canonicalVendorModelsURL(raw string) (string, bool) {
+	if canonical, ok := openai.CanonicalDashScopeCompatibleModelsURL(raw); ok {
+		return canonical, true
+	}
 	if canonical, ok := openai.CanonicalTokenRhythmModelsURL(raw); ok {
 		return canonical, true
 	}
