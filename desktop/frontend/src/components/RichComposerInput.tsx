@@ -11,8 +11,12 @@ import {
   type MouseEvent,
 } from "react";
 import {
+  fileInvocationMarker,
   invocationDisplayForCommand,
+  invocationDisplayForFile,
+  invocationDisplayForSession,
   replaceInvocationTextRange,
+  sessionInvocationMarker,
   sortComposerInvocations,
   type ComposerInvocation,
 } from "../lib/invocationDisplay";
@@ -81,7 +85,10 @@ function sameComposerModel(left: ComposerModel, right: ComposerModel | null): bo
   if (!right || left.text !== right.text || left.invocations.length !== right.invocations.length) return false;
   return left.invocations.every((item, index) => {
     const candidate = right.invocations[index];
-    return item.id === candidate.id && item.offset === candidate.offset && item.command === candidate.command;
+    if (!candidate || item.id !== candidate.id || item.offset !== candidate.offset) return false;
+    if ("command" in item) return "command" in candidate && item.command === candidate.command;
+    if ("session" in item) return "session" in candidate && item.session === candidate.session;
+    return "file" in candidate && item.file === candidate.file;
   });
 }
 
@@ -500,6 +507,7 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
   onPaste: (event: ClipboardEvent<HTMLDivElement>) => void;
+  onCopy?: (event: ClipboardEvent<HTMLDivElement>) => void;
   onCompositionStart: () => void;
   onCompositionEnd: () => void;
 }>(({
@@ -513,6 +521,7 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
   onKeyDown,
   onContextMenu,
   onPaste,
+  onCopy,
   onCompositionStart,
   onCompositionEnd,
 }, ref) => {
@@ -835,6 +844,34 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
     };
   }, [known, renderedModel.version]);
 
+  // Copy/cut: replace non-editable invocation tokens with their synthetic
+  // marker text so a paste back into the composer (or another surface) restores
+  // the badge instead of dropping the entity silently.
+  const handleCopy = (event: ClipboardEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    const fragment = range.cloneContents();
+    const tokenEls = fragment.querySelectorAll(".composer-invocation-token");
+    tokenEls.forEach((tokenEl) => {
+      const id = tokenEl.getAttribute("data-invocation-id");
+      const invocation = known.get(id || "");
+      if (!invocation) return;
+      const marker = "session" in invocation
+        ? sessionInvocationMarker(invocation.session)
+        : "file" in invocation
+          ? fileInvocationMarker(invocation.file)
+          : `/${invocation.command.name}`;
+      tokenEl.replaceWith(document.createTextNode(marker));
+    });
+    const text = fragment.textContent || "";
+    if (text) {
+      event.clipboardData?.setData("text/plain", text);
+      event.preventDefault();
+    }
+    onCopy?.(event);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" && !event.nativeEvent.isComposing) {
       const root = rootRef.current;
@@ -858,6 +895,28 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
         }
       }
     }
+    if (event.key === "Delete" && !event.nativeEvent.isComposing) {
+      const root = rootRef.current;
+      if (root) {
+        const selection = readSelection(root);
+        if (selection.start === selection.end && !selection.afterInvocationId) {
+          const nextInvocation = invocations.find((inv) => inv.offset === selection.start);
+          if (nextInvocation) {
+            event.preventDefault();
+            const next = invocations.filter((inv) => inv.id !== nextInvocation.id);
+            const afterSelection = { start: selection.start, end: selection.start };
+            pendingSelectionRef.current = afterSelection;
+            onSelectionChange(afterSelection, null);
+            onChange(text, next, {
+              source: "programmatic",
+              beforeSelection: selection,
+              afterSelection,
+            });
+            return;
+          }
+        }
+      }
+    }
     onKeyDown(event);
   };
 
@@ -867,7 +926,11 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
   renderedOrdered.forEach((item) => {
     const offset = Math.max(cursor, Math.min(renderedModel.text.length, item.offset));
     if (offset > cursor) children.push(renderedModel.text.slice(cursor, offset));
-    const invocation = invocationDisplayForCommand(item.command);
+    const invocation = "session" in item
+      ? invocationDisplayForSession(item.session)
+      : "file" in item
+        ? invocationDisplayForFile(item.file)
+        : invocationDisplayForCommand(item.command);
     children.push(
       <span
         key={item.id}
@@ -877,8 +940,12 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
       >
         <InvocationBadge
           invocation={invocation}
-          kind={invocation.kind}
-          description={item.command.description}
+          kind={invocation.kind ?? "skill"}
+          description={"session" in item
+            ? (item.session.preview || item.session.title)
+            : "file" in item
+              ? item.file.path
+              : item.command.description}
           onRemove={() => {
             const current = known.get(item.id);
             const currentOffset = current?.offset ?? offset;
@@ -932,6 +999,8 @@ export const RichComposerInput = forwardRef<RichComposerInputHandle, {
       onFocus={reportSelection}
       onContextMenu={onContextMenu}
       onPaste={onPaste}
+      onCopy={handleCopy}
+      onCut={handleCopy}
     >
       {children}
     </div>

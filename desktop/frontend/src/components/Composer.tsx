@@ -23,12 +23,17 @@ import { fallbackCopyText } from "../lib/clipboard";
 import {
   commandAvailableAtSlashPosition,
   commandUsesStructuredInvocation,
+  fileKindFromPath,
+  fileSourceFromPath,
   invocationRequests,
+  parseComposerInvocationsFromDisplayText,
   replaceInvocationTextRange,
   serializeInvocationSubmit,
+  sortComposerInvocations,
   typedStructuredInvocationDraft,
   trimInvocationDraft,
   type ComposerInvocation,
+  type FileReference,
   type StructuredInvocationSubmit,
 } from "../lib/invocationDisplay";
 import { formatTokens } from "../lib/format";
@@ -67,7 +72,8 @@ import {
   type RichSlashQuery,
 } from "./RichComposerInput";
 import { activeFileReferenceToken, dirEntryMenuLabel, dirEntrySubmitPath } from "./FileReferenceMenu";
-import { activeRefTokenRe, escapeRefPath, unescapeRefPath } from "../lib/refToken";
+import { activeRefTokenRe, unescapeRefPath } from "../lib/refToken";
+import { convertAttachmentRefsToFileMarkers, convertFileMarkersToAttachmentRefs } from "../lib/attachmentDisplay";
 import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type ContextMenuPoint } from "./ContextMenu";
 import {
   formatSelectedTextContext,
@@ -274,18 +280,30 @@ export function composerPickFileEntry(
   atRaw: string | null,
   atDir: string,
   entry: DirEntry,
-): { text: string; workspaceRef?: WorkspaceReference } {
+): { text: string; file?: FileReference } {
   const queryText = text.replace(/[\r\n]+$/u, "");
   // With no trailing @ token (panel opened via "+"), append the reference at
   // the end of the draft; with an @ token, replace it.
   const atPos = atRaw === null ? queryText.length : queryText.length - (atRaw?.length ?? 0) - 1; // index of '@'
   const prefix = queryText.slice(0, Math.max(0, atPos));
   const refPath = dirEntrySubmitPath(entry, atDir);
-  if (entry.path || entry.displayPath) {
-    return { text: prefix, workspaceRef: { path: refPath, isDir: entry.isDir, displayPath: entry.displayPath } };
-  }
-  // Inline fallback: escape whitespace so the ref survives @-token parsing.
-  return { text: prefix + "@" + escapeRefPath(refPath) + (entry.isDir ? "/" : " ") };
+  // Always build a FileReference: ListDirForTab / SearchFileRefs entries may
+  // carry only {name, isDir} without an explicit path, but dirEntrySubmitPath
+  // resolves the full path from atDir + name. This keeps the @-menu pick path
+  // aligned with the sidebar "add reference" path (both produce inline badges).
+  const displayPath = entry.displayPath || refPath;
+  const base = (() => {
+    const slash = Math.max(displayPath.lastIndexOf("/"), displayPath.lastIndexOf("\\"));
+    return slash >= 0 ? displayPath.slice(slash + 1) : displayPath;
+  })();
+  const name = entry.name || base || displayPath;
+  const file: FileReference = {
+    path: refPath,
+    name: entry.isDir ? `${name}/` : name,
+    kind: entry.isDir ? "folder" : fileKindFromPath(refPath),
+    source: fileSourceFromPath(refPath),
+  };
+  return { text: prefix, file };
 }
 
 function emptyComposerDraft(): ComposerDraft {
@@ -310,10 +328,17 @@ function emptyComposerDraft(): ComposerDraft {
   };
 }
 
+/** Deep-clone a composer invocation (command / session / file variant). */
+function cloneInvocation(invocation: ComposerInvocation): ComposerInvocation {
+  if ("command" in invocation) return { ...invocation, command: { ...invocation.command } };
+  if ("session" in invocation) return { ...invocation, session: { ...invocation.session } };
+  return { ...invocation, file: { ...invocation.file } };
+}
+
 function cloneComposerDraft(draft: ComposerDraft): ComposerDraft {
   return {
     text: draft.text,
-    invocations: draft.invocations.map((invocation) => ({ ...invocation, command: { ...invocation.command } })),
+    invocations: draft.invocations.map(cloneInvocation),
     attachments: [...draft.attachments],
     workspaceRefs: [...draft.workspaceRefs],
     pastedBlocks: [...draft.pastedBlocks],
@@ -330,6 +355,15 @@ function cloneComposerDraft(draft: ComposerDraft): ComposerDraft {
     pendingPaste: draft.pendingPaste,
     submitting: draft.submitting,
   };
+}
+
+// Session entities live inside the invocation model (inline bubbles); the
+// sessionRefs list is derived from them for the submit context and draft
+// persistence so the two can never drift apart.
+function sessionRefsFromInvocations(invocations: ComposerInvocation[]): SessionReference[] {
+  return invocations
+    .filter((invocation): invocation is ComposerInvocation & { session: SessionReference } => "session" in invocation)
+    .map((invocation) => invocation.session);
 }
 
 function attachmentDedupFromKeys(keys: Record<string, AttachmentDedupKey>): DedupIndex {
@@ -867,7 +901,7 @@ export function Composer({
 
   const snapshotComposerDraft = (): ComposerDraft => ({
     text: textRef.current,
-    invocations: invocationsRef.current.map((invocation) => ({ ...invocation, command: { ...invocation.command } })),
+    invocations: invocationsRef.current.map(cloneInvocation),
     attachments: [...attachmentsRef.current],
     workspaceRefs: [...workspaceRefsRef.current],
     pastedBlocks: [...pastedBlocksRef.current],
@@ -949,7 +983,7 @@ export function Composer({
     if (targetDraftKey === activeDraftKeyRef.current) {
       return {
         text: textRef.current,
-        invocations: invocationsRef.current.map((invocation) => ({ ...invocation, command: { ...invocation.command } })),
+        invocations: invocationsRef.current.map(cloneInvocation),
         pastedBlocks: [...pastedBlocksRef.current],
         openPastedLabels: [...openPastedLabelsRef.current],
         nextPasteId: nextPasteId.current,
@@ -960,7 +994,7 @@ export function Composer({
     const start = Math.min(selection?.start ?? draft.text.length, draft.text.length);
     return {
       text: draft.text,
-      invocations: draft.invocations.map((invocation) => ({ ...invocation, command: { ...invocation.command } })),
+      invocations: draft.invocations.map(cloneInvocation),
       pastedBlocks: [...draft.pastedBlocks],
       openPastedLabels: [...draft.openPastedLabels],
       nextPasteId: draft.nextPasteId,
@@ -1062,7 +1096,7 @@ export function Composer({
   };
 
   const restoreComposerEdit = (targetDraftKey: string, snapshot: ComposerEditSnapshot) => {
-    const invocations = snapshot.invocations.map((invocation) => ({ ...invocation, command: { ...invocation.command } }));
+    const invocations = snapshot.invocations.map(cloneInvocation);
     const pastedBlocks = [...snapshot.pastedBlocks];
     const openPastedLabels = [...snapshot.openPastedLabels];
     if (targetDraftKey !== activeDraftKeyRef.current) {
@@ -1779,12 +1813,12 @@ export function Composer({
     setComposerSelection(textRef.current.length);
   };
 
-  const setTextCaretEnd = (next: string, trackEdit = true) => {
+  const setTextCaretEnd = (next: string, trackEdit = true, afterInvocationId?: string) => {
     const targetDraftKey = activeDraftKeyRef.current;
     const beforeEdit = trackEdit ? composerEditSnapshot(targetDraftKey) : null;
     textRef.current = next;
     setText(next);
-    setComposerSelection(next.length);
+    setComposerSelection(next.length, next.length, afterInvocationId);
     if (beforeEdit) {
       recordComposerEdit(
         targetDraftKey,
@@ -1872,7 +1906,20 @@ export function Composer({
     pastedBlocksRef.current = [];
     setPastedBlocks([]);
     setOpenPastedLabels([]);
-    setTextCaretEnd(next, false);
+    // Rewind/edit loads the message's display text (which carries @chat[...]
+    // and /name markers, plus legacy @[name](path) / @path file refs). Convert
+    // legacy file refs to @file[...] markers first, then restore all markers
+    // as real invocations so the composer renders badges instead of exposing
+    // the raw marker text; the markers themselves are stripped from the
+    // composer model (tokens are zero-length atoms, never literal text).
+    const withFileMarkers = convertAttachmentRefsToFileMarkers(next).text;
+    const restored = parseComposerInvocationsFromDisplayText(withFileMarkers, commandCatalog ?? [], pastChats);
+    invocationsRef.current = restored.invocations;
+    setInvocations(restored.invocations);
+    // If the restored text ends with a zero-length invocation, place the caret
+    // after it so the user can keep typing / Backspace it like normal text.
+    const trailingInvocation = restored.invocations.find((inv) => inv.offset === restored.text.length);
+    setTextCaretEnd(restored.text, false, trailingInvocation?.id);
   };
 
   const addWorkspaceReference = (ref: WorkspaceReference) => {
@@ -1902,7 +1949,35 @@ export function Composer({
     const ref = parseWorkspaceReference(insertRequest.text);
     if (ref) {
       if (!attachmentInputEnabled) return;
-      addWorkspaceReference(ref);
+      // Insert as inline invocation badge (same path as @-menu file pick).
+      // Invocations are zero-length atoms: the badge sits at the caret offset
+      // and the text carries no "@name" token, so there is no duplication.
+      const path = ref.path;
+      const isDir = ref.isDir ?? path.endsWith("/");
+      const segments = path.split("/").filter(Boolean);
+      const baseName = segments[segments.length - 1] ?? path;
+      const name = isDir ? `${baseName}/` : baseName;
+      const file: FileReference = {
+        path,
+        name,
+        kind: isDir ? "folder" : fileKindFromPath(path),
+        source: fileSourceFromPath(path),
+      };
+      const id = `file-invocation-${nextInvocationId.current++}`;
+      const selection = getComposerSelection();
+      const targetDraftKey = activeDraftKeyRef.current;
+      const beforeEdit = composerEditSnapshot(targetDraftKey, selection);
+      const insertAt = selection.start;
+      const invocation: ComposerInvocation = { id, offset: insertAt, file };
+      const nextInvocations = sortComposerInvocations([...invocationsRef.current, invocation]);
+      invocationsRef.current = nextInvocations;
+      setInvocations(nextInvocations);
+      setComposerSelection(insertAt, insertAt, id);
+      recordComposerEdit(
+        targetDraftKey,
+        beforeEdit,
+        composerEditSnapshot(targetDraftKey, { start: insertAt, end: insertAt, afterInvocationId: id }),
+      );
       return;
     }
     insertTextAtCaret(insertRequest.text);
@@ -2108,8 +2183,9 @@ export function Composer({
     }
     const currentAttachments = attachmentsRef.current;
     const currentWorkspaceRefs = workspaceRefsRef.current;
-    const inlineInvocationCount = trimmedDraft.invocations.filter((invocation) => invocation.command.kind === "skill").length;
-    const subagentInvocationCount = trimmedDraft.invocations.filter((invocation) => invocation.command.kind === "subagent").length;
+    const inlineInvocationCount = trimmedDraft.invocations.filter((invocation) => "command" in invocation && invocation.command.kind === "skill").length;
+    const subagentInvocationCount = trimmedDraft.invocations.filter((invocation) => "command" in invocation && invocation.command.kind === "subagent").length;
+    const fileInvocationCount = trimmedDraft.invocations.filter((invocation) => "file" in invocation).length;
     if (goalModeOn && !activeGoal && trimmedDraft.invocations.length > 0 && !trimmedText) {
       // Goal setup still needs task text when a structured invocation is
       // present. Attachments and workspace refs remain valid task-only input.
@@ -2117,7 +2193,7 @@ export function Composer({
       requestActiveDraftFrame(focusComposerInput);
       return;
     }
-    if (!trimmedText && currentAttachments.length === 0 && currentWorkspaceRefs.length === 0 && inlineInvocationCount === 0) {
+    if (!trimmedText && currentAttachments.length === 0 && currentWorkspaceRefs.length === 0 && inlineInvocationCount === 0 && fileInvocationCount === 0) {
       if (goalModeOn && !activeGoal) {
         setComposerPrompt(t("composer.goalInputRequired"));
         requestActiveDraftFrame(focusComposerInput);
@@ -2140,7 +2216,6 @@ export function Composer({
         ...orderedAttachments.map(formatAttachmentDisplayReference),
         ...selectedTextRefsRef.current.map(formatSelectionLabel),
       ].join(" ");
-      const displayText = [trimmedText, displayRefs].filter(Boolean).join(trimmedText && displayRefs ? " " : "");
       // PR-B: when past:chats refs are attached, prepend their formatted transcript
       // to submitText only (displayText stays unchanged so the user still sees their
       // original prompt in the input preview). With no refs we keep the original
@@ -2151,7 +2226,11 @@ export function Composer({
       const sessionContext = currentSessionRefs.length === 0 ? "" : await buildSessionContext(currentSessionRefs, t);
       const selectedTextContext = formatSelectedTextContext(currentSelectedTextRefs);
       const invocationText = serializeInvocationSubmit(trimmedText, trimmedDraft.invocations);
-      const baseSubmitText = [expandPastedBlocks(invocationText, currentPastedBlocks), refs].filter(Boolean).join(" ");
+      // Convert @file[path|name] markers back to the legacy @path / @[name](path)
+      // format for the submit pipeline; the display text (structured.display)
+      // keeps the markers so the message renderer shows inline file badges.
+      const submitInvocationText = convertFileMarkersToAttachmentRefs(invocationText);
+      const baseSubmitText = [expandPastedBlocks(submitInvocationText, currentPastedBlocks), refs].filter(Boolean).join(" ");
       const submitBase = sessionContext ? `${sessionContext}${baseSubmitText}` : baseSubmitText;
       const submitText = [submitBase, selectedTextContext].filter(Boolean).join("\n\n");
       const structuredInput = [expandPastedBlocks(trimmedText, currentPastedBlocks), refs].filter(Boolean).join(" ");
@@ -2160,6 +2239,10 @@ export function Composer({
         input: [sessionContext ? `${sessionContext}${structuredInput}` : structuredInput, selectedTextContext].filter(Boolean).join("\n\n"),
         invocations: invocationRequests(trimmedDraft.invocations),
       } satisfies StructuredInvocationSubmit : undefined;
+      // displayText carries the serialized invocation markers (including
+      // @file[...]) so the message renderer can restore inline badges for
+      // both the structured and non-structured send paths.
+      const displayText = [invocationText, displayRefs].filter(Boolean).join(invocationText && displayRefs ? " " : "");
       if (running) {
         // An entity-only submit has an empty displayText (entities live
         // outside the text model); fall back to the serialized slash form so
@@ -2512,11 +2595,26 @@ export function Composer({
         normalizedPasted,
         selection.afterInvocationId,
       );
-      textRef.current = next.text;
-      invocationsRef.current = next.invocations;
-      setText(next.text);
-      setInvocations(next.invocations);
-      caret = start + normalizedPasted.length;
+      // Pasted content may carry synthetic markers (copied from another
+      // composer or a message surface). Restore them as real invocations and
+      // strip the literal marker text so it never leaks into the composer.
+      const pastedHasMarkers = /@chat\[/.test(normalizedPasted) || /@file\[/.test(normalizedPasted) || /(?:^|\s)\/[a-zA-Z]/.test(normalizedPasted);
+      if (pastedHasMarkers) {
+        const withFileMarkers = convertAttachmentRefsToFileMarkers(next.text).text;
+        const restored = parseComposerInvocationsFromDisplayText(withFileMarkers, commandCatalog ?? [], pastChats);
+        const pastedStrippedLength = restored.text.length - (next.text.length - normalizedPasted.length);
+        textRef.current = restored.text;
+        invocationsRef.current = restored.invocations;
+        setText(restored.text);
+        setInvocations(restored.invocations);
+        caret = start + Math.max(0, pastedStrippedLength);
+      } else {
+        textRef.current = next.text;
+        invocationsRef.current = next.invocations;
+        setText(next.text);
+        setInvocations(next.invocations);
+        caret = start + normalizedPasted.length;
+      }
       setComposerSelection(caret);
     }
     recordComposerEdit(
@@ -3140,9 +3238,43 @@ export function Composer({
 
   const pickEntry = (e: DirEntry) => {
     const picked = composerPickFileEntry(text, atRaw, atDir, e);
-    if (picked.workspaceRef) {
-      setTextCaretEnd(picked.text);
-      addWorkspaceReference(picked.workspaceRef);
+    if (picked.file) {
+      // Insert the file as an inline invocation badge (same model as skills
+      // and session references) so it stays a zero-length atom in the rich
+      // input and survives edit/rewind.
+      const targetDraftKey = activeDraftKeyRef.current;
+      const beforeEdit = composerEditSnapshot(targetDraftKey, {
+        start: picked.text.length,
+        end: textRef.current.length,
+      });
+      const id = `file-invocation-${nextInvocationId.current++}`;
+      const invocation: ComposerInvocation = { id, offset: picked.text.length, file: picked.file };
+      const next = replaceInvocationTextRange(
+        textRef.current,
+        invocationsRef.current,
+        picked.text.length,
+        textRef.current.length,
+        "",
+      );
+      const nextInvocations = sortComposerInvocations([...next.invocations, invocation]);
+      textRef.current = picked.text;
+      invocationsRef.current = nextInvocations;
+      setText(picked.text);
+      setInvocations(nextInvocations);
+      recordComposerEdit(
+        targetDraftKey,
+        beforeEdit,
+        composerEditSnapshot(targetDraftKey, {
+          start: picked.text.length,
+          end: picked.text.length,
+          afterInvocationId: id,
+        }),
+      );
+      requestActiveDraftFrame(() => richInputRef.current?.setSelectionRange(
+        picked.text.length,
+        picked.text.length,
+        id,
+      ));
       return;
     }
     // A directory keeps the menu open (trailing "/"); a file completes it (space).
@@ -3259,18 +3391,6 @@ export function Composer({
     void openPastChats(pastChatToken.query);
   }, [directPastChats, disabled, dismissed, openPastChats, pastChatToken, readOnly, running]);
 
-  const clearDirectPastChatToken = () => {
-    const current = textRef.current;
-    const token = activePastChatToken(current);
-    if (!token) return current.length;
-    const next = replaceInvocationTextRange(current, invocationsRef.current, token.from, current.length, "");
-    textRef.current = next.text;
-    invocationsRef.current = next.invocations;
-    setText(next.text);
-    setInvocations(next.invocations);
-    return token.from;
-  };
-
   const dismissDirectPastChats = () => {
     // Keep the literal token text — "#6310" may be an issue number or a
     // heading, not a session query. Dismissing only closes the panel;
@@ -3385,34 +3505,72 @@ export function Composer({
   };
 
   const pickSession = (session: SessionMeta) => {
-    setSessionRefs((prev) => {
-      if (prev.some((x) => x.path === session.path)) {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          path: session.path,
-          title: session.title || session.topicTitle || session.preview || "Untitled",
-          preview: session.preview,
-          turns: session.turns,
-          turnsState: session.turnsState,
-          createdAt: session.createdAt,
-          lastActivityAt: session.lastActivityAt,
-        },
-      ];
-    });
-    const caret = directPastChats ? clearDirectPastChatToken() : null;
-    if (!directPastChats) setText((prev) => removeAtToken(prev));
+    const ref: SessionReference = {
+      path: session.path,
+      title: session.title || session.topicTitle || session.preview || "Untitled",
+      preview: session.preview,
+      turns: session.turns,
+      turnsState: session.turnsState,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+    };
+    const targetDraftKey = activeDraftKeyRef.current;
+    const queryText = textRef.current.replace(/[\r\n]+$/u, "");
+    // A session already attached keeps one bubble; picking it again just
+    // closes the picker and leaves the caret where it is.
+    if (invocationsRef.current.some((invocation) => "session" in invocation && invocation.session.path === session.path)) {
+      setDirectPastChats(false);
+      setPastChatQuery("");
+      setShowPastChats(false);
+      setActive(0);
+      return;
+    }
+    // Replace the trailing @ token (panel opened via "@") or the # token
+    // (past:chats opened via "#"); with no trailing token (panel via "+") the
+    // bubble appends at the end of the draft.
+    let insertAt = queryText.length;
+    if (directPastChats) {
+      const token = activePastChatToken(queryText);
+      if (token) insertAt = token.from;
+    } else if (atRaw !== null) {
+      insertAt = queryText.length - atRaw.length - 1; // index of '@'
+    }
+    const beforeEdit = composerEditSnapshot(targetDraftKey, { start: Math.max(0, insertAt), end: queryText.length });
+    const id = `session-invocation-${nextInvocationId.current++}`;
+    const next = replaceInvocationTextRange(
+      textRef.current,
+      invocationsRef.current,
+      Math.max(0, insertAt),
+      textRef.current.length,
+      "",
+    );
+    const invocation: ComposerInvocation = { id, offset: Math.max(0, insertAt), session: ref };
+    const nextInvocations = sortComposerInvocations([...next.invocations, invocation]);
+    const nextSessionRefs = sessionRefsFromInvocations(nextInvocations);
+    textRef.current = next.text;
+    invocationsRef.current = nextInvocations;
+    setText(next.text);
+    setInvocations(nextInvocations);
+    sessionRefsRef.current = nextSessionRefs;
+    setSessionRefs(nextSessionRefs);
     setDirectPastChats(false);
     setPastChatQuery("");
     setShowPastChats(false);
     setActive(0);
-    setComposerSelection(caret ?? textRef.current.length);
-  };
-
-  const removeSessionRef = (path: string) => {
-    setSessionRefs((prev) => prev.filter((ref) => ref.path !== path));
+    recordComposerEdit(
+      targetDraftKey,
+      beforeEdit,
+      composerEditSnapshot(targetDraftKey, {
+        start: Math.max(0, insertAt),
+        end: Math.max(0, insertAt),
+        afterInvocationId: id,
+      }),
+    );
+    requestActiveDraftFrame(() => richInputRef.current?.setSelectionRange(
+      Math.max(0, insertAt),
+      Math.max(0, insertAt),
+      id,
+    ));
   };
 
   // pickArg replaces just the current token with the suggestion. A "descend" item
@@ -3570,13 +3728,11 @@ export function Composer({
 
   const renderAtResultRow = (row: AtMenuRow): React.ReactNode => {
     if (row.type === "entry") return null;
-    if (row.type === "group") {
-      return (
-        <div key={row.group} className="composer-main-menu__results-group" role="separator">
-          {row.label}
-        </div>
-      );
-    }
+    // Group headers (指令 / 文件 / 历史会话) are suppressed in the @ search
+    // results: the matches render as one flat list. The group row is still
+    // kept in the rows array so flat item indices (and keyboard nav) are
+    // unchanged, it just renders nothing.
+    if (row.type === "group") return null;
     const item = row.item;
     const itemActive = active === row.itemIndex;
     let icon: React.ReactNode;
@@ -3828,6 +3984,26 @@ export function Composer({
       which: native.which,
     });
 
+    // A truly active IME composition owns Enter (candidate confirmation), so
+    // the guard below lets it through to the input method. The post-composition
+    // grace window (isImeKeyEvent true purely from lastCompositionEndAt) is only
+    // a webview ordering race guard — the user's Shift+Enter there is a real
+    // newline intent. Native line-break insertion around invocation tokens is
+    // unreliable, so inside the rich composer route that chord programmatically
+    // instead of falling through to the browser.
+    if (
+      e.key === "Enter"
+      && e.shiftKey
+      && composing
+      && !composingRef.current
+      && (e.nativeEvent as globalThis.KeyboardEvent).isComposing !== true
+      && (e.nativeEvent as globalThis.KeyboardEvent).keyCode !== 229
+      && invocationsRef.current.length > 0
+    ) {
+      e.preventDefault();
+      insertNewlineAtCaret();
+      return;
+    }
     if (e.key === "Enter" && composing) return;
     if (fnKey) return;
 
@@ -4036,7 +4212,18 @@ export function Composer({
         e.preventDefault();
         return;
       }
-      // "newline-native" falls through so the input inserts the break itself.
+      // Native line-break insertion is unreliable inside the rich composer
+      // whenever invocation tokens are present: the engine's paragraph split
+      // around contenteditable=false atoms (badges + caret anchors) can place
+      // the break before a badge or leave the caret unmoved. Route the whole
+      // rich composer through the programmatic path; the plain textarea keeps
+      // the proven native behavior.
+      if (invocationsRef.current.length > 0) {
+        e.preventDefault();
+        insertNewlineAtCaret();
+        return;
+      }
+      // Otherwise fall through so the input inserts the break itself.
     }
     // Esc interrupts the in-flight turn (matches the Stop button's hint), and
     // restores the text if the server hadn't replied yet.
@@ -4280,7 +4467,8 @@ export function Composer({
       })()
     : null;
   const submitEmpty = !text.trim() && attachments.length === 0 && workspaceRefs.length === 0 &&
-    !invocations.some((invocation) => invocation.command.kind === "skill");
+    !invocations.some((invocation) => "command" in invocation && invocation.command.kind === "skill") &&
+    !invocations.some((invocation) => "file" in invocation);
   const submitBlocked = submitting || pendingPaste > 0 || (submitEmpty && !(goalModeOn && !activeGoal)) || disabled || (!running && submitDisabled) || readOnly;
   const submitTooltip = running
     ? submitEmpty
@@ -4708,10 +4896,10 @@ export function Composer({
           />
         </Suspense>
       )}
-      {(attachments.length > 0 || workspaceRefs.length > 0 || sessionRefs.length > 0 || selectedTextRefs.length > 0) && (
+      {(attachments.length > 0 || workspaceRefs.length > 0 || selectedTextRefs.length > 0) && (
         <div className="composer-context" aria-label={t("composer.contextItems")}>
           {sortComposerAttachments(attachments).map((a) => {
-            const imageOnly = Boolean(a.previewUrl) && attachments.every((item) => item.previewUrl) && workspaceRefs.length === 0 && sessionRefs.length === 0;
+            const imageOnly = Boolean(a.previewUrl) && attachments.every((item) => item.previewUrl) && workspaceRefs.length === 0;
             return (
               <ComposerContextCard
                 key={a.path}
@@ -4737,30 +4925,6 @@ export function Composer({
               folder={Boolean(ref.isDir)}
               label={ref.isDir ? `${baseName(ref.displayPath || ref.path)}/` : baseName(ref.displayPath || ref.path)}
             />
-          ))}
-          {sessionRefs.map((ref) => (
-            <div
-              className="composer-context__item composer-context__item--session"
-              key={ref.path}
-            >
-              <Tooltip label={ref.preview || ref.title}>
-                <span className="composer-context__label">
-                  <MessageSquare size={15} />
-                  <span>
-                    {ref.title}
-                    {sessionTurnsLabel(ref, t) ? ` (${sessionTurnsLabel(ref, t)})` : ""}
-                  </span>
-                </span>
-              </Tooltip>
-              <Tooltip label={t("composer.removeSessionReference")}>
-                <button
-                  type="button"
-                  onClick={() => removeSessionRef(ref.path)}
-                >
-                  <X size={13} />
-                </button>
-              </Tooltip>
-            </div>
           ))}
           {selectedTextRefs.map((reference) => (
             <ComposerContextCard
@@ -4900,6 +5064,18 @@ export function Composer({
                     invocationsRef.current = nextInvocations;
                     setText(nextText);
                     setInvocations(nextInvocations);
+                    // Session bubbles live in the invocation model; keep the
+                    // referenced-session list (submit context, draft snapshot)
+                    // derived from it so backspace / × removal stays in sync.
+                    const nextSessionRefs = sessionRefsFromInvocations(nextInvocations);
+                    const prevSessionRefs = sessionRefsRef.current;
+                    if (
+                      prevSessionRefs.length !== nextSessionRefs.length
+                      || prevSessionRefs.some((ref, index) => ref.path !== nextSessionRefs[index].path)
+                    ) {
+                      sessionRefsRef.current = nextSessionRefs;
+                      setSessionRefs(nextSessionRefs);
+                    }
                     if (beforeEdit) {
                       recordComposerEdit(
                         targetDraftKey,

@@ -1,10 +1,10 @@
 import { createContext, lazy, memo, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { FormEvent } from "react";
 import { BrainCircuit, ChevronDown, FileText, Folder, GitBranch, Image, MessageSquare, Pencil, RotateCcw, ScrollText } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { CopyButton } from "./CopyButton";
 import { ComposerContextCard } from "./ComposerContextCard";
-import { formatAttachmentRefForDisplay, formatAttachmentRefForSubmit, parseAttachmentRefsForDisplay, sortDisplayAttachments } from "../lib/attachmentDisplay";
+import { convertAttachmentRefsToFileMarkers, convertFileMarkersToAttachmentRefs, formatAttachmentRefForDisplay, formatAttachmentRefForSubmit, parseAttachmentRefsForDisplay, sortDisplayAttachments } from "../lib/attachmentDisplay";
 import type { DisplayAttachment } from "../lib/attachmentDisplay";
 import { app } from "../lib/bridge";
 import { replaySubmitTextPreservingSelectedContext } from "../lib/editReplay";
@@ -13,7 +13,9 @@ import { ImageViewer } from "./ImageViewer";
 import { Tooltip } from "./Tooltip";
 import { useReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
 import { stripMemoryCompilerExecution } from "../lib/memoryCompilerDisplay";
-import { invocationSegmentsFromMessage, type InvocationMetadataMap } from "../lib/invocationDisplay";
+import { invocationSegmentsFromMessage, parseComposerInvocationsFromDisplayText, serializeInvocationSubmit, type InvocationMetadataMap } from "../lib/invocationDisplay";
+import type { ComposerInvocation } from "../lib/invocationDisplay";
+import { RichComposerInput } from "./RichComposerInput";
 import { messageActionLabelKey, type MessageActionScope } from "../lib/messageActions";
 import type { Item } from "../lib/useController";
 import type { CheckpointMeta } from "../lib/types";
@@ -184,17 +186,28 @@ export function UserMessage({
   const hasMemoryCompiler = Boolean(submitText?.includes("<memory-compiler-execution>"));
   const selectedTextEntries = useMemo(() => parseSelectedTextContext(submitText), [submitText]);
   const editableActionText = stripSelectionLabels(actionText, selectedTextEntries);
-  const { text: editableDisplayText, attachments } = parseAttachmentRefsForDisplay(editableActionText);
+  // Convert legacy attachment refs ("@[name](path)", "@path") into the unified
+  // "@file[path|name]" marker so invocationSegmentsFromMessage renders them as
+  // inline badges alongside skills and session references. The parsed
+  // attachments are still kept for image previews and the legacy strip.
+  const { text: textWithFileMarkers, attachments } = convertAttachmentRefsToFileMarkers(editableActionText);
   const selectionLabels = formatSelectionLabels(selectedTextEntries);
-  const displayText = [editableDisplayText, selectionLabels].filter(Boolean).join(editableDisplayText && selectionLabels ? " " : "");
+  const displayText = [textWithFileMarkers, selectionLabels].filter(Boolean).join(textWithFileMarkers && selectionLabels ? " " : "");
   const invocationSegments = imSource ? [] : invocationSegmentsFromMessage(displayText, submitText, invocationMetadata);
   const hasInvocationSegments = invocationSegments.some((segment) => segment.type === "invocation");
+  // Files are now rendered as inline badges via @file[...] markers; the legacy
+  // bottom attachment strip is only kept for messages that predate the inline
+  // migration (no file-type invocation segments) or carry non-inlineable media.
+  const hasInlineFileBadges = invocationSegments.some((segment) =>
+    segment.type === "invocation" && segment.invocation.kind === "file",
+  );
   const orderedAttachments = sortDisplayAttachments(attachments);
   const sourceLabel = imSource ? imSourceLabel(imSource, t) : "";
   const sentAt = createdAt === undefined ? null : messageDate(createdAt);
   const canEdit = turn !== undefined && onEdit !== undefined && !editDisabled;
   const [editing, setEditing] = useState(false);
-  const [draftText, setDraftText] = useState(editableDisplayText);
+  const [draftText, setDraftText] = useState(textWithFileMarkers);
+  const [draftInvocations, setDraftInvocations] = useState<ComposerInvocation[]>([]);
   const [draftAttachments, setDraftAttachments] = useState<DisplayAttachment[]>(attachments);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -293,29 +306,31 @@ export function UserMessage({
     });
   }, [editing]);
 
+  // Helper: restore all inline invocations (skills, sessions, files) from the
+  // raw message text. Legacy file refs are first converted to @file[...]
+  // markers so parseComposerInvocationsFromDisplayText picks them up.
+  const restoreEditDraft = () => {
+    const withFileMarkers = convertAttachmentRefsToFileMarkers(editableActionText).text;
+    const restored = parseComposerInvocationsFromDisplayText(withFileMarkers, [], []);
+    const parsed = parseAttachmentRefsForDisplay(editableActionText);
+    return { draftText: restored.text, invocations: restored.invocations, attachments: parsed.attachments };
+  };
+
   const startEdit = () => {
     if (!canEdit) return;
-    const parsed = parseAttachmentRefsForDisplay(editableActionText);
-    setDraftText(parsed.text);
-    setDraftAttachments(parsed.attachments);
+    const { draftText, invocations, attachments } = restoreEditDraft();
+    setDraftText(draftText);
+    setDraftInvocations(invocations);
+    setDraftAttachments(attachments);
     setEditing(true);
   };
 
   const cancelEdit = () => {
-    const parsed = parseAttachmentRefsForDisplay(editableActionText);
-    setDraftText(parsed.text);
-    setDraftAttachments(parsed.attachments);
+    const { draftText, invocations, attachments } = restoreEditDraft();
+    setDraftText(draftText);
+    setDraftInvocations(invocations);
+    setDraftAttachments(attachments);
     setEditing(false);
-  };
-
-  const updateDraftText = (value: string) => {
-    const parsed = parseAttachmentRefsForDisplay(value);
-    if (parsed.attachments.length > 0) {
-      setDraftText(parsed.text);
-      setDraftAttachments((prev) => mergeDisplayAttachments(prev, parsed.attachments));
-      return;
-    }
-    setDraftText(value);
   };
 
   const removeDraftAttachment = (path: string) => {
@@ -325,7 +340,13 @@ export function UserMessage({
   const submitEdit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (!canEdit || editSubmitting) return;
-    const parsedDraft = parseAttachmentRefsForDisplay(draftText);
+    // Re-serialize all invocation badges: skills → /name, sessions →
+    // @chat[path|title], files → @file[path|name]. Then convert file markers
+    // back to the legacy "@[name](path)" / "@path" format so the downstream
+    // pipeline and history storage keep working.
+    const markedText = serializeInvocationSubmit(draftText, draftInvocations);
+    const withLegacyRefs = convertFileMarkersToAttachmentRefs(markedText);
+    const parsedDraft = parseAttachmentRefsForDisplay(withLegacyRefs);
     const nextAttachments = sortDisplayAttachments(mergeDisplayAttachments(draftAttachments, parsedDraft.attachments));
     const bodyText = parsedDraft.text.trim();
     const displayRefs = nextAttachments.map(formatAttachmentRefForDisplay).join(" ");
@@ -341,17 +362,6 @@ export function UserMessage({
       if (ok !== false) setEditing(false);
     } finally {
       setEditSubmitting(false);
-    }
-  };
-
-  const onEditKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      cancelEdit();
-      return;
-    }
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      void submitEdit();
     }
   };
 
@@ -385,7 +395,7 @@ export function UserMessage({
       <div className={`msg__body${editing ? " msg__body--editing" : ""}`} data-transcript-selectable="message">
         {editing ? (
           <form className="msg-edit" onSubmit={(event) => void submitEdit(event)}>
-            {orderedDraftAttachments.length > 0 && (
+            {orderedDraftAttachments.length > 0 && !draftInvocations.some((inv) => "file" in inv) && (
               <div className="msg-edit__attachments composer-context" aria-label={t("composer.contextItems")}>
                 {orderedDraftAttachments.map((attachment) => {
                   const imagePreview = attachment.kind === "image" ? imagePreviews[attachment.path] : undefined;
@@ -411,15 +421,32 @@ export function UserMessage({
                 })}
               </div>
             )}
-            <textarea
-              ref={editRef}
-              className="msg-edit__input"
-              value={draftText}
-              rows={Math.max(2, Math.min(8, draftText.split(/\r?\n/).length))}
-              aria-label={t("common.edit")}
+            <RichComposerInput
+              text={draftText}
+              invocations={draftInvocations}
+              placeholder=""
               disabled={editSubmitting}
-              onChange={(event) => updateDraftText(event.target.value)}
-              onKeyDown={onEditKeyDown}
+              style={{ minHeight: "3rem" }}
+              onChange={(nextText, nextInvocations) => {
+                setDraftText(nextText);
+                setDraftInvocations(nextInvocations);
+              }}
+              onSelectionChange={() => {}}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelEdit();
+                  return;
+                }
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  void submitEdit();
+                }
+              }}
+              onContextMenu={() => {}}
+              onPaste={() => {}}
+              onCompositionStart={() => {}}
+              onCompositionEnd={() => {}}
             />
             <div className="msg-edit__actions">
               <button className="msg-edit__btn" type="button" disabled={editSubmitting} onClick={cancelEdit}>
@@ -494,7 +521,7 @@ export function UserMessage({
           </>
         )}
         {failed && <div className="msg__send-failed" data-transcript-selection-ignore>{t("msg.sendFailed")}</div>}
-        {orderedAttachments.length > 0 && (
+        {orderedAttachments.length > 0 && !hasInlineFileBadges && (
           <div className="msg-attachments" aria-label={t("msg.attachments")} data-transcript-selection-ignore>
             {orderedAttachments.map((attachment, index) => {
               const isImage = attachment.kind === "image";
@@ -695,9 +722,7 @@ export function TurnActions({
   return (
     <div className={`turn-actions${openMenu ? " turn-actions--open" : ""}${hoverMenus ? " turn-actions--hover-menu" : ""}`}>
       {text.trim() && (
-        <Tooltip label={t("msg.copy")} side="top">
-          <CopyButton text={text} label={t("msg.copy")} showInlineLabel={false} hideTitle />
-        </Tooltip>
+        <CopyButton text={text} label={t("msg.copy")} showInlineLabel={false} hideTitle />
       )}
       {canAct && (
         <>
@@ -705,22 +730,21 @@ export function TurnActions({
             className={`turn-actions__group${openMenu === "fork" ? " turn-actions__group--open" : ""}`}
             onMouseEnter={() => openHoverMenu("fork")}
           >
-            <Tooltip label={forkDisabledReason || t("rewind.forkTooltip")} side="top" disabled={openMenu === "fork"}>
-              <button
-                className={`turn-actions__btn${confirmScope === "fork" || confirmScope === "fork-worktree" ? " turn-actions__btn--confirm" : ""}`}
-                type="button"
-                disabled={Boolean(forkDisabledReason)}
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "fork"}
-                onClick={() => toggleMenu("fork")}
-              >
-                <GitBranch size={13} />
-                <span className="turn-actions__label-inline">
-                  <span>{confirmScope === "fork-worktree" ? actionLabel("fork-worktree") : (confirmScope === "fork" ? actionLabel("fork") : t("rewind.fork"))}</span>
-                  <ChevronDown size={12} />
-                </span>
-              </button>
-            </Tooltip>
+            <button
+              className={`turn-actions__btn${confirmScope === "fork" || confirmScope === "fork-worktree" ? " turn-actions__btn--confirm" : ""}`}
+              type="button"
+              disabled={Boolean(forkDisabledReason)}
+              aria-label={forkDisabledReason || t("rewind.forkTooltip")}
+              aria-haspopup="menu"
+              aria-expanded={openMenu === "fork"}
+              onClick={() => toggleMenu("fork")}
+            >
+              <GitBranch size={13} />
+              <span className="turn-actions__label-inline">
+                <span>{confirmScope === "fork-worktree" ? actionLabel("fork-worktree") : (confirmScope === "fork" ? actionLabel("fork") : t("rewind.fork"))}</span>
+                <ChevronDown size={12} />
+              </span>
+            </button>
             {openMenu === "fork" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {renderAction("fork-worktree")}
@@ -732,21 +756,20 @@ export function TurnActions({
             className={`turn-actions__group${openMenu === "summary" ? " turn-actions__group--open" : ""}`}
             onMouseEnter={() => openHoverMenu("summary")}
           >
-            <Tooltip label={t("turnActions.summary")} side="top" disabled={openMenu === "summary"}>
-              <button
-                className="turn-actions__btn"
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "summary"}
-                onClick={() => toggleMenu("summary")}
-              >
-                <ScrollText size={13} />
-                <span className="turn-actions__label-inline">
-                  <span>{t("turnActions.summary")}</span>
-                  <ChevronDown size={12} />
-                </span>
-              </button>
-            </Tooltip>
+            <button
+              className="turn-actions__btn"
+              type="button"
+              aria-label={t("turnActions.summary")}
+              aria-haspopup="menu"
+              aria-expanded={openMenu === "summary"}
+              onClick={() => toggleMenu("summary")}
+            >
+              <ScrollText size={13} />
+              <span className="turn-actions__label-inline">
+                <span>{t("turnActions.summary")}</span>
+                <ChevronDown size={12} />
+              </span>
+            </button>
             {openMenu === "summary" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {rewindDisabled && <div className="rewind__menu-hint">{t("rewind.disabledRunning")}</div>}
@@ -760,21 +783,20 @@ export function TurnActions({
             className={`turn-actions__group${openMenu === "rewind" ? " turn-actions__group--open" : ""}`}
             onMouseEnter={() => openHoverMenu("rewind")}
           >
-            <Tooltip label={t("turnActions.rewind")} side="top" disabled={openMenu === "rewind"}>
-              <button
-                className="turn-actions__btn"
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "rewind"}
-                onClick={() => toggleMenu("rewind")}
-              >
-                <RotateCcw size={13} />
-                <span className="turn-actions__label-inline">
-                  <span>{t("turnActions.rewind")}</span>
-                  <ChevronDown size={12} />
-                </span>
-              </button>
-            </Tooltip>
+            <button
+              className="turn-actions__btn"
+              type="button"
+              aria-label={t("turnActions.rewind")}
+              aria-haspopup="menu"
+              aria-expanded={openMenu === "rewind"}
+              onClick={() => toggleMenu("rewind")}
+            >
+              <RotateCcw size={13} />
+              <span className="turn-actions__label-inline">
+                <span>{t("turnActions.rewind")}</span>
+                <ChevronDown size={12} />
+              </span>
+            </button>
             {openMenu === "rewind" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {rewindDisabled && <div className="rewind__menu-hint">{t("rewind.disabledRunning")}</div>}

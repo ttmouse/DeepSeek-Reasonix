@@ -1,4 +1,4 @@
-import { Bot, WandSparkles, X } from "lucide-react";
+import { Bot, FileText, MessageSquare, WandSparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { InvocationDisplay } from "../lib/invocationDisplay";
 import { projectColorValue } from "../lib/projectColors";
@@ -13,13 +13,16 @@ export function InvocationBadge({
   variant,
 }: {
   invocation: InvocationDisplay;
-  kind?: "skill" | "subagent";
+  kind?: "skill" | "subagent" | "session" | "file";
   description?: string;
   onRemove?: () => void;
   variant: "composer" | "message";
 }) {
   const t = useT();
   const accent = projectColorValue(invocation.color);
+  // Match the composer font size so the badge rides on the text baseline
+  // instead of an oversized fixed icon; CSS width:1em keeps it proportional.
+  const iconSize = 16;
   return (
     <span
       className={`invocation-display invocation-display--${variant} invocation-display--${kind}${accent ? " invocation-display--custom-color" : ""}`}
@@ -27,16 +30,22 @@ export function InvocationBadge({
       aria-label={t("composer.selectedInvocation")}
       style={accent ? { "--invocation-color": accent } as CSSProperties : undefined}
     >
-      <Tooltip label={description || `/${invocation.name}`}>
+      <Tooltip label={description || (kind === "file" ? invocation.path : `/${invocation.name}`)}>
         <span className="invocation-display__identity">
           {kind === "subagent"
-            ? <Bot size={variant === "composer" ? 18 : 16} />
-            : <WandSparkles size={variant === "composer" ? 18 : 16} />}
+            ? <Bot size={iconSize} />
+            : kind === "session"
+              ? <MessageSquare size={iconSize} />
+              : kind === "file"
+                ? <FileText size={iconSize} />
+                : <WandSparkles size={iconSize} />}
           <span className="invocation-display__name">{invocation.label}</span>
           {invocation.source && <span className="invocation-display__source">{t("slash.plugin", { name: invocation.source })}</span>}
         </span>
       </Tooltip>
-      {onRemove && (
+      {/* Skill, session and file tokens are deleted with Backspace/Delete; only a
+          subagent token keeps a pointer/touch-accessible remove button. */}
+      {kind === "subagent" && onRemove && (
         <Tooltip label={t("composer.removeInvocation")}>
           <button
             type="button"

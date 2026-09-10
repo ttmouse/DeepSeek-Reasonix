@@ -777,13 +777,14 @@ function Harness({
     eq(remaining, 0, "Backspace after skill tag removes the invocation");
   }
 
-  // The inline remove button is the pointer/touch-accessible counterpart to
-  // Backspace and must preserve the surrounding task text.
+  // Only subagent tokens expose the inline remove button; it is the
+  // pointer/touch-accessible counterpart to Backspace and must preserve the
+  // surrounding task text. Skill tokens carry no button at all.
   let clickRemovalSelection: RichComposerSelection | null = null;
   let clickRemovalText = "";
-  function ClickRemoveHarness() {
+  function ClickRemoveHarness({ command }: { command: CommandInfo }) {
     const [invocations, setInvocations] = useState([
-      invocation("click-remove-target", 2, skillCommand),
+      invocation("click-remove-target", 2, command),
     ]);
     return (
       <LocaleProvider>
@@ -808,7 +809,16 @@ function Harness({
   }
 
   await act(async () => {
-    root.render(<ClickRemoveHarness />);
+    root.render(<ClickRemoveHarness key="skill" command={skillCommand} />);
+    await flushTimers();
+  });
+  ok(
+    document.querySelector(".composer-invocation-token .invocation-display__remove") === null,
+    "skill token exposes no remove button",
+  );
+
+  await act(async () => {
+    root.render(<ClickRemoveHarness key="subagent" command={subagentCommand} />);
     await flushTimers();
   });
   const removeInvocation = document.querySelector(

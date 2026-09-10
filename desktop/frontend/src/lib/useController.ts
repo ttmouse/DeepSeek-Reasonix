@@ -3762,7 +3762,18 @@ export function useController() {
     const original = originalText?.trim() ?? "";
     bumpCancelHydrateSeq(tabId);
     if (currentState.hydrateReason === "rewind") dispatchTo(tabId, { type: "hydrate_done" });
-    dispatchTo(tabId, { type: "user", text: displayText, submitText: display !== submit ? submit : undefined, seq, submissionId });
+    // The optimistic user item must mirror what the backend persists for a
+    // structured submit: display carries the invocation markers (/name,
+    // @chat[title]) and input carries the session-context header. Falling back
+    // to the marker-free displayText would render the just-sent message
+    // without its badges, diverging from the reloaded history.
+    dispatchTo(tabId, {
+      type: "user",
+      text: structured?.display.trim() || displayText,
+      submitText: structured ? structured.input.trim() : (display !== submit ? submit : undefined),
+      seq,
+      submissionId,
+    });
     invalidateCache();
     try {
       const submitPromise = initialGoal

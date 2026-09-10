@@ -79,6 +79,26 @@ export function restoreAttachmentRefsForSubmit(text: string): string {
   });
 }
 
+const fileMarkerRe = /@file\[([^\]]+)\]/g;
+
+/**
+ * Convert "@file[path|name]" markers back to the legacy "@[name](path)"
+ * display form (or "@path" for workspace refs) so the downstream submit
+ * pipeline and older message renderers keep working.
+ */
+export function convertFileMarkersToAttachmentRefs(text: string): string {
+  return text.replace(fileMarkerRe, (_full, body: string) => {
+    const sep = body.indexOf("|");
+    const path = sep < 0 ? body : body.slice(0, sep);
+    const name = sep < 0 ? baseName(path) : body.slice(sep + 1);
+    if (!path) return _full;
+    if (path.startsWith(".reasonix/attachments/")) {
+      return `@[${name}](${path})`;
+    }
+    return `@${path}`;
+  });
+}
+
 function displayRefName(name: string): string {
   return name.replace(/[\[\]\(\)\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "attachment";
 }
@@ -108,6 +128,11 @@ export function parseAttachmentRefsForDisplay(text: string): { text: string; att
       return lead + suffix;
     })
     .replace(refTokenRe(), (_full, lead: string, token: string) => {
+      // Synthetic session-reference markers ("@chat[path|title]") and file
+      // markers ("@file[path|name]") share the @-prefix with attachment refs
+      // but are not plain files; leave them intact so invocationSegmentsFromMessage
+      // can render them as inline badges.
+      if (token.startsWith("chat[") || token.startsWith("file[")) return _full;
       const { core, suffix } = splitTrailingPunctuation(token);
       const path = unescapeRefPath(core);
       if (!path || !isDisplayReference(path)) return _full;
@@ -120,6 +145,37 @@ export function parseAttachmentRefsForDisplay(text: string): { text: string; att
     .replace(/[ \t]{2,}/g, " ")
     .trim();
   return { text: cleaned, attachments };
+}
+
+/**
+ * Convert legacy attachment refs ("@[name](path)" and "@path") into the
+ * unified "@file[path|name]" marker so the invocation segment renderer can
+ * display them as inline badges alongside skills and session references.
+ * Returns the converted text and the parsed attachment list (for image
+ * previews and the legacy attachment strip, if still needed).
+ */
+export function convertAttachmentRefsToFileMarkers(text: string): { text: string; attachments: DisplayAttachment[] } {
+  const attachments: DisplayAttachment[] = [];
+  const converted = text
+    .replace(namedAttachmentRefRe, (_full, lead: string, label: string, token: string) => {
+      const { core, suffix } = splitTrailingPunctuation(token);
+      if (!core || !isDisplayReference(core)) return _full;
+      const name = cleanDisplayName(label) || baseName(core) || "attachment";
+      const attachment = displayAttachment(core, name);
+      attachments.push(attachment);
+      return `${lead}@file[${core}|${name}]${suffix}`;
+    })
+    .replace(refTokenRe(), (_full, lead: string, token: string) => {
+      if (token.startsWith("chat[") || token.startsWith("file[")) return _full;
+      const { core, suffix } = splitTrailingPunctuation(token);
+      const path = unescapeRefPath(core);
+      if (!path || !isDisplayReference(path)) return _full;
+      const name = baseName(path) || "attachment";
+      const attachment = displayAttachment(path, name);
+      attachments.push(attachment);
+      return `${lead}@file[${path}|${name}]${suffix}`;
+    });
+  return { text: converted, attachments };
 }
 
 export function sortDisplayAttachments<T extends { kind: "image" | "file" | "folder" }>(attachments: T[]): T[] {

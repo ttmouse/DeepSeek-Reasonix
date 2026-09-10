@@ -7069,8 +7069,11 @@ body > .mermaid-diagram--fullscreen {
   color: var(--invocation-color, var(--accent));
 }
 .invocation-display--composer {
-  min-height: 24px;
   vertical-align: baseline;
+}
+.invocation-display--composer .invocation-display__name {
+  font-size: var(--font-content);
+  line-height: 1.55;
 }
 .invocation-display--message {
   vertical-align: baseline;
@@ -7087,6 +7090,7 @@ body > .mermaid-diagram--fullscreen {
 .invocation-display--message .invocation-display__name {
   font-size: 13px;
   font-weight: 620;
+  line-height: 1.65;
 }
 .invocation-display--message .invocation-display__source {
   font-size: 10.5px;
@@ -7155,6 +7159,31 @@ body > .mermaid-diagram--fullscreen {
   .invocation-display__remove {
     opacity: 1;
   }
+}
+/* Referenced-session tokens read as ordinary entered text: just the chat
+   icon + accent-tinted name, no pill, no border, no close button. The
+   Backspace key removes them like any other text (handled by
+   RichComposerInput's invocation token logic). */
+.invocation-display--session .invocation-display__name {
+  color: var(--accent);
+}
+.invocation-display--composer.invocation-display--session {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+/* File/workspace references use the same plain-text style as session
+   references: file icon + accent-tinted name, no pill or border. Backspace
+   removes them like ordinary text via the invocation token logic. */
+.invocation-display--file .invocation-display__name {
+  color: var(--accent);
+}
+.invocation-display--composer.invocation-display--file {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
 }
 .composer--dragover {
   outline: 1px dashed var(--accent);
@@ -7269,7 +7298,7 @@ body > .mermaid-diagram--fullscreen {
   display: inline-block;
   min-width: 1px;
   min-height: 1em;
-  vertical-align: text-bottom;
+  vertical-align: baseline;
 }
 .composer-card--resized .composer__rich-input {
   /* Fill the current logical card height during live resize; content sizing
@@ -7288,6 +7317,12 @@ body > .mermaid-diagram--fullscreen {
 }
 .msg__rich-text .invocation-display:first-child {
   margin-left: 0;
+}
+/* Keep the badge icon sized with the message font so the whole inline token
+   rides on the text baseline instead of an oversized fixed-size icon. */
+.msg__rich-text .invocation-display__identity > svg {
+  width: 1em;
+  height: 1em;
 }
 .composer__input::-webkit-scrollbar {
   display: none;                    /* Chrome / Safari / Wails webview */
@@ -7333,16 +7368,16 @@ body > .mermaid-diagram--fullscreen {
   align-items: center;
   justify-content: center;
   align-self: flex-end;
-  width: 32px;
-  height: 32px;
+  width: var(--composer-control-height, 32px);
+  height: var(--composer-control-height, 32px);
   border: none;
   border-radius: 8px;
   flex-shrink: 0;
   transition: color 0.12s, background 0.12s, box-shadow 0.12s, transform 0.12s;
 }
 .composer__btn--send {
-  width: 32px;
-  height: 32px;
+  width: var(--composer-control-height, 32px);
+  height: var(--composer-control-height, 32px);
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -7403,7 +7438,7 @@ body > .mermaid-diagram--fullscreen {
   box-shadow: var(--focus-ring);
 }
 .composer-meta {
-  --composer-control-height: 32px;
+  --composer-control-height: 30px;
   --composer-control-radius: 10px;
   --composer-control-font-size: var(--font-status);
   --composer-control-font-weight: 620;
@@ -7487,8 +7522,8 @@ body > .mermaid-diagram--fullscreen {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--composer-control-height, 30px);
+  height: var(--composer-control-height, 30px);
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -28581,8 +28616,8 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 .composer__btn {
-  width: 34px;
-  height: 34px;
+  width: var(--composer-control-height, 32px);
+  height: var(--composer-control-height, 32px);
   border-radius: 8px;
 }
 
@@ -30097,8 +30132,8 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 :root[data-theme-style] .composer__btn {
-  width: 34px;
-  height: 34px;
+  width: var(--composer-control-height, 32px);
+  height: var(--composer-control-height, 32px);
   border-radius: 10px;
 }
 
