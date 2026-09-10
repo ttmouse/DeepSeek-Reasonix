@@ -97,6 +97,10 @@ type turnRuntime struct {
 	// read by the governor trigger (live policy and fork capture alike).
 	lastReasoning int
 
+	incompleteReads incompleteReadState
+	readShadow      readShadowState
+	evidenceBlocked evidenceBlockState
+
 	phase phaseClock
 }
 

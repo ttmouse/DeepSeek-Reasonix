@@ -10,6 +10,7 @@ import (
 
 	"reasonix/internal/event"
 	"reasonix/internal/evidence"
+	"reasonix/internal/i18n"
 	"reasonix/internal/provider"
 	"reasonix/internal/runtimepolicy"
 	"reasonix/internal/tool"
@@ -129,6 +130,12 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 	// values are computed below. Cross-turn state (checkpoint, scope, failure
 	// budgets) lives in taskRuntime and is reconciled there.
 	a.turn = turnRuntime{}
+	a.turn.readShadow = newReadShadowState(a.readCoordinatorShadow)
+	a.turn.incompleteReads.legacyImplicitFullReads = a.legacyImplicitFullReads
+	a.reads.runGen++
+	a.reads.tasks = newReadTasks(a.sess.path, a.reads.runGen)
+	a.reads.deliveries = make(map[string]readDelivery)
+	a.reads.visible = nil
 	a.resetStructuralRunGuards()
 	scope, scoped := DeliveryExecutionScopeFromContext(ctx)
 	preserveEvidence, readinessRecovered := a.beginFinalReadinessRecovery()
@@ -241,6 +248,7 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 // runToolLoop owns the main tool-round budget and dispatches each streamed
 // assistant turn into final-response or tool-round handling.
 func (a *Agent) runToolLoop(ctx context.Context, state *turnRuntime) (runErr error) {
+	defer func() { a.finishReadRun(runErr) }()
 	releaseMCPListObserver := a.activateMCPListObserver()
 	defer func() {
 		a.recordReadonlySoftBudgetSample(state, runErr)
@@ -367,6 +375,7 @@ func (a *Agent) streamWithSamplingRecovery(ctx context.Context, turn int) stream
 	var last streamedTurn
 
 	runAttempt := func(attemptID string, sink event.Sink) streamedTurn {
+		a.freezeVisibleReads(frozen.req.Messages)
 		return a.runSamplingAttempt(ctx, turn, sink, &frozen, attemptID)
 	}
 
@@ -532,6 +541,35 @@ func sleepStreamRetryBackoff(ctx context.Context, attempt int) bool {
 // and final compaction. cont=true continues the tool loop; cont=false returns
 // err from Run (err may be nil for a clean final answer).
 func (a *Agent) handleFinalResponse(ctx context.Context, state *turnRuntime, text, reasoning string, usage *provider.Usage) (cont bool, err error) {
+	if a.readPipelineActive() {
+		instruction, pause := a.readContinuation(true)
+		if pause != nil {
+			// The legacy twin observes the same usage before returning its
+			// pause; skipping it here would drop the final round's accounting.
+			a.contextManager().ObserveUsage(usage)
+			return false, pause
+		}
+		if instruction != "" {
+			a.sess.conversation.Add(HostGeneratedUserMessage(a.withTurnPreferences(instruction)))
+			return true, nil
+		}
+	}
+	// A partial read is a host-owned protocol state, not advisory prose. Refuse
+	// a candidate final before every ordinary readiness/validator path so a
+	// model cannot silently answer from the visible prefix alone.
+	if instruction, pause := a.legacyReadFinal(state); pause != nil {
+		a.contextManager().ObserveUsage(usage)
+		return false, pause
+	} else if instruction != "" {
+		a.sess.conversation.Add(HostGeneratedUserMessage(a.withTurnPreferences(instruction)))
+		a.emitIncompleteReadNotice(
+			event.NoticeCodeReadContinuationRequired,
+			i18n.M.IncompleteReadFinishBlocked,
+			"final answer blocked pending read continuation",
+		)
+		a.contextManager().ObserveUsage(usage)
+		return true, nil
+	}
 	// Recovery finalization produced a summary. Keep it in the session,
 	// but still pause so Goal auto-continue cannot open another Run with
 	// a fresh finalization round. turn_done reports recovery_paused.
@@ -666,24 +704,8 @@ func (a *Agent) handleToolRound(ctx context.Context, state *turnRuntime, step in
 		// dispatch before entering its execution scheduler.
 		return false, batch.err
 	}
-	results, images := batch.results, batch.images
-	for i, call := range calls {
-		msg := provider.Message{
-			Role:       provider.RoleTool,
-			Content:    results[i],
-			Images:     images[i],
-			ToolCallID: call.ID,
-			Name:       call.Name,
-		}
-		// Content is the stable bounded provider form. Full originals remain in
-		// local RawContent and enter model context only through explicit paging.
-		if i < len(batch.outcomes) && batch.outcomes[i].rawOutput != "" && batch.outcomes[i].rawOutput != results[i] {
-			msg.RawContent = batch.outcomes[i].rawOutput
-		}
-		if i < len(batch.executions) {
-			msg.ToolExecution = toProviderToolExecution(batch.executions[i])
-		}
-		a.sess.conversation.Add(msg)
+	if cont, boundaryErr, handled := a.resolveIncompleteReadToolRoundBoundary(ctx, state, usage); handled {
+		return cont, boundaryErr
 	}
 	// If the context was cancelled during tool execution, return after storing
 	// the batch results so the session keeps paired tool-call history.

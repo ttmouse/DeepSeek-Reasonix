@@ -2288,7 +2288,6 @@ func unifiedBootToolNames() []string {
 		"update_goal",
 		"use_capability",
 		"wait",
-		"widget_readme",
 		"write_file",
 	}
 }

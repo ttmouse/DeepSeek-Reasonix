@@ -136,9 +136,10 @@ const (
 	MCPInteractionRequest
 	// SessionChanged is a content-free Serve routing barrier for all-session clients.
 	SessionChanged
-	// KindCount is a sentinel one past the last real Kind. New event kinds must
-	// be inserted above it so completeness tests cover them automatically.
-	KindCount
+	// ReadStatus upserts one logical read's delivery state instead of per page.
+	ReadStatus
+	ToolStarted // Persisted after policy/validation and before execution.
+	KindCount   // Follows all real event kinds.
 )
 
 // TurnPhaseName is the machine-readable phase on TurnPhase events.
@@ -198,13 +199,6 @@ type StreamAttemptInfo struct {
 	Reason  string
 }
 
-const TurnOutcomeFinalReadiness = "final_readiness"
-
-// TurnOutcomeRecoveryPaused marks an Auto recovery Episode budget stop. New
-// clients show an informational status (not send-failed); older clients still
-// read Err text and ignore the unknown outcome.
-const TurnOutcomeRecoveryPaused = "recovery_paused"
-
 // Level classifies a Notice so sinks can style or filter it.
 type Level int
 
@@ -236,9 +230,12 @@ type Profile struct {
 // Output/Err/Truncated are filled in. Args is the raw JSON arguments — a sink
 // compacts it for display.
 type Tool struct {
-	ID   string
-	Name string
-	Args string
+	Diagnostic json.RawMessage `json:"diagnostic,omitempty"`
+	// Verifying is emitted only once an authorized check actually enters execution.
+	Verifying bool
+	ID        string
+	Name      string
+	Args      string
 	// ResolvedName/CapabilityID describe the real target behind a stable proxy
 	// while Name/Args remain the provider-visible call. They are optional local
 	// display metadata and never enter provider requests.
@@ -569,6 +566,8 @@ type Event struct {
 	RetryMax        int                       // Retrying: total attempts before giving up
 	RetryScope      RetryScope                // Retrying: optional "headers" | "stream"; empty for older emitters
 	StreamAttempt   StreamAttemptInfo         // StreamAttempt lifecycle
+	ReadStatus      *ReadStatusPayload        // ReadStatus: one logical read's delivery state
+	ReadPause       *provider.ReadPause       // TurnDone: durable display-only pause receipt
 	ItemID          string                    // correlates durable inbox events
 	SessionPath     string                    // routes Serve frames
 	SessionReset    bool                      // SessionChanged came from /new or /clear, not resume/recovery
@@ -658,6 +657,24 @@ func RecordTurnCompletion(s Sink) {
 	}
 	if ts, ok := s.(TurnCompletionSink); ok {
 		ts.RecordTurnCompletion()
+	}
+}
+
+// OperationAuditSink is an optional sink capability for operation-lifecycle
+// counters. Implementations must keep it content-free: the audit carries host
+// identifiers only, never paths, arguments, or tool output.
+type OperationAuditSink interface {
+	RecordOperationAudit(evidence.OperationAudit)
+}
+
+// RecordOperationAudit reports one operation transition to a sink that wants
+// the counters; every other sink ignores it.
+func RecordOperationAudit(s Sink, a evidence.OperationAudit) {
+	if nilutil.IsNil(s) || a.Metric == "" {
+		return
+	}
+	if os, ok := s.(OperationAuditSink); ok {
+		os.RecordOperationAudit(a)
 	}
 }
 
@@ -864,50 +881,3 @@ func RecordProtocolRecovery(s Sink, a ProtocolRecoveryAudit) {
 		rs.RecordProtocolRecovery(a)
 	}
 }
-
-// Sink consumes a turn's events. The agent calls Emit serially from its run
-// loop (tool execution may fan out across goroutines, but emission does not),
-// so an implementation need not be safe for concurrent Emit. Emit must not
-// block indefinitely — a channel-backed sink should be buffered or drained by
-// a live reader.
-type Sink interface {
-	Emit(Event)
-}
-
-// CheckedSink is an optional durability-aware sink capability. Callers use it
-// at side-effect boundaries (tool dispatch, user prompts, terminal commits)
-// where continuing after a local journal failure would make runtime state
-// impossible to recover safely. Ordinary display-only sinks keep implementing
-// Sink; EmitChecked falls back to Emit for compatibility.
-type CheckedSink interface {
-	EmitChecked(Event) error
-}
-
-// EmitChecked emits e and returns a durability failure when the sink exposes
-// CheckedSink. It deliberately does not make every Sink fallible: most event
-// consumers are renderers, while the session lifecycle decorator is the one
-// owner that can provide a durable acknowledgement.
-func EmitChecked(s Sink, e Event) error {
-	if nilutil.IsNil(s) {
-		return nil
-	}
-	if checked, ok := s.(CheckedSink); ok {
-		return checked.EmitChecked(e)
-	}
-	s.Emit(e)
-	return nil
-}
-
-// FuncSink adapts a plain function to a Sink.
-type FuncSink func(Event)
-
-// Emit calls the wrapped function.
-func (f FuncSink) Emit(e Event) {
-	if f != nil {
-		f(e)
-	}
-}
-
-// Discard is a Sink that drops every event. Useful in tests and for runs that
-// only care about the final session state.
-var Discard Sink = FuncSink(func(Event) {})

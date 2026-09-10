@@ -24,6 +24,7 @@ type mutationBarrierCause struct {
 	repositoryMutation    bool
 	classificationKnown   bool
 	reason, blockingPhase string
+	evidenceOnly          bool
 }
 
 func (c *mutationBarrierCause) message() string {
@@ -72,6 +73,14 @@ type toolOutcome struct {
 	// recoveryStopTurn is set when Auto Episode budgets are exhausted.
 	recoveryStopTurn   bool
 	recoveryStopReason string
+	readTaskID         string
+	readEnvelope       *tool.ReadResultEnvelope
+	diagnostic         *tool.OperationDiagnostic
+	evidenceSource     tool.EvidenceTargetInfo
+	finalReadEnvelope  *tool.ReadResultEnvelope
+	readReference      *readDelivery
+	readActiveMillis   int64
+	incompleteRead     *incompleteReadDeferred
 }
 
 // batchExecution is the result of one provider tool-call batch.
@@ -95,12 +104,18 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 	// state separate so refreshing a dependent preview never mutates shared
 	// session memory outside Session's lock.
 	calls = append([]provider.ToolCall(nil), calls...)
+	turn.evidenceBlocked.clearChecks()
+	defer turn.evidenceBlocked.clearChecks()
 	if err := a.prepareToolBatch(ctx, calls); err != nil {
 		return batchExecution{err: err}
 	}
 	if a.task.ledger != nil {
 		ctx = withObservationBoundary(ctx, a.task.ledger.ObservationBoundary())
 	}
+	// Evidence is evaluated once for the whole batch, before anything runs: a
+	// call whose writer cannot prove what it replaces never starts, and a read
+	// from this same batch can never satisfy it.
+	evidenceBlocked := a.preflightEvidenceBatch(ctx, calls)
 
 	results := make([]string, len(calls))
 	outcomes := make([]toolOutcome, len(calls))
@@ -123,6 +138,11 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 	var batchErr error
 	var batchErrOnce sync.Once
 	run := func(i int) {
+		if pre, blocked := evidenceBlocked[i]; blocked {
+			outcomes[i] = pre
+			results[i] = pre.output
+			return
+		}
 		t, _, ambiguous := a.svc.tools.ResolveCall(calls[i].Name)
 		known := t != nil && len(ambiguous) == 0
 		writer := known && !t.ReadOnly()
@@ -157,11 +177,20 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 		durations[i] = time.Since(start).Milliseconds()
 		results[i] = outcomes[i].output
 	}
+	committed := make([]bool, len(calls))
 	finalize := func(i int) {
+		if committed[i] {
+			return
+		}
+		committed[i] = true
 		if calls[i].ResolvedReadOnly != nil {
 			a.sess.conversation.UpdateToolCallResolution(calls[i])
 			a.emitResolvedToolDispatch(calls[i])
 		}
+		a.finalizeIncompleteReadOutcome(ctx, outcomes[i].incompleteRead, &outcomes[i])
+		a.finalizeReadDelivery(ctx, calls[i], &outcomes[i])
+		results[i] = outcomes[i].output
+		a.storeBatchToolResult(ctx, calls[i], outcomes[i])
 		if surfaceWriters[i] || (outcomes[i].resolved && !outcomes[i].resolvedReadOnly) {
 			earlierWriterRan = true
 		}
@@ -223,6 +252,9 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 			// targets fall through to run() so executeOne can resolve the real
 			// target and re-apply the barrier before Commit/Execute.
 			if !batchCallStaticallySkippable(a, calls[j]) {
+				continue
+			}
+			if cause != nil && cause.evidenceOnly && a.independentEvidenceWriter(calls[j]) {
 				continue
 			}
 			isVerification := calls[j].Name == "bash" && evidence.IsVerificationCommand(bashCommandFromArgs(json.RawMessage(calls[j].Arguments)))
@@ -355,8 +387,12 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 		}
 	}
 
+	for i := range calls {
+		finalize(i)
+	}
 	a.emitBatchToolResults(calls, outcomes, durations, startedAt, ranParallel, batchStart)
 	a.applyBatchGuards(ctx, cancelled, calls, outcomes, results, receiptMark)
+	a.storeBatchGuardResults(calls, results)
 	images := make([][]string, len(calls))
 	executions := make([]*tool.ShellExecution, len(calls))
 	for i := range outcomes {
@@ -427,6 +463,7 @@ func batchCallMutationFailureCause(a *Agent, call provider.ToolCall, o toolOutco
 		classificationKnown: effects.Known && known,
 		reason:              effects.Reason,
 		blockingPhase:       phase,
+		evidenceOnly:        o.blocked && !o.executed && o.diagnostic != nil && o.diagnostic.Code == tool.WriteEvidenceMissing,
 	}
 }
 

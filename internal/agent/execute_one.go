@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -26,6 +27,10 @@ func (a *Agent) executeOne(ctx context.Context, turn *turnRuntime, call provider
 	ctx = withTurnState(a.withAgentContext(ctx), turn)
 	plan := &toolCallPlan{call: call}
 	defer func() {
+		out.evidenceSource = cloneEvidenceTarget(plan.expectedWriteSource)
+		out.readTaskID = plan.readTaskID
+		out.readEnvelope = plan.readEnvelope
+		out.readActiveMillis = plan.readActiveMillis
 		if plan.mutationObserved && !plan.mutationAfterDone {
 			a.observeAfterMutation(plan)
 		}
@@ -112,6 +117,11 @@ func (a *Agent) parseToolCall(ctx context.Context, plan *toolCallPlan) (toolOutc
 	plan.evidenceName = canonicalName
 	plan.evidenceArgs = json.RawMessage(plan.call.Arguments)
 	plan.readOnly = t.ReadOnly()
+	if canonicalName == "read_file" {
+		if out, blocked := a.resolveReadCursor(plan); blocked {
+			return out, true
+		}
+	}
 	if canonicalName == "bash" {
 		var permissionReader bool
 		plan.effects, permissionReader = evidence.ClassifyBashToolCall(plan.execArgs)
@@ -166,6 +176,15 @@ func (a *Agent) resolveToolPolicy(ctx context.Context, turn *turnRuntime, plan *
 	}
 	if blocked, early := a.applyExecutionPreflight(turn, plan); early {
 		return blocked, true
+	}
+	if blocked, early := a.applyOperationGate(plan); early {
+		return blocked, true
+	}
+	if blocked, early := a.applyEvidenceGates(ctx, plan); early {
+		return blocked, true
+	}
+	if msg, blocked := a.gateReadOperation(ctx, plan); blocked {
+		return toolOutcome{output: msg, blocked: true, errMsg: firstLine(msg)}, true
 	}
 	if blocked, early := a.applyDeliveryPolicyGates(turn, plan); early {
 		return blocked, true
@@ -223,6 +242,9 @@ func (a *Agent) applyMutationDependencyBarrier(plan *toolCallPlan) (toolOutcome,
 	}
 	cause := a.mutationDependencyBarrier.Load()
 	if cause == nil {
+		return toolOutcome{}, false
+	}
+	if cause.evidenceOnly && a.independentEvidenceWriter(plan.call) {
 		return toolOutcome{}, false
 	}
 	verification := plan.evidenceName == "bash" && evidence.IsVerificationCommand(bashCommandFromArgs(plan.evidenceArgs))
@@ -692,9 +714,6 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	// partialwritesandhooksideeffectscanchangethepreviewedpathevenwhentheconcrete tool returned an error.
 	a.finalizeObservedToolReceipts(plan, result, execution, err)
 	result = a.withRecoveryObservation(ctx, evidenceName, evidenceArgs, readOnly, mutates, result, err, recoveryGen)
-	if err == nil && readOnly {
-		a.recordModelTextObservation(plan, result)
-	}
 	if err != nil {
 		detail := result
 		// Malformed-args failures are a transient model JSON glitch (e.g. optionswritten as ["a":"b"] →
@@ -709,6 +728,12 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 		out := toolOutcome{
 			output: body, errMsg: firstLine(err.Error()), truncated: truncMsg != "" || original != "", truncMsg: truncMsg,
 			execution: execution, mcpApp: toProviderMCPApp(plan.mcpApp), recoveryGeneration: recoveryGen,
+		}
+		var operationErr *tool.OperationError
+		if errors.As(err, &operationErr) {
+			d := operationErr.Diagnostic
+			d.OperationID = call.ID
+			out.diagnostic = &d
 		}
 		if original != "" {
 			out.rawOutput = original
@@ -725,7 +750,7 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	if a.svc.hooks != nil && call.Name == "task" && !isBackgroundTaskCall(call.Arguments) {
 		a.svc.hooks.SubagentStop(ctx, result)
 	}
-	body, truncMsg, original := a.boundProviderVisibleResult(result, call.Name, call.ID)
+	body, truncMsg, original, readObserver := a.boundIncompleteReadAwareResult(plan, result)
 	out := toolOutcome{
 		output: body, images: images, truncated: truncMsg != "" || original != "", truncMsg: truncMsg,
 		execution: execution, mcpApp: toProviderMCPApp(plan.mcpApp), recoveryGeneration: recoveryGen,
@@ -733,6 +758,7 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	if original != "" {
 		out.rawOutput = original
 	}
+	out.incompleteRead = deferredIncompleteReadOutcome(plan, result, readObserver, original == "" && truncMsg == "")
 	return out
 }
 

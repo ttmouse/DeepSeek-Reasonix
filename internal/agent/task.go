@@ -885,6 +885,7 @@ func (t *TaskTool) RunProfileSpec(ctx context.Context, spec ProfileExecSpec) (re
 				defer mutationObserver.UnregisterWriter(recoveryTaskID)
 			}
 			jobCtx = WithParentSession(jobCtx, parentSession)
+			jobCtx = withInheritedHostConstraints(ctx, jobCtx)
 			jobCtx = evidence.WithLedger(jobCtx, backgroundEvidence)
 			defer run.Release()
 			defer publishBackgroundEvidence(jobCtx, backgroundEvidence, t.workspaceRoot)

@@ -19,7 +19,7 @@ func ProjectionMessages(msgs []Message) []Message { return projectMessages(msgs,
 func projectMessages(msgs []Message, keepExecution bool) []Message {
 	needsCopy := false
 	for _, m := range msgs {
-		if m.LocalOnly || m.Origin != "" || m.RawContent != "" || m.ProviderContent != "" || m.DecisionReceipt != nil || len(m.DecisionReceipts) > 0 || m.VisionSummary != nil || m.MCPApp != nil || (m.ToolExecution != nil && !keepExecution) {
+		if m.LocalOnly || m.Origin != "" || m.RawContent != "" || m.ProviderContent != "" || m.DecisionReceipt != nil || len(m.DecisionReceipts) > 0 || m.VisionSummary != nil || m.MCPApp != nil || m.InterruptedTurn != nil || m.ReadPause != nil || m.ReadCompletion != nil || len(m.ReadResult) > 0 || len(m.ToolDiagnostic) > 0 || (m.ToolExecution != nil && !keepExecution) {
 			needsCopy = true
 			break
 		}
@@ -43,6 +43,13 @@ func projectMessages(msgs []Message, keepExecution bool) []Message {
 		candidate.VisionSummary = nil
 		// Apps presentation stays local; it must never change provider bytes.
 		candidate.MCPApp = nil
+		// Read delivery envelopes are host evidence; they must never change
+		// provider bytes.
+		candidate.ReadResult = nil
+		candidate.ReadPause = nil
+		candidate.InterruptedTurn = nil
+		candidate.ReadCompletion = nil
+		candidate.ToolDiagnostic = nil
 		if !keepExecution {
 			// Local shell metadata must never enter provider request bytes.
 			candidate.ToolExecution = nil

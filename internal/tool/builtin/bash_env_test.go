@@ -85,32 +85,6 @@ func TestBashCommandEnvKeepsTokensByDefault(t *testing.T) {
 	}
 }
 
-func TestBashCommandEnvInjectsThreadIDFromContext(t *testing.T) {
-	ctx := jobs.WithSession(context.Background(), "topic_20260808_abc123")
-	env := strings.Join(bashCommandEnv(ctx), "\n")
-	if !strings.Contains(env, "REASONIX_THREAD_ID=topic_20260808_abc123") {
-		t.Fatalf("bash env must expose session id for attribution:\n%s", env)
-	}
-}
-
-func TestBashCommandEnvThreadIDEmptyWithoutSession(t *testing.T) {
-	// The parent harness may carry REASONIX_THREAD_ID in its own env; unset it
-	// to prove the function only injects from session-scoped context.
-	prev, hadPrev := os.LookupEnv("REASONIX_THREAD_ID")
-	if err := os.Unsetenv("REASONIX_THREAD_ID"); err != nil {
-		t.Fatalf("unsetenv: %v", err)
-	}
-	t.Cleanup(func() {
-		if hadPrev {
-			_ = os.Setenv("REASONIX_THREAD_ID", prev)
-		}
-	})
-	env := strings.Join(bashCommandEnv(context.Background()), "\n")
-	if strings.Contains(env, "REASONIX_THREAD_ID=") {
-		t.Fatalf("bash env must not set REASONIX_THREAD_ID without session scope:\n%s", env)
-	}
-}
-
 func TestParseShellPATH(t *testing.T) {
 	const marker = "__REASONIX_BASH_PATH__="
 	cases := []struct {
@@ -167,5 +141,31 @@ func TestRunShellPATHCommandFiltersEnvWhenEnabled(t *testing.T) {
 	out := runShellPATHCommand(context.Background(), "/bin/sh", []string{"-c", `printf 'tok=%s' "${REASONIX_TEST_SECRET_TOKEN:-none}"`})
 	if !strings.Contains(string(out), "tok=none") {
 		t.Fatalf("login-shell PATH probe leaked filtered env: %q", out)
+	}
+}
+
+func TestBashCommandEnvInjectsThreadIDFromContext(t *testing.T) {
+	ctx := jobs.WithSession(context.Background(), "topic_20260808_abc123")
+	env := strings.Join(bashCommandEnv(ctx), "\n")
+	if !strings.Contains(env, "REASONIX_THREAD_ID=topic_20260808_abc123") {
+		t.Fatalf("bash env must expose session id for attribution:\n%s", env)
+	}
+}
+
+func TestBashCommandEnvThreadIDEmptyWithoutSession(t *testing.T) {
+	// The parent harness may carry REASONIX_THREAD_ID in its own env; unset it
+	// to prove the function only injects from session-scoped context.
+	prev, hadPrev := os.LookupEnv("REASONIX_THREAD_ID")
+	if err := os.Unsetenv("REASONIX_THREAD_ID"); err != nil {
+		t.Fatalf("unsetenv: %v", err)
+	}
+	t.Cleanup(func() {
+		if hadPrev {
+			_ = os.Setenv("REASONIX_THREAD_ID", prev)
+		}
+	})
+	env := strings.Join(bashCommandEnv(context.Background()), "\n")
+	if strings.Contains(env, "REASONIX_THREAD_ID=") {
+		t.Fatalf("bash env must not set REASONIX_THREAD_ID without session scope:\n%s", env)
 	}
 }

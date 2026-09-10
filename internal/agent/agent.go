@@ -10,7 +10,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unicode/utf8"
 
 	"mvdan.cc/sh/v3/syntax"
 
@@ -282,6 +281,9 @@ type ToolHooks interface {
 // into the main loop.
 type Agent struct {
 	agentConfig
+	// reads groups the run-scoped read registry and its generation: both are
+	// replaced at each run start so cursors from an earlier run never continue.
+	reads readState
 	// svc are the collaborators this agent talks to; see services.go.
 	svc agentServices
 	// sess is the state one conversation owns; SetSession restarts it. See
@@ -1048,6 +1050,10 @@ type Options struct {
 	// It never enters provider-visible prompts or tool schemas.
 	LegacyAnchorSafetyGate bool
 
+	// ReadPipeline carries the internal read-pipeline rollout switches; both are
+	// off by default, fixed per run, and never enter provider bytes.
+	ReadPipeline ReadPipelineOptions
+
 	CompletionEvaluator        CompletionEvaluator
 	CompletionEvaluatorFactory CompletionEvaluatorFactory
 	CompletionValidation       string
@@ -1106,25 +1112,28 @@ func New(prov provider.Provider, tools *tool.Registry, session *Session, opts Op
 	a := &Agent{
 		svc: newAgentServices(prov, tools, sink, gate, planModeReadOnlyTrust,
 			sandboxEscapeApprover, configWriteApprover, hooks, opts),
+		reads: readState{gates: !opts.ReadPipeline.LegacyEvidenceGates},
 		agentConfig: agentConfig{
-			maxSteps:               opts.MaxSteps,
-			maxStepsKey:            maxStepsKey,
-			reasoningByteLimit:     reasoningByteLimit,
-			maxOutputTokens:        opts.MaxOutputTokens,
-			temperature:            opts.Temperature,
-			usageSource:            usageSourceOrDefault(opts.UsageSource, event.UsageSourceExecutor),
-			modelRef:               strings.TrimSpace(opts.ModelRef),
-			workspaceID:            strings.TrimSpace(opts.WorkspaceID),
-			classifierTaskText:     opts.ClassifierTaskText,
-			writeWorkspaceRoot:     strings.TrimSpace(opts.WriteWorkspaceRoot),
-			subagentDepth:          subagentDepth,
-			maxSubagentDepth:       maxSubagentDepth,
-			contextWindow:          opts.ContextWindow,
-			compactRatio:           opts.CompactRatio,
-			recentKeep:             opts.RecentKeep,
-			archiveDir:             opts.ArchiveDir,
-			legacyAnchorSafetyGate: opts.LegacyAnchorSafetyGate,
-			completionAgentConfig:  newCompletionAgentConfig(opts, sink),
+			maxSteps:                opts.MaxSteps,
+			maxStepsKey:             maxStepsKey,
+			reasoningByteLimit:      reasoningByteLimit,
+			maxOutputTokens:         opts.MaxOutputTokens,
+			temperature:             opts.Temperature,
+			usageSource:             usageSourceOrDefault(opts.UsageSource, event.UsageSourceExecutor),
+			modelRef:                strings.TrimSpace(opts.ModelRef),
+			workspaceID:             strings.TrimSpace(opts.WorkspaceID),
+			classifierTaskText:      opts.ClassifierTaskText,
+			writeWorkspaceRoot:      strings.TrimSpace(opts.WriteWorkspaceRoot),
+			subagentDepth:           subagentDepth,
+			maxSubagentDepth:        maxSubagentDepth,
+			contextWindow:           opts.ContextWindow,
+			compactRatio:            opts.CompactRatio,
+			recentKeep:              opts.RecentKeep,
+			archiveDir:              opts.ArchiveDir,
+			legacyAnchorSafetyGate:  opts.LegacyAnchorSafetyGate,
+			readCoordinatorShadow:   !opts.ReadPipeline.LegacyCoordinator,
+			legacyImplicitFullReads: opts.ReadPipeline.LegacyImplicitFullReads,
+			completionAgentConfig:   newCompletionAgentConfig(opts, sink),
 		},
 		sess: sessionRuntime{
 			conversation: session,
@@ -2769,6 +2778,9 @@ func truncateToolOutputFor(s, toolName, toolCallID string) (string, string) {
 	if len(s) <= maxToolOutputBytes {
 		return s, ""
 	}
+	if toolName == "read_file" {
+		return truncateReadFileOutput(s, toolName, toolCallID)
+	}
 	strategy := snipStrategy{head: 40, tail: 40, headChars: 8000, tailChars: 8000}
 	switch {
 	case toolName == "bash" || toolName == "shell" || strings.Contains(toolName, "bash"):
@@ -2822,15 +2834,6 @@ func truncateToolOutputFor(s, toolName, toolCallID string) (string, string) {
 
 // snapToRuneBoundary returns s[lo:hi] with the bounds nudged outward until
 // both land on rune-start positions.
-func snapToRuneBoundary(s string, lo, hi int) string {
-	for lo > 0 && !utf8.RuneStart(s[lo]) {
-		lo--
-	}
-	for hi < len(s) && !utf8.RuneStart(s[hi]) {
-		hi++
-	}
-	return s[lo:hi]
-}
 
 // finishReasonMessage maps an abnormal finish_reason to a one-line warning,
 // returning ok=false for the normal terminations ("stop", "tool_calls") and a
