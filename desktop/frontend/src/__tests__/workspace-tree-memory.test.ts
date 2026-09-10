@@ -1,4 +1,8 @@
 // Run: tsx src/__tests__/workspace-tree-memory.test.ts
+// Conversation-scoped workspace navigation memory: per-conversation isolation,
+// immediate in-memory scroll updates with coalesced persistence, and safe
+// handling of corrupt/future storage. Persistence lives in the shared
+// conversation envelope (reasonix.conversationDock.v1).
 
 import { JSDOM } from "jsdom";
 import {
@@ -8,6 +12,11 @@ import {
   rememberWorkspaceTreeState,
   resetWorkspaceTreeMemoryForTests,
 } from "../lib/workspaceTreeMemory";
+import {
+  CONVERSATION_DOCK_STORAGE_KEY,
+  registerConversationDockLegacyContext,
+  resetConversationDockPersistenceForTests,
+} from "../lib/conversationDockPersistence";
 import {
   createWorkspaceTreePersistenceScheduler,
   type WorkspaceTreePersistenceClock,
@@ -23,31 +32,37 @@ function ok(value: boolean, label: string): void {
 const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
 globalThis.localStorage = dom.window.localStorage;
 
-console.log("\nversioned per-project workspace memory");
+console.log("\nconversation-scoped workspace memory");
 resetWorkspaceTreeMemoryForTests();
+resetConversationDockPersistenceForTests();
 
-rememberWorkspaceTreeState("project-a", {
+const keyA = "local:project:/work/a:topic-1:0\u0000dock-tab-1";
+const keyB = "local:project:/work/a:topic-2:0\u0000dock-tab-1";
+
+rememberWorkspaceTreeState(keyA, {
   openDirs: new Set(["", "src/"]),
   selectedFilePath: "src/App.tsx",
   selectedChangePath: "src/store.ts",
-  treeWidth: 276,
-  treeWidthMode: "even",
   scrollTop: 144,
-  dockTreeWidth: 320,
-  dockPreviewWidth: 640,
 });
-rememberWorkspaceTreeState("project-b", { selectedFilePath: "README.md", treeWidth: 220 });
+rememberWorkspaceTreeState(keyB, { selectedFilePath: "README.md" });
 
-const projectA = readWorkspaceTreeMemory("project-a");
-const projectB = readWorkspaceTreeMemory("project-b");
+const projectA = readWorkspaceTreeMemory(keyA);
+const projectB = readWorkspaceTreeMemory(keyB);
 ok(projectA?.selectedFilePath === "src/App.tsx", "restores the file selection independently");
 ok(projectA?.selectedChangePath === "src/store.ts", "restores the change selection independently");
 ok(projectA?.openDirs.has("src/") === true && projectA.scrollTop === 144, "restores expanded directories and tree scroll");
-ok(projectA?.dockTreeWidth === 320 && projectA.dockPreviewWidth === 640, "restores both outer dock widths");
-ok(projectB?.selectedFilePath === "README.md" && projectB.treeWidth === 220, "keeps project state isolated by key");
+ok(projectB?.selectedFilePath === "README.md", "keeps conversation state isolated by key");
+ok(readWorkspaceTreeMemory("local:project:/work/a:topic-3:0\u0000dock-tab-1") === null, "unvisited conversations read null");
 
-const persisted = JSON.parse(localStorage.getItem("reasonix.workspaceState.v2") ?? "null") as { version?: number } | null;
-ok(persisted?.version === 2, "writes an explicit schema version");
+// The envelope is versioned and holds both dock + navigation per conversation.
+const persisted = JSON.parse(localStorage.getItem(CONVERSATION_DOCK_STORAGE_KEY) ?? "null") as {
+  version?: number;
+  conversations?: Array<{ key?: string; workspaceNavigation?: Record<string, unknown> }>;
+} | null;
+ok(persisted?.version === 1, "writes an explicit schema version (conversation envelope)");
+const convA = persisted?.conversations?.find((entry) => entry.key === "local:project:/work/a:topic-1:0");
+ok(convA?.workspaceNavigation?.["dock-tab-1"] !== undefined, "navigation persists inside the conversation record");
 
 let synchronousWrites = 0;
 const originalStorage = globalThis.localStorage;
@@ -63,12 +78,16 @@ const countingStorage: Storage = {
   },
 };
 globalThis.localStorage = countingStorage;
-for (let index = 0; index < 120; index += 1) rememberWorkspaceTreeScroll("project-a", 200 + index);
+for (let index = 0; index < 120; index += 1) rememberWorkspaceTreeScroll(keyA, 200 + index);
 ok(synchronousWrites === 0, "keeps high-frequency scroll updates off the synchronous storage path");
-ok(readWorkspaceTreeMemory("project-a")?.scrollTop === 319, "updates the in-memory scroll position immediately");
+ok(readWorkspaceTreeMemory(keyA)?.scrollTop === 319, "updates the in-memory scroll position immediately");
 flushWorkspaceTreeMemory();
 ok(synchronousWrites === 1, "coalesces 120 scroll updates into one durable write");
 globalThis.localStorage = originalStorage;
+const scrollPersisted = JSON.parse(localStorage.getItem(CONVERSATION_DOCK_STORAGE_KEY) ?? "{}")
+  .conversations.find((entry: { key: string }) => entry.key === "local:project:/work/a:topic-1:0")
+  .workspaceNavigation["dock-tab-1"].scrollTop;
+ok(scrollPersisted === 319, "the coalesced write lands in the conversation envelope");
 
 let nextHandle = 1;
 const frames = new Map<number, () => void>();
@@ -93,29 +112,53 @@ const fakeClock: WorkspaceTreePersistenceClock = {
 };
 const persistedKeys: string[] = [];
 const scheduler = createWorkspaceTreePersistenceScheduler((key) => persistedKeys.push(key), 200, fakeClock);
-for (let index = 0; index < 120; index += 1) scheduler.schedule("project-a");
+for (let index = 0; index < 120; index += 1) scheduler.schedule(keyA);
 ok(frames.size === 1 && timers.size === 0, "allows at most one persistence scheduling frame");
 for (const callback of Array.from(frames.values())) callback();
 frames.clear();
 ok(timers.size === 1 && persistedKeys.length === 0, "waits for the quiet-period timer after the frame");
 for (const callback of Array.from(timers.values())) callback();
 timers.clear();
-ok(persistedKeys.join(",") === "project-a", "persists the final project once after the quiet period");
+ok(persistedKeys.join(",") === keyA, "persists the final key once after the quiet period");
 
-scheduler.schedule("project-b");
+scheduler.schedule(keyB);
 scheduler.flush();
 ok(
-  frames.size === 0 && persistedKeys[persistedKeys.length - 1] === "project-b",
+  frames.size === 0 && persistedKeys[persistedKeys.length - 1] === keyB,
   "flushes pending state before a scope or page exit",
 );
 
+// Legacy v2 navigation seeds a conversation's first read, then diverges.
 resetWorkspaceTreeMemoryForTests();
-localStorage.setItem("reasonix.workspaceState.v2", JSON.stringify({ version: 99, projects: [{ key: "future", state: {} }] }));
-ok(readWorkspaceTreeMemory("future") === null, "safely ignores storage from an unsupported future schema");
+resetConversationDockPersistenceForTests();
+localStorage.setItem(
+  "reasonix.workspaceState.v2",
+  JSON.stringify({
+    version: 2,
+    projects: [{ key: "project\u0000/work/legacy", state: { openDirs: ["", "src/"], selectedFilePath: "src/App.tsx", scrollTop: 77 } }],
+  }),
+);
+registerConversationDockLegacyContext("local:project:/work/legacy:topic-9:0", { scope: "project", workspaceRoot: "/work/legacy" });
+const legacySeeded = readWorkspaceTreeMemory("local:project:/work/legacy:topic-9:0\u0000dock-tab-1");
+ok(legacySeeded?.selectedFilePath === "src/App.tsx" && legacySeeded.scrollTop === 77, "seeds legacy project navigation on first read");
+const legacyPersisted = JSON.parse(localStorage.getItem(CONVERSATION_DOCK_STORAGE_KEY) ?? "{}").conversations?.find(
+  (entry: { key: string }) => entry.key === "local:project:/work/legacy:topic-9:0",
+);
+ok(legacyPersisted?.workspaceNavigation?.["dock-tab-1"] !== undefined, "the legacy copy lands in the conversation record");
+// The copy is one-time: diverging writes never touch the v2 key.
+rememberWorkspaceTreeState("local:project:/work/legacy:topic-9:0\u0000dock-tab-1", { selectedFilePath: "src/other.ts" });
+const legacyRaw = JSON.parse(localStorage.getItem("reasonix.workspaceState.v2") ?? "{}");
+ok(legacyRaw.projects[0].state.selectedFilePath === "src/App.tsx", "legacy key is untouched after the copy diverges");
 
 resetWorkspaceTreeMemoryForTests();
-localStorage.setItem("reasonix.workspaceState.v2", "{not-json");
-ok(readWorkspaceTreeMemory("broken") === null, "a corrupt cache cannot prevent workspace startup");
+resetConversationDockPersistenceForTests();
+localStorage.setItem(CONVERSATION_DOCK_STORAGE_KEY, JSON.stringify({ version: 99, conversations: [{ key: "future", dock: { tabs: [] } }] }));
+ok(readWorkspaceTreeMemory("future\u0000tab") === null, "safely ignores storage from an unsupported future schema");
+
+resetWorkspaceTreeMemoryForTests();
+resetConversationDockPersistenceForTests();
+localStorage.setItem(CONVERSATION_DOCK_STORAGE_KEY, "{not-json");
+ok(readWorkspaceTreeMemory("broken\u0000tab") === null, "a corrupt cache cannot prevent workspace startup");
 
 dom.window.close();
 console.log(`\n${passed} passed, 0 failed, ${passed} total`);

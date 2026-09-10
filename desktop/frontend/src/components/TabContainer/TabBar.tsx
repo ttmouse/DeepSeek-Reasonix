@@ -58,9 +58,11 @@ interface TabBarProps {
   addButtonRef: RefObject<HTMLButtonElement | null>;
   /** Active session tab id — required for workspace-scoped file operations. */
   workspaceTabId?: string;
+  /** Conversation the strip is bound to, for the imperative drag reads. */
+  conversationKey: string;
 }
 
-export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAdd, addButtonRef, workspaceTabId }: TabBarProps) {
+export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAdd, addButtonRef, workspaceTabId, conversationKey }: TabBarProps) {
   const t = useT();
   const { showToast } = useToast();
   const [menuTabId, setMenuTabId] = useState<string | null>(null);
@@ -225,7 +227,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAd
   // repainted yet; rebuild the left coordinates from the store's new order so
   // the pointer math stays correct frame-to-frame (widths never change).
   const recomputeDragBase = useCallback(() => {
-    const order = useActivityBarStore.getState().tabs;
+    const order = useActivityBarStore.getState().snapshots[conversationKey]?.tabs ?? [];
     const left = new Map<string, number>();
     let x = 0;
     for (const tab of order) {
@@ -233,7 +235,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAd
       x += (dragBaseWidthRef.current.get(tab.id) ?? 0) + DOCK_TAB_GAP;
     }
     dragBaseLeftRef.current = left;
-  }, []);
+  }, [conversationKey]);
 
   // Live reorder: reordering triggers when the pointer CROSSES a neighbor
   // tab's edge (enters its box from either side), not when it merely hovers
@@ -242,7 +244,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAd
   // to the crossed tab (behind → move before it; ahead → move after it).
   // Tab widths are measured live (they flex-compress when the strip is tight).
   const maybeReorder = useCallback((fromId: string, pointerX: number) => {
-    const order = useActivityBarStore.getState().tabs;
+    const order = useActivityBarStore.getState().snapshots[conversationKey]?.tabs ?? [];
     const dragIndex = order.findIndex((tab) => tab.id === fromId);
     if (dragIndex < 0) return;
     const previousX = lastPointerXRef.current;
@@ -277,7 +279,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onMoveTab, onAd
       recomputeDragBase();
       return;
     }
-  }, [onMoveTab, recomputeDragBase]);
+  }, [conversationKey, onMoveTab, recomputeDragBase]);
 
   const handleWindowPointerMove = useCallback((event: PointerEvent) => {
     const tabId = dragPressedTabRef.current;

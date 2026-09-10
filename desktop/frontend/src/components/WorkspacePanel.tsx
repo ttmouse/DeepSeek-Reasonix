@@ -50,6 +50,7 @@ import { shouldScrollWorkspaceTreeSelection } from "../lib/workspaceTreeReveal";
 import { mergeWorkspaceSearchResults } from "../lib/workspaceTreeSearch";
 import { useWorkspaceTreeScrollPersistence } from "../lib/useWorkspaceTreeScrollPersistence";
 import {
+  GLOBAL_TREE_WIDTH_KEY,
   readWorkspaceTreeMemory,
   rememberWorkspaceTreeOpenDirs,
   rememberWorkspaceTreeState,
@@ -99,7 +100,6 @@ const WORKSPACE_PREVIEW_COMFORT_WIDTH = 300;
 // The tree/preview split width is shared across every file tab: one global
 // cached width, so switching tabs or opening a new one never changes the
 // proportions (openDirs/scrollTop stay per-tab, only the width is global).
-const GLOBAL_TREE_WIDTH_KEY = "__global_tree_width__";
 const WORKSPACE_PREVIEW_MIN_WIDTH = 140;
 const WORKSPACE_PREVIEW_TARGET_WIDTH = 360;
 const WORKSPACE_DUAL_PANEL_TARGET_WIDTH = WORKSPACE_TREE_DEFAULT_WIDTH + WORKSPACE_PREVIEW_TARGET_WIDTH;
