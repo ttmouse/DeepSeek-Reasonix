@@ -35778,8 +35778,9 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 .topicbar__title-button,
 :root[data-theme-style] .topicbar__title-button {
   max-width: 100%;
-  padding: 0;
+  padding: 2px 8px;
   border: 0;
+  border-radius: 7px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -35788,13 +35789,26 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.12s, color 0.12s;
 }
 
+/* The title doubles as the rename affordance; a faint fill on hover is the only
+   cue that it is clickable (the header is the --bg-elev surface, so a
+   transparent button reads as plain text). A foreground tint reads on both the
+   light (#f5f6f9) and dark header surfaces, where --bg-elev-2 is too close to
+   the surface to notice. Keyboard focus also keeps the standard focus ring. */
 .topicbar__title-button:hover,
+:root[data-theme-style] .topicbar__title-button:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
 .topicbar__title-button:focus-visible,
-:root[data-theme-style] .topicbar__title-button:hover,
 :root[data-theme-style] .topicbar__title-button:focus-visible {
   color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* ── Topic bar background ───────────────────────────────────────────
