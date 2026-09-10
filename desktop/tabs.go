@@ -4918,6 +4918,13 @@ func topicTitleFromText(text string) string {
 	if text == "" {
 		return ""
 	}
+	// Clamp to 59 runes plus an ellipsis (60 displayed characters), matching
+	// the reference title length the user validated against Codex.
+	const maxRunes = 59
+	runes := []rune(text)
+	if len(runes) > maxRunes {
+		text = strings.TrimRightFunc(string(runes[:maxRunes]), unicode.IsPunct) + "…"
+	}
 	if isDefaultTopicTitle(text) {
 		return ""
 	}
