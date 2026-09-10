@@ -2922,26 +2922,44 @@ func TestUpsertProviderNormalizesCustomEffortFields(t *testing.T) {
 }
 
 func TestEffortCapabilityEmptySupportedEffortsNotConfigurable(t *testing.T) {
-	// mimo-pro without SupportedEfforts: no built-in heuristic, /effort must reject.
+	// mimo-pro without SupportedEfforts: isMimoEntry heuristic detects the
+	// MiMo host and provides a default binary capability, so /effort is
+	// available even without explicit supported_efforts configuration.
 	e := &ProviderEntry{
 		Name:    "mimo-pro",
 		Kind:    "openai",
 		BaseURL: "https://token-plan-cn.xiaomimimo.com/v1",
 		Model:   "mimo-v2.5-pro",
 	}
-	if cap := EffortCapabilityForEntry(e); cap.Supported {
-		t.Fatalf("mimo-pro without SupportedEfforts should not be configurable, got %+v", cap)
+	// isMimoEntry matches → default heuristic applies.
+	if cap := EffortCapabilityForEntry(e); !cap.Supported {
+		t.Fatalf("mimo-pro should be configurable via heuristic, got %+v", cap)
 	}
-	if _, err := NormalizeEffort(e, "high"); err == nil {
-		t.Fatal("NormalizeEffort should reject level for unsupported provider")
+	if _, err := NormalizeEffort(e, "high"); err != nil {
+		t.Fatal("NormalizeEffort should accept level for heuristic-supported provider")
 	}
 	// `supported_efforts = []` (empty slice) is treated like nil — the v2 design
 	// has no way to opt out of the built-in heuristic; users either configure
 	// levels or leave the field unset.
 	e2 := *e
 	e2.SupportedEfforts = []string{}
-	if cap := EffortCapabilityForEntry(&e2); cap.Supported {
+	if cap := EffortCapabilityForEntry(&e2); !cap.Supported {
 		t.Fatalf("empty supported_efforts should also fall through to the heuristic, got %+v", cap)
+	}
+
+	// A genuinely unknown provider (no host heuristic, no supported_efforts)
+	// still gets no capability.
+	e3 := &ProviderEntry{
+		Name:    "unknown-proxy",
+		Kind:    "openai",
+		BaseURL: "https://unknown-proxy.example.com/v1",
+		Model:   "some-model",
+	}
+	if cap := EffortCapabilityForEntry(e3); cap.Supported {
+		t.Fatalf("unknown host without SupportedEfforts should not get a heuristic, got %+v", cap)
+	}
+	if _, err := NormalizeEffort(e3, "high"); err == nil {
+		t.Fatal("NormalizeEffort should reject level for unsupported provider")
 	}
 }
 
