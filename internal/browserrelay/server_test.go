@@ -74,7 +74,7 @@ func TestServerStartStop(t *testing.T) {
 }
 
 func TestTokenGeneration(t *testing.T) {
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		s := NewServer()
 		ctx := context.Background()
 		_, err := s.Start(ctx)
@@ -531,7 +531,7 @@ func TestRejectNonExtensionOrigin(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/"}
 
 	// A browser page origin (http://...) must be rejected before reserving the slot.
-	req, err := http.NewRequest("GET", u.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	_ "embed"
@@ -55,13 +56,7 @@ func (widgetReadme) Execute(_ context.Context, args json.RawMessage) (string, er
 	}
 
 	// Always include core
-	hasCore := false
-	for _, m := range p.Modules {
-		if m == "core" {
-			hasCore = true
-			break
-		}
-	}
+	hasCore := slices.Contains(p.Modules, "core")
 	if !hasCore {
 		p.Modules = append([]string{"core"}, p.Modules...)
 	}

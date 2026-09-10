@@ -63,7 +63,7 @@ func isDashScopeCompatibleHost(host string) bool {
 	if !strings.HasSuffix(host, ".aliyuncs.com") {
 		return false
 	}
-	for _, label := range strings.Split(strings.TrimSuffix(host, ".aliyuncs.com"), ".") {
+	for label := range strings.SplitSeq(strings.TrimSuffix(host, ".aliyuncs.com"), ".") {
 		if label == "dashscope" || label == "maas" || strings.HasPrefix(label, "dashscope-") {
 			return true
 		}

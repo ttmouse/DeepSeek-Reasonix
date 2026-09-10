@@ -69,7 +69,7 @@ func (f *failoverProvider) Stream(ctx context.Context, req Request) (<-chan Chun
 		}
 	}
 
-	return nil, fmt.Errorf("all providers failed: %s", errors.Join(errs...))
+	return nil, fmt.Errorf("all providers failed: %w", errors.Join(errs...))
 }
 
 // failoverEligible reports whether err is a server-side or network error that

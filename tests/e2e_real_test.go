@@ -80,10 +80,10 @@ func TestRealE2E_NavigateAndRead(t *testing.T) {
 	t.Logf("扩展收到 CDP 命令: %s", cmd.Method)
 
 	// 模拟扩展执行成功并返回
-	conn.WriteJSON(map[string]interface{}{
+	conn.WriteJSON(map[string]any{
 		"type":   "cdp_result",
 		"id":     cmd.ID,
-		"result": map[string]interface{}{"frameId": "test"},
+		"result": map[string]any{"frameId": "test"},
 	})
 
 	select {

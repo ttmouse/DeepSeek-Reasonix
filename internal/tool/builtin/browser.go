@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -21,12 +22,10 @@ type RelayBound interface {
 // evalParams builds Runtime.evaluate params that request the result by value,
 // so object/array results carry a usable `value` field instead of a remote
 // object reference the Go side cannot decode.
-func evalParams(expression string, extra ...map[string]interface{}) json.RawMessage {
-	params := map[string]interface{}{"expression": expression, "returnByValue": true}
+func evalParams(expression string, extra ...map[string]any) json.RawMessage {
+	params := map[string]any{"expression": expression, "returnByValue": true}
 	for _, e := range extra {
-		for k, v := range e {
-			params[k] = v
-		}
+		maps.Copy(params, e)
 	}
 	raw, _ := json.Marshal(params)
 	return raw
@@ -302,7 +301,7 @@ func (browserClick) Execute(ctx context.Context, args json.RawMessage) (string, 
 	}
 
 	x, y := evalResult.Result.Value.X, evalResult.Result.Value.Y
-	clickParams, _ := json.Marshal(map[string]interface{}{
+	clickParams, _ := json.Marshal(map[string]any{
 		"type":       "mousePressed",
 		"x":          x,
 		"y":          y,
@@ -312,7 +311,7 @@ func (browserClick) Execute(ctx context.Context, args json.RawMessage) (string, 
 	if _, err := browserrelay.Send(ctx, "Input.dispatchMouseEvent", clickParams); err != nil {
 		return "", fmt.Errorf("click: %w", err)
 	}
-	releaseParams, _ := json.Marshal(map[string]interface{}{
+	releaseParams, _ := json.Marshal(map[string]any{
 		"type":       "mouseReleased",
 		"x":          x,
 		"y":          y,
@@ -514,7 +513,7 @@ func (browserScreenshot) ExecuteWithImages(ctx context.Context, args json.RawMes
 		params.Quality = 80
 	}
 
-	screenshotParams, _ := json.Marshal(map[string]interface{}{
+	screenshotParams, _ := json.Marshal(map[string]any{
 		"format":  params.Format,
 		"quality": params.Quality,
 	})
@@ -736,7 +735,7 @@ func (browserNewPage) Execute(ctx context.Context, args json.RawMessage) (string
 	var params struct {
 		URL string `json:"url"`
 	}
-	json.Unmarshal(args, &params) // url is optional
+	_ = json.Unmarshal(args, &params) // url is optional
 
 	result, err := browserrelay.SendTabCommandWithURL(ctx, "new_page", params.URL, nil)
 	if err != nil {
@@ -1066,7 +1065,7 @@ func (browserPressKey) Execute(ctx context.Context, args json.RawMessage) (strin
 	// expects the DOM key in `key` and the modifier state as a bitmask.
 	key, modifiers := splitModifiers(params.Key)
 
-	keyDown, _ := json.Marshal(map[string]interface{}{
+	keyDown, _ := json.Marshal(map[string]any{
 		"type":      "keyDown",
 		"key":       key,
 		"modifiers": modifiers,
@@ -1075,7 +1074,7 @@ func (browserPressKey) Execute(ctx context.Context, args json.RawMessage) (strin
 		return "", fmt.Errorf("press key down: %w", err)
 	}
 
-	keyUp, _ := json.Marshal(map[string]interface{}{
+	keyUp, _ := json.Marshal(map[string]any{
 		"type":      "keyUp",
 		"key":       key,
 		"modifiers": modifiers,
@@ -1173,7 +1172,7 @@ func (browserHover) Execute(ctx context.Context, args json.RawMessage) (string, 
 	}
 
 	x, y := evalResult.Result.Value.X, evalResult.Result.Value.Y
-	moveParams, _ := json.Marshal(map[string]interface{}{
+	moveParams, _ := json.Marshal(map[string]any{
 		"type": "mouseMoved",
 		"x":    x,
 		"y":    y,
@@ -1248,7 +1247,7 @@ func (browserWait) Execute(ctx context.Context, args json.RawMessage) (string, e
 		return poll();
 	})()`, params.Timeout, checkVisible, params.Selector)
 
-	raw := evalParams(js, map[string]interface{}{"awaitPromise": true})
+	raw := evalParams(js, map[string]any{"awaitPromise": true})
 	result, err := browserrelay.Send(ctx, "Runtime.evaluate", raw)
 	if err != nil {
 		return "", fmt.Errorf("wait: %w", err)
@@ -1305,7 +1304,7 @@ func (browserUploadFile) Execute(ctx context.Context, args json.RawMessage) (str
 	}
 
 	// Use CDP's DOM.setFileInputFiles to set the file.
-	docRaw, _ := json.Marshal(map[string]interface{}{})
+	docRaw, _ := json.Marshal(map[string]any{})
 	doc, err := browserrelay.Send(ctx, "DOM.getDocument", docRaw)
 	if err != nil {
 		return "", fmt.Errorf("get document: %w", err)
@@ -1320,7 +1319,7 @@ func (browserUploadFile) Execute(ctx context.Context, args json.RawMessage) (str
 		return "", fmt.Errorf("parse document: %w", err)
 	}
 
-	qRaw, _ := json.Marshal(map[string]interface{}{
+	qRaw, _ := json.Marshal(map[string]any{
 		"nodeId":   docResult.Root.NodeID,
 		"selector": params.Selector,
 	})
@@ -1336,7 +1335,7 @@ func (browserUploadFile) Execute(ctx context.Context, args json.RawMessage) (str
 		return "", fmt.Errorf("element not found: %s", params.Selector)
 	}
 
-	fileRaw, _ := json.Marshal(map[string]interface{}{
+	fileRaw, _ := json.Marshal(map[string]any{
 		"nodeId": qRes.NodeID,
 		"files":  []string{params.FilePath},
 	})
@@ -1380,7 +1379,7 @@ func (browserResize) Execute(ctx context.Context, args json.RawMessage) (string,
 		return "", fmt.Errorf("width and height are required")
 	}
 
-	emulationParams, _ := json.Marshal(map[string]interface{}{
+	emulationParams, _ := json.Marshal(map[string]any{
 		"width":             params.Width,
 		"height":            params.Height,
 		"deviceScaleFactor": 1,
@@ -1427,7 +1426,7 @@ func (browserHandleDialog) Execute(ctx context.Context, args json.RawMessage) (s
 		accept = *params.Accept
 	}
 
-	dialogParams := map[string]interface{}{
+	dialogParams := map[string]any{
 		"accept": accept,
 	}
 	if params.Text != "" {
@@ -1573,7 +1572,7 @@ func (browserEmulate) Execute(ctx context.Context, args json.RawMessage) (string
 		mobile = *params.Mobile
 	}
 
-	raw, _ := json.Marshal(map[string]interface{}{
+	raw, _ := json.Marshal(map[string]any{
 		"width":             params.Width,
 		"height":            params.Height,
 		"deviceScaleFactor": params.DeviceScaleFactor,
@@ -1673,7 +1672,7 @@ func (browserDrag) Execute(ctx context.Context, args json.RawMessage) (string, e
 	}
 
 	// Step 1: mousedown at source.
-	downRaw, _ := json.Marshal(map[string]interface{}{
+	downRaw, _ := json.Marshal(map[string]any{
 		"type":       "mousePressed",
 		"x":          coords.From.X,
 		"y":          coords.From.Y,
@@ -1685,7 +1684,7 @@ func (browserDrag) Execute(ctx context.Context, args json.RawMessage) (string, e
 	}
 
 	// Step 2: mousemove to target.
-	moveRaw, _ := json.Marshal(map[string]interface{}{
+	moveRaw, _ := json.Marshal(map[string]any{
 		"type": "mouseMoved",
 		"x":    coords.To.X,
 		"y":    coords.To.Y,
@@ -1695,7 +1694,7 @@ func (browserDrag) Execute(ctx context.Context, args json.RawMessage) (string, e
 	}
 
 	// Step 3: mouseup at target.
-	upRaw, _ := json.Marshal(map[string]interface{}{
+	upRaw, _ := json.Marshal(map[string]any{
 		"type":       "mouseReleased",
 		"x":          coords.To.X,
 		"y":          coords.To.Y,

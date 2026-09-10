@@ -16,7 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -28,10 +28,6 @@ import (
 // ── Test Page ──────────────────────────────────────────────────────────────
 
 // testPagePath returns the absolute path to the test HTML page.
-func testPagePath() string {
-	cwd, _ := os.Getwd()
-	return "file://" + filepath.Join(cwd, "test_page.html")
-}
 
 // ── Tool-Method Map ────────────────────────────────────────────────────────
 //
@@ -127,8 +123,8 @@ func TestBrowserNavigate(t *testing.T) {
 
 	// Schema validation: url required.
 	var schema struct {
-		Required []string               `json:"required"`
-		Props    map[string]interface{} `json:"properties"`
+		Required []string       `json:"required"`
+		Props    map[string]any `json:"properties"`
 	}
 	json.Unmarshal(navTool.Schema(), &schema)
 	if !contains(schema.Required, "url") {
@@ -661,7 +657,7 @@ func TestToolSchemaValidation(t *testing.T) {
 			t.Errorf("%s: empty schema", name)
 			continue
 		}
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal(schema, &parsed); err != nil {
 			t.Errorf("%s: invalid JSON schema: %v", name, err)
 			continue
@@ -680,12 +676,7 @@ func TestToolSchemaValidation(t *testing.T) {
 // ══════════════════════════════════════════════════════════════════════════
 
 func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, item)
 }
 
 // TestMain is optional — can start a local HTTP server for the test page.

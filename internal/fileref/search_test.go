@@ -197,7 +197,7 @@ func TestSearchLimitTruncatesReadmes(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "README.md"))
 	writeFile(t, filepath.Join(root, ".worktrees", "chat-history-sidebar", "README.md"))
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		writeFile(t, filepath.Join(root, ".cindy-worktrees", fmt.Sprintf("branch-%02d", i), "README.md"))
 	}
 	got := Search(root, "README", 100)
