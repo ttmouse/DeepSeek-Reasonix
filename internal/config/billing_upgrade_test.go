@@ -55,7 +55,7 @@ price = { cache_hit = 0.0028, input = 0.14, output = 0.28, currency = "$" }
 		t.Fatal("missing flash")
 	}
 	// List price must stay USD official; display is CNY.
-	if flash.Price == nil || flash.Price.Currency != "$" || flash.Price.CacheHit != 0.014 || flash.Price.Input != 0.44 || flash.Price.Output != 1.32 {
+	if flash.Price == nil || flash.Price.Currency != "$" || flash.Price.CacheHit != 0.006 || flash.Price.Input != 0.3 || flash.Price.Output != 1.2 {
 		t.Fatalf("list price rewritten: %+v", flash.Price)
 	}
 	if got := flash.ProviderBillingCurrency(); got != "USD" {
@@ -99,7 +99,7 @@ func TestDeepSeekPricingContextSchedulesOnlyTrustedProtocolsAndAnchor(t *testing
 		{kind: "anthropic", baseURL: "https://api.deepseek.com/anthropic"},
 	} {
 		p := &ProviderEntry{Kind: endpoint.kind, BaseURL: endpoint.baseURL, Model: "deepseek-v4-flash", Price: clonePricing(anchor), BillingCurrency: "CNY"}
-		if got := p.PricingContextForModel(p.Model).ScheduleID; got != billing.ScheduleDeepSeekV4August2026 {
+		if got := p.PricingContextForModel(p.Model).ScheduleID; got != billing.ScheduleDeepSeekV4September2026 {
 			t.Fatalf("%s schedule = %q", endpoint.kind, got)
 		}
 	}
@@ -160,7 +160,7 @@ price = { cache_hit = 0.0028, input = 0.14, output = 0.28, currency = "$" }
 	}
 	cfg := LoadForEdit(path)
 	official, _ := cfg.Provider("deepseek")
-	if got := official.Prices["deepseek-v4-flash"]; got == nil || got.CacheHit != 0.10 || got.Input != 3 || got.Output != 9 {
+	if got := official.Prices["deepseek-v4-flash"]; got == nil || got.CacheHit != 0.04 || got.Input != 2 || got.Output != 8 {
 		t.Fatalf("flash = %+v", got)
 	}
 	if got := official.Prices["deepseek-v4-pro"]; got == nil || got.CacheHit != 0.30 || got.Input != 9 || got.Output != 27 {
