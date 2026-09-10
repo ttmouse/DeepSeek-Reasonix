@@ -23674,11 +23674,15 @@ body > .mermaid-diagram--fullscreen {
   gap: 6px;
   min-width: 0;
   max-width: 100%;
+  /* Display and edit states share one title width: the read-only h1 truncates at
+     the same 280px the rename input is pinned to, so entering rename does not
+     jump the header. */
+  --topicbar-title-max-width: 280px;
 }
 
 .topicbar__title-row h1 {
   margin: 0;
-  max-width: 100%;
+  max-width: var(--topicbar-title-max-width);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -23700,7 +23704,7 @@ body > .mermaid-diagram--fullscreen {
 
 .topicbar__title-input {
   flex: 0 0 auto;
-  width: 280px;
+  width: var(--topicbar-title-max-width, 280px);
   height: 28px;
   padding: 0 12px;
   border: 1px solid transparent;
@@ -28446,7 +28450,7 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 .topicbar__title-row h1 {
-  max-width: 100%;
+  max-width: var(--topicbar-title-max-width, 280px);
   font-size: 14.5px;
   font-weight: 660;
 }
@@ -29686,7 +29690,7 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
 }
 
 :root[data-theme-style] .topicbar__title-row h1 {
-  max-width: 100%;
+  max-width: var(--topicbar-title-max-width, 280px);
   font-size: 14.5px;
   font-weight: 660;
 }
