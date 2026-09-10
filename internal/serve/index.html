@@ -1882,7 +1882,9 @@ input.addEventListener('keydown',e=>{
     if(goalMode&&!running){goalMode=false;updateGoalUI();input.value='';closeSlashMenu();return;}
     if(running){post('/cancel');return;}
     // double-Esc for rewind
-    if(input.value===''){if(escTimer){clearTimeout(escTimer);escTimer=null;openRewindPicker();}else{escTimer=setInterval(()=>escTimer=null,600);}return;}
+    // setTimeout, not setInterval: an interval is never cleared once the
+    // double-Esc window lapses, leaking a timer per stray Esc press.
+    if(input.value===''){if(escTimer){clearTimeout(escTimer);escTimer=null;openRewindPicker();}else{escTimer=setTimeout(()=>escTimer=null,600);}return;}
   }
 });
 
