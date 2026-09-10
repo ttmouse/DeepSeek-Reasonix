@@ -7769,13 +7769,13 @@ body > .mermaid-diagram--fullscreen {
 .composer-main-menu__results-name--no-clip {
   flex: none;
 }
-.composer-main-menu__results-text--wrap {
-  overflow: hidden;
-}
-.composer-main-menu__results-text--wrap .composer-main-menu__results-name {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  overflow: visible;
+/* Turn count sits outside the ellipsized title so a long conversation name
+   never hides it; it keeps a stable slot between the title and the meta hint. */
+.composer-main-menu__results-turns {
+  flex: none;
+  color: var(--fg-faint);
+  font-size: 11px;
+  white-space: nowrap;
 }
 .composer-main-menu__results-hint {
   flex: none;

@@ -3602,20 +3602,16 @@ export function Composer({
       const activityAt = item.session.lastActivityAt || item.session.createdAt || 0;
       const timeLabel = activityAt ? topicActivityLabel(activityAt, t, true) : "";
       const metaBits = [timeLabel, projectLabel].filter(Boolean).join(" · ");
+      // The title truncates; the turn count stays outside the ellipsized text so
+      // it survives a long conversation name (title + "(N turns)" in one clipped
+      // span used to cut the count off entirely).
       text = (
-        <span className="composer-main-menu__results-name">
-          {pastChatTitle(item.session)}
-          {turnsLabel ? ` (${turnsLabel})` : ""}
-        </span>
+        <>
+          <span className="composer-main-menu__results-name">{pastChatTitle(item.session)}</span>
+          {turnsLabel && <span className="composer-main-menu__results-turns">{`(${turnsLabel})`}</span>}
+          {metaBits && <span className="composer-main-menu__results-hint">{metaBits}</span>}
+        </>
       );
-      if (metaBits) {
-        text = (
-          <>
-            {text}
-            <span className="composer-main-menu__results-hint">{metaBits}</span>
-          </>
-        );
-      }
     } else {
       icon = item.entry.isDir ? <Folder size={13} /> : <FileText size={13} />;
       text = (
@@ -3636,7 +3632,7 @@ export function Composer({
         onMouseMove={() => setActive(row.itemIndex)}
       >
         <span className={`composer-main-menu__results-icon`}>{icon}</span>
-        <span className={`composer-main-menu__results-text${item.kind === "session" ? " composer-main-menu__results-text--wrap" : ""}`}>{text}</span>
+        <span className="composer-main-menu__results-text">{text}</span>
       </button>
     );
   };
