@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider, useShellExpand } from "./lib/shellExpand";
 import {
   Activity,
@@ -44,7 +44,15 @@ import { resolveChatPathToWorkspacePath } from "./lib/chatPathResolve";
 import type { ChatPathKind } from "./lib/chatPathLinkify";
 import { Composer } from "./components/Composer";
 import { ACTIVITY_BAR_ENTRIES } from "./components/ActivityBar/activityBarConfig";
-import { useActivityBarStore } from "./store/activityBar";
+import { useActivityBarStore, useConversationDock, type TabType } from "./store/activityBar";
+import { registerConversationDockLegacyContext } from "./lib/conversationDockPersistence";
+import {
+  conversationDockIdentityKind,
+  conversationDockKey as conversationDockKeyFor,
+  EMPTY_CONVERSATION_DOCK_KEY,
+  type ConversationDockIdentityInput,
+  type ConversationDockIdentityKind,
+} from "./lib/conversationDockIdentity";
 import { TodoPanel } from "./components/TodoPanel";
 import { ApprovalModal } from "./components/ApprovalModal";
 import { AskCard } from "./components/AskCard";
@@ -165,8 +173,6 @@ import {
   saveTerminalHeight,
   saveTerminalPanelOpen,
   terminalMaxHeight,
-  saveWorkspacePanelOpen,
-  loadWorkspacePanelOpen,
   useLayoutStore,
 } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
@@ -1116,12 +1122,8 @@ export default function App() {
   const [liveSidebarWidth, setLiveSidebarWidth] = useState<number | null>(null);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 1440 : window.innerWidth));
   const [viewportHeight, setViewportHeight] = useState(() => (typeof window === "undefined" ? 720 : window.innerHeight));
-  const workspacePanelOpen = useLayoutStore((s) => s.workspacePanelOpen);
-  const setWorkspacePanelOpen = useLayoutStore((s) => s.setWorkspacePanelOpen);
   const rightDockTreeWidth = useLayoutStore((s) => s.rightDockTreeWidth);
   const setRightDockTreeWidth = useLayoutStore((s) => s.setRightDockTreeWidth);
-  const workspacePreviewActive = useLayoutStore((s) => s.workspacePreviewActive);
-  const setWorkspacePreviewActive = useLayoutStore((s) => s.setWorkspacePreviewActive);
   const attentionChimeEvents = useRef(new Set<string>());
   const workspaceScopeActiveTabRef = useRef(activeTabId);
   const [workspaceControllerEpoch, setWorkspaceControllerEpoch] = useState(0);
@@ -1171,15 +1173,82 @@ export default function App() {
   const [liveWorkspacePanelRenderWidth, setLiveWorkspacePanelRenderWidth] = useState<number | null>(null);
   const [liveTerminalHeight, setLiveTerminalHeight] = useState<number | null>(null);
   const terminalResizing = liveTerminalHeight !== null;
-  const workspacePanelMaximized = useLayoutStore((s) => s.workspacePanelMaximized);
-  const setWorkspacePanelMaximized = useLayoutStore((s) => s.setWorkspacePanelMaximized);
-  const rightDockMode = useLayoutStore((s) => s.rightDockMode);
-  const setRightDockMode = useLayoutStore((s) => s.setRightDockMode);
-  const dockTabs = useActivityBarStore((s) => s.tabs);
-  const dockActivityBarOpen = useActivityBarStore((s) => s.activityBarOpen);
-  const dockOpenEntry = useActivityBarStore((s) => s.openEntry);
-  const dockCloseTab = useActivityBarStore((s) => s.closeTab);
-  const dockSetActivityBarOpen = useActivityBarStore((s) => s.setActivityBarOpen);
+  // ── Conversation-scoped right dock ────────────────────────────────────────
+  // The dock's work scene (open tabs, active tab, expanded state, maximized,
+  // preview) belongs to the CONVERSATION, not to the project and not to the
+  // desktop tab shell. The key is derived from the active TabMeta's identity
+  // (topicId/sessionPath + sessionGeneration, tab id as a temporary fallback);
+  // switching desktop tabs switches the key and restores that conversation's
+  // own snapshot on the first frame — no effect-based state switch, so A/B/A
+  // flapping never flashes the wrong dock.
+  const activeTab = useMemo(
+    () => tabMetas.find((tab) => tab.id === activeTabId) ?? tabMetas.find((tab) => tab.active),
+    [activeTabId, tabMetas],
+  );
+  const conversationDockInput = useMemo<ConversationDockIdentityInput>(
+    () => ({
+      tabId: activeTabId ?? "",
+      scope: activeTab?.scope ?? "",
+      workspaceRoot: activeTab?.workspaceRoot ?? state.meta?.cwd ?? "",
+      topicId: activeTab?.topicId ?? undefined,
+      sessionPath: activeTab?.sessionPath ?? state.meta?.sessionPath ?? undefined,
+      sessionGeneration: activeTab?.sessionGeneration ?? state.meta?.sessionGeneration ?? state.sessionGen,
+      remote: activeTab?.remote,
+    }),
+    [activeTab, activeTabId, state.meta?.cwd, state.meta?.sessionGeneration, state.meta?.sessionPath, state.sessionGen],
+  );
+  const conversationDockKey = useMemo(() => conversationDockKeyFor(conversationDockInput), [conversationDockInput]);
+  // Register the legacy-context so imperative callers (handleOpenFilesChange,
+  // lifecycle migration) can seed a never-persisted conversation from legacy
+  // keys on their first mutation / read.
+  registerConversationDockLegacyContext(conversationDockKey, {
+    scope: conversationDockInput.scope ?? "",
+    workspaceRoot: conversationDockInput.workspaceRoot ?? "",
+  });
+  const dock = useConversationDock(conversationDockInput);
+  const dockTabs = dock.tabs;
+  const dockActiveTabId = dock.activeTabId;
+  const dockOpen = dock.open;
+  const workspacePanelMaximized = dock.maximized;
+  const workspacePreviewActive = dock.previewActive;
+  const dockOpenEntry = dock.openEntry;
+  const dockCloseTab = dock.closeTab;
+  const dockSetOpen = dock.setOpen;
+  const dockSetMaximized = dock.setMaximized;
+  const dockSetPreviewActive = dock.setPreviewActive;
+  // rightDockMode is derived from the active dock tab (or the default entry
+  // when the container is empty) — it is a view of the conversation snapshot,
+  // never a second source of truth.
+  const rightDockMode = useMemo<RightDockMode>(() => {
+    const tab = dockTabs.find((candidate) => candidate.id === dockActiveTabId);
+    switch (tab?.type) {
+      case "file": return "files";
+      case "changed": return "changed";
+      case "remote": return "remote";
+      case "instructions": return "instructions";
+      default: return "context";
+    }
+  }, [dockActiveTabId, dockTabs]);
+  const workspacePanelOpen = dockOpen;
+  // Conversation identity lifecycle: when the identity kind upgrades from
+  // temporary (tabId fallback) to formal (topic/session), the temporary key's
+  // snapshot must be moved atomically to the formal key before the new
+  // conversation's first paint — never reset (see conversationDockStore).
+  // A change from one formal identity to another (desktop tab switch, /new,
+  // clear, fork) intentionally keeps the new key EMPTY so stale work scenes
+  // are never inherited.
+  const dockIdentityKindRef = useRef<ConversationDockIdentityKind>("temporary");
+  const dockConversationKeyRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const previousKey = dockConversationKeyRef.current;
+    if (previousKey !== null && previousKey !== conversationDockKey && previousKey !== EMPTY_CONVERSATION_DOCK_KEY) {
+      if (dockIdentityKindRef.current === "temporary" && conversationDockIdentityKind(conversationDockInput) !== "temporary") {
+        useActivityBarStore.getState().migrateConversationKey(previousKey, conversationDockKey);
+      }
+    }
+    dockConversationKeyRef.current = conversationDockKey;
+    dockIdentityKindRef.current = conversationDockIdentityKind(conversationDockInput);
+  }, [conversationDockInput, conversationDockKey]);
   // Whether the collapsed-dock floating launcher card (悬浮工作区面板) is
   // dismissed. Toggled by the dedicated launcher icon in the top-right corner;
   // session-local, so re-opening the app restores the default visible state.
@@ -1197,11 +1266,12 @@ export default function App() {
   // its report carries that view's selection (often null), not a file.
   const handleOpenFilesChange = useCallback((_openTabs: string[], activePath: string | null) => {
     const store = useActivityBarStore.getState();
-    const activeTab = store.tabs.find((tab) => tab.id === store.activeTabId);
+    const snapshot = store.snapshots[conversationDockKey];
+    const activeTab = snapshot?.tabs.find((tab) => tab.id === snapshot.activeTabId);
     if (activeTab?.type !== "file") return;
     // With no selection the tab shows the file-list label and drops its path.
-    store.updateTab(activeTab.id, activePath ? fileLabel(activePath) : t("workspace.filesTab"), activePath ? { path: activePath } : {});
-  }, [t]);
+    store.updateTab(conversationDockKey, activeTab.id, activePath ? fileLabel(activePath) : t("workspace.filesTab"), activePath ? { path: activePath } : {});
+  }, [conversationDockKey, t]);
   const setTerminalPanelOpen = useLayoutStore((s) => s.setTerminalPanelOpen);
   const { mounted: terminalContentVisible, fitEnabled: terminalFitEnabled, prefetch: prefetchTerminalPanel } = useWarmTerminalPanel(terminalPanelOpen, terminalResizing);
   const terminalHeight = useLayoutStore((s) => s.terminalHeight);
@@ -1579,10 +1649,6 @@ export default function App() {
       }),
     [chatReservedWidth, sidebarCollapsed, sidebarWidth, viewportWidth, workspacePanelMaximized, workspacePanelMinWidth, workspacePanelOpen],
   );
-  const activeTab = useMemo(
-    () => tabMetas.find((tab) => tab.id === activeTabId) ?? tabMetas.find((tab) => tab.active),
-    [activeTabId, tabMetas],
-  );
   const { active: remoteSurfaceActive, session: remoteSession, ready: remoteComposerReady, onSend: remoteSend, onCancel: remoteCancel } = useActiveRemoteSession(activeTab, showToast);
   const visibleRuntimeState = remoteSurfaceActive ? remoteSession.transcript : state;
   // Ring "compress now" must behave exactly like /compact on both surfaces:
@@ -1644,13 +1710,11 @@ export default function App() {
     state.sessionGen,
     workspaceControllerEpoch,
   ].join("\u0000");
-  // Workspace navigation belongs to the project, not to a single conversation.
-  // A session switch inside the same project must therefore retain the dock,
-  // tree and selection state.
-  const workspaceTreeMemoryKey = [
-    activeTab?.scope ?? "",
-    activeTab?.workspaceRoot ?? state.meta?.cwd ?? "",
-  ].join("\u0000");
+  // Workspace navigation belongs to the conversation's dock work scene: a
+  // session switch inside the same project must restore that conversation's
+  // own tree/selection, not a project-wide one. The resource-scoped key above
+  // (file refresh, git changes) stays project-level and unchanged.
+  const workspaceTreeMemoryKey = conversationDockKey;
   // Tab activation must never resize the dock: WorkspacePanel does not
   // restore per-tab dock widths on mount, so switching tabs keeps the width.
   const sidebarImDetailConnection = useMemo(
@@ -2704,7 +2768,7 @@ export default function App() {
 
   const startWorkspacePanelResize = useCallback(
     (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (event.button !== 0 || !dockActivityBarOpen) return;
+      if (event.button !== 0 || dockTabs.length === 0) return;
       const layout = layoutRef.current;
       if (!layout) return;
       event.preventDefault();
@@ -2745,7 +2809,7 @@ export default function App() {
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [closeTransientOverlays, resolveLiveWorkspacePanelRenderWidth, rightDockDetailActive, rightDockTreeWidthClamp, setSavedWorkspacePanelWidth, workspacePanelAvailableWidth, workspacePanelOpen, workspacePanelRenderWidth],
+    [closeTransientOverlays, dockOpen, dockTabs.length, resolveLiveWorkspacePanelRenderWidth, rightDockDetailActive, rightDockTreeWidthClamp, setSavedWorkspacePanelWidth, workspacePanelAvailableWidth, workspacePanelRenderWidth],
   );
 
   const resizeWorkspacePanelWithKeyboard = useCallback(
@@ -2832,14 +2896,6 @@ export default function App() {
     [setSavedTerminalHeight, terminalPanelOpen, terminalRenderHeight, terminalResizeMaxHeight],
   );
 
-  const activeWorkspaceRoot = activeTab?.workspaceRoot ?? state.meta?.cwd ?? "";
-
-  // The dock's open tabs are project-scoped: switching projects (or starting
-  // up in one) loads that project's own persisted tab list.
-  useEffect(() => {
-    useActivityBarStore.getState().setWorkspaceRoot(activeWorkspaceRoot);
-  }, [activeWorkspaceRoot]);
-
   // Map a dock activity-bar entry to its default tab type and open it in the
   // tab container. The dock itself stays open; opening an entry either
   // switches to an existing tab of that type or appends a new one.
@@ -2852,65 +2908,35 @@ export default function App() {
     (mode: RightDockMode = rightDockMode) => {
       closeTransientOverlays();
       if (mode === "context" || mode !== rightDockMode) {
-        setWorkspacePreviewActive(false);
+        dockSetPreviewActive(false);
       }
-      setRightDockMode(mode);
-      let nextMaximized = workspacePanelMaximized;
-      if (mode === "context") {
-        nextMaximized = false;
-        setWorkspacePanelMaximized(false);
-      } else {
-        // Keep file/change views docked; the rendered dock width is clamped to
-        // the viewport so opening it reflows instead of forcing maximize.
-        nextMaximized = false;
-        setWorkspacePanelMaximized(false);
-      }
-      if (workspacePanelOpen && workspacePanelMaximized === nextMaximized) {
+      // Keep file/change views docked; the rendered dock width is clamped to
+      // the viewport so opening it reflows instead of forcing maximize.
+      dockSetMaximized(false);
+      if (dockOpen && !workspacePanelMaximized) {
         return;
       }
-      setWorkspacePanelOpen(true);
-      saveWorkspacePanelOpen(true, activeWorkspaceRoot);
+      dockSetOpen(true);
     },
-    [activeWorkspaceRoot, closeTransientOverlays, rightDockMode, workspacePanelMaximized, workspacePanelOpen],
+    [closeTransientOverlays, dockOpen, dockSetMaximized, dockSetOpen, dockSetPreviewActive, rightDockMode, workspacePanelMaximized],
   );
 
-  // Restore the right dock's open/closed state per project: switching to a
-  // different workspace root (or a global session) restores that scope's own
-  // preference instead of carrying the previous project's state over.
-  useEffect(() => {
-    setWorkspacePanelOpen(loadWorkspacePanelOpen(activeWorkspaceRoot));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeWorkspaceRoot]);
-
   const toggleWorkspacePanel = useCallback(() => {
-    if (dockActivityBarOpen) {
+    if (dockOpen) {
       // Collapse the dock back to the floating launcher; keep the tabs so
       // re-expanding restores them.
-      dockSetActivityBarOpen(false);
-      setWorkspacePanelOpen(false);
-      saveWorkspacePanelOpen(false, activeWorkspaceRoot);
+      dockSetOpen(false);
       return;
     }
-    // Expand: if nothing is open yet, open the previously active view so the
-    // panel is never empty (matches the legacy open-dock behavior).
+    // Expand: with nothing open yet, open the default entry (the overview
+    // panel) so the dock is never empty.
     if (dockTabs.length === 0) {
-      const tabType = rightDockMode === "context" ? "context" : rightDockMode === "changed" ? "changed" : rightDockMode === "remote" ? "remote" : rightDockMode === "instructions" ? "instructions" : "file";
+      const tabType: TabType = "context";
       dockOpenEntry(tabType, dockEntryLabel(tabType));
     } else {
-      dockSetActivityBarOpen(true);
+      dockSetOpen(true);
     }
-    setWorkspacePanelOpen(true);
-    saveWorkspacePanelOpen(true, activeWorkspaceRoot);
-  }, [activeWorkspaceRoot, dockActivityBarOpen, dockEntryLabel, dockOpenEntry, dockSetActivityBarOpen, dockTabs.length, rightDockMode, saveWorkspacePanelOpen, setWorkspacePanelOpen]);
-
-  // Closing the last tab collapses the tab container; keep the dock column in
-  // sync so the floating launcher reappears over the transcript.
-  useEffect(() => {
-    if (!dockActivityBarOpen && workspacePanelOpen) {
-      setWorkspacePanelOpen(false);
-      saveWorkspacePanelOpen(false, activeWorkspaceRoot);
-    }
-  }, [activeWorkspaceRoot, dockActivityBarOpen, saveWorkspacePanelOpen, setWorkspacePanelOpen, workspacePanelOpen]);
+  }, [dockEntryLabel, dockOpen, dockOpenEntry, dockSetOpen, dockTabs.length]);
 
   const openRightDockMode = useCallback(
     (mode: RightDockMode) => {
@@ -2949,18 +2975,24 @@ export default function App() {
     const tabId = activeTabId;
     const cwd = state.meta?.cwd?.trim();
     if (!tabId || !cwd || !pathText) return;
+    // Scope fence: the resolve is async; the dock-open + reveal must land in
+    // the conversation that requested them even if the user switches tabs
+    // while the path resolves — an async write must never hit another
+    // conversation's snapshot.
+    const requestDockKey = conversationDockKey;
     void resolveChatPathToWorkspacePath(tabId, cwd, pathText, kind, {
       searchFileRefs: (id, query) => app.SearchFileRefsForTab(id, query),
       readFile: (id, rel) => app.ReadFileForTab(id, rel),
     }).then((rel) => {
       if (!rel) return;
+      if (requestDockKey !== dockConversationKeyRef.current) return;
       // Open the right dock in files view if it is not already open, so the
       // reveal effect inside WorkspacePanel (which gates on `open`) can run.
       openRightDockModeRef.current("files");
       chatRevealRequestIdRef.current += 1;
       setChatRevealRequest({ id: chatRevealRequestIdRef.current, path: rel });
     });
-  }, [activeTabId, state.meta?.cwd]);
+  }, [activeTabId, conversationDockKey, state.meta?.cwd]);
   const chatPathContextValue = useMemo<ChatPathContextValue | null>(() =>
     chatPathRoots.length > 0 && activeTabId
       ? { roots: chatPathRoots, onOpenChatFile: handleOpenChatFile }
@@ -2971,10 +3003,8 @@ export default function App() {
   const handleActivitySelect = useCallback((entryId: string) => {
     const entry = ACTIVITY_BAR_ENTRIES.find((candidate) => candidate.id === entryId);
     if (!entry) return;
-    const mode = entryId === "files" ? "files" : entryId === "changed" ? "changed" : entryId === "remote" ? "remote" : entryId === "context" ? "context" : entryId === "instructions" ? "instructions" : null;
-    // Keep the legacy rightDockMode in sync for callers that read it (width
-    // handling, remote host restore, verification reveal), then open the tab.
-    if (mode) setRightDockMode(mode);
+    // rightDockMode is derived from the opened tab, so no separate mode state
+    // needs syncing here — opening the entry's default tab below is the switch.
     openWorkspacePanel();
     if (entryId === "remote") {
       // No configured host means the remote panel has nothing to show; send
@@ -2993,7 +3023,7 @@ export default function App() {
       if (hostId) requestRemoteExplorer(hostId);
     }
     dockOpenEntry(entry.defaultTab, dockEntryLabel(entry.defaultTab));
-  }, [dockEntryLabel, dockOpenEntry, openWorkspacePanel, remoteExplorerHostId, remoteHosts, requestRemoteExplorer, setRightDockMode, setSettingsTarget]);
+  }, [dockEntryLabel, dockOpenEntry, openWorkspacePanel, remoteExplorerHostId, remoteHosts, requestRemoteExplorer, setSettingsTarget]);
 
   const verificationRevealSequenceRef = useRef(0);
   const [verificationRevealRequest, setVerificationRevealRequest] = useState<WorkspaceVerificationRevealRequest | null>(null);
@@ -3045,9 +3075,12 @@ export default function App() {
   }, [closeRemoteExplorerRequest, openRightDockMode, remoteExplorerOpen]);
 
   useEffect(() => {
+    // A remote tab with no remaining hosts is dead weight: switch the dock to
+    // the files view (rightDockMode derives from the active tab, so opening
+    // the files entry IS the mode switch).
     if (remoteHosts.length > 0 || rightDockMode !== "remote") return;
-    setRightDockMode("files");
-  }, [remoteHosts.length, rightDockMode, setRightDockMode]);
+    dockOpenEntry("file", dockEntryLabel("file"));
+  }, [dockEntryLabel, dockOpenEntry, remoteHosts.length, rightDockMode]);
 
   const remoteWorkspaceLaunchGate = useRef(new RemoteWorkspaceLaunchGate());
   const launchRemoteWorkspace = useCallback(async (host: RemoteHostView, requestSeq: number) => {
@@ -3109,9 +3142,9 @@ export default function App() {
     (active: boolean) => {
       if (workspacePreviewActive === active) return;
       closeTransientOverlays();
-      setWorkspacePreviewActive(active);
+      dockSetPreviewActive(active);
     },
-    [closeTransientOverlays, workspacePreviewActive],
+    [closeTransientOverlays, dockSetPreviewActive, workspacePreviewActive],
   );
 
   const layoutStyle = useMemo(
@@ -5289,6 +5322,7 @@ export default function App() {
               <Suspense fallback={null}>
                 <TabContainer
                   workspaceTabId={activeTabId}
+                  conversationDockInput={conversationDockInput}
                   renderTab={(tab) => (
                     tab.type === "remote" ? (
                   <Suspense fallback={null}>
@@ -5355,7 +5389,7 @@ export default function App() {
                       onClose={() => dockCloseTab(tab.id)}
                       onToggleMaximized={() => {
                         closeTransientOverlays();
-                        setWorkspacePanelMaximized((value) => !value);
+                        dockSetMaximized(!workspacePanelMaximized);
                       }}
                       onPreviewModeChange={handleWorkspacePreviewModeChange}
                       onAddToChat={addWorkspaceTextToComposer}

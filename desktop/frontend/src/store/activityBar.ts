@@ -1,19 +1,39 @@
-// activityBar owns the right dock's activity-bar + tab-container state: the
-// set of open tabs, the active one, whether the tab container is expanded,
-// and the + add-menu open flag. Panel contents stay in App (they need its
-// props); this store only tracks which tab is open so the dock can switch
-// between them.
+// activityBar owns the right dock's activity-bar + tab-container state per
+// CONVERSATION: each conversation's set of open tabs, its active one, whether
+// the tab container is expanded, and the transient + add-menu open flag.
+// Panel contents stay in App (they need its props); this store only tracks
+// which tab is open so the dock can switch between them.
 //
 // The dock follows the plan's interaction model: by default only the 48px
 // activity bar is visible; opening an entry expands the tab container; closing
-// the last tab collapses it back to the bar. `activityBarOpen` records that
-// expanded state (true while ≥1 tab is open).
+// the last tab collapses it back to the bar. `open` records that expanded
+// state (true while ≥1 tab is open).
 //
-// Tabs are persisted to localStorage (a window-level preference, not a
-// per-project one), so a restart restores the same open tabs. The add menu
-// stays session-local.
+// The conversation key is supplied by callers (App computes it from the
+// active TabMeta via conversationDockIdentity); every mutation is keyed so a
+// delayed callback from conversation A can never write into conversation B's
+// snapshot. Snapshots are persisted to localStorage per conversation (a
+// versioned envelope, see conversationDockPersistence) so a restart restores
+// each conversation's own tabs. The add menu stays session-local.
+//
+// A conversation with no record yet seeds lazily: first from the new envelope,
+// then from the legacy project-scoped keys (one-time copy, then independent).
 
+import { useMemo } from "react";
 import { create } from "zustand";
+
+import type { ConversationDockIdentityInput } from "../lib/conversationDockIdentity";
+import { conversationDockKey } from "../lib/conversationDockIdentity";
+import {
+  allConversationDockRecords,
+  migrateConversationDockRecord,
+  readConversationDockLegacyContext,
+  readConversationDockRecord,
+  readLegacyDockSeed,
+  registerConversationDockLegacyContext,
+  resetConversationDockPersistenceForTests,
+  updateConversationDock,
+} from "../lib/conversationDockPersistence";
 
 export type TabType = "file" | "changed" | "terminal" | "browser" | "remote" | "context" | "instructions";
 
@@ -24,166 +44,241 @@ export interface TabItem {
   meta?: Record<string, unknown>;
 }
 
-const STORAGE_KEY = "reasonix.dock.tabs";
+/** A conversation's dock work scene. maximized/previewActive are session-only
+ *  (isolated per conversation but not persisted); everything else is durable. */
+export type ConversationDockSnapshot = {
+  tabs: TabItem[];
+  activeTabId: string | null;
+  open: boolean;
+  maximized: boolean;
+  previewActive: boolean;
+};
 
-// Tabs are scoped per project (workspace root), so switching projects shows
-// each one's own open tabs. A root of "" falls back to the legacy global key.
-let workspaceRoot = "";
-function storageKey(): string {
-  return workspaceRoot ? `${STORAGE_KEY}.${workspaceRoot}` : STORAGE_KEY;
+export function defaultConversationDockSnapshot(): ConversationDockSnapshot {
+  return { tabs: [], activeTabId: null, open: false, maximized: false, previewActive: false };
 }
 
-// tabSeq must not collide with ids restored from localStorage (which may
+function snapshotFromDock(dock: { tabs: TabItem[]; activeTabId: string | null; open: boolean }): ConversationDockSnapshot {
+  return {
+    tabs: dock.tabs.map((tab) => ({ ...tab })),
+    activeTabId: dock.activeTabId,
+    open: dock.open,
+    maximized: false,
+    previewActive: false,
+  };
+}
+
+// tabSeq must not collide with ids restored from the envelope (which may
 // contain dock-tab-N from a previous session). Seed it past the highest
 // persisted id so fresh tabs never duplicate an existing key.
 let tabSeq = 0;
-function seedTabSeq(restoredTabs: TabItem[]): void {
-  for (const tab of restoredTabs) {
-    const match = /^dock-tab-(\d+)$/.exec(tab.id);
-    if (match) tabSeq = Math.max(tabSeq, Number(match[1]));
+
+// Seed-context side channel (owned by conversationDockPersistence): the hook
+// and App register each conversation's { scope, workspaceRoot } so a first
+// mutation on a never-persisted conversation can copy the legacy project
+// dock. This is a plain map (not React state).
+export { registerConversationDockLegacyContext };
+
+function loadConversationDockSeed(key: string): ConversationDockSnapshot {
+  const record = readConversationDockRecord(key);
+  if (record) return snapshotFromDock(record.dock);
+  const context = readConversationDockLegacyContext(key);
+  const legacy = context ? readLegacyDockSeed(context.workspaceRoot) : null;
+  if (legacy) {
+    return { ...snapshotFromDock(legacy), maximized: false, previewActive: false };
   }
+  return defaultConversationDockSnapshot();
 }
+
+function ensureSnapshot(state: ConversationDockState, key: string): ConversationDockSnapshot {
+  return state.snapshots[key] ?? loadConversationDockSeed(key);
+}
+
 function nextTabId(): string {
   tabSeq += 1;
   return `dock-tab-${tabSeq}`;
 }
 
-function loadTabs(): { tabs: TabItem[]; activeTabId: string | null } {
-  if (typeof window === "undefined") return { tabs: [], activeTabId: null };
-  try {
-    const raw = window.localStorage.getItem(storageKey());
-    if (!raw) return { tabs: [], activeTabId: null };
-    const parsed = JSON.parse(raw) as { tabs?: TabItem[]; activeTabId?: string | null };
-    const tabs = Array.isArray(parsed.tabs) ? parsed.tabs : [];
-    // Drop structurally invalid entries and duplicate ids (a persisted
-    // snapshot may contain them from an earlier bug); duplicate ids would
-    // make React report "two children with the same key".
-    const seen = new Set<string>();
-    const valid = tabs.filter((tab) => {
-      if (!tab || typeof tab.id !== "string" || typeof tab.type !== "string") return false;
-      if (seen.has(tab.id)) return false;
-      seen.add(tab.id);
-      return true;
-    });
-    seedTabSeq(valid);
-    return { tabs: valid, activeTabId: valid.some((tab) => tab.id === parsed.activeTabId) ? parsed.activeTabId ?? null : valid[valid.length - 1]?.id ?? null };
-  } catch {
-    return { tabs: [], activeTabId: null };
+// Seed tabSeq from all persisted conversations at module load.
+const initialSnapshots: Record<string, ConversationDockSnapshot> = {};
+for (const { key, record } of allConversationDockRecords()) {
+  for (const tab of record.dock.tabs) {
+    const match = /^dock-tab-(\d+)$/.exec(tab.id);
+    if (match) tabSeq = Math.max(tabSeq, Number(match[1]));
   }
+  initialSnapshots[key] = snapshotFromDock(record.dock);
 }
 
-function persist(tabs: TabItem[], activeTabId: string | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(storageKey(), JSON.stringify({ tabs, activeTabId }));
-  } catch {
-    /* ignore storage failures */
-  }
-}
-
-const initial = loadTabs();
-
-export type ActivityBarState = {
-  tabs: TabItem[];
-  activeTabId: string | null;
-  /** True while the tab container is expanded (dock shows the panel, not just
-   *  the 48px activity bar). Independent of tabs: collapsing via the toggle
-   *  keeps the tabs so re-expanding restores them. */
-  activityBarOpen: boolean;
+export type ConversationDockState = {
+  snapshots: Record<string, ConversationDockSnapshot>;
   addMenuOpen: boolean;
   /** Open the entry's default tab, switching to it when one of that type exists. */
-  openEntry: (type: TabType, label: string, meta?: Record<string, unknown>) => void;
+  openEntry: (key: string, type: TabType, label: string, meta?: Record<string, unknown>) => void;
   /** Append a new tab of the given type and activate it. */
-  addTab: (type: TabType, label: string, meta?: Record<string, unknown>) => void;
+  addTab: (key: string, type: TabType, label: string, meta?: Record<string, unknown>) => void;
   /** Update a tab's label and meta (e.g. a file tab whose preview file changes
    *  its title from 文件 to the file name). */
-  updateTab: (tabId: string, label: string, meta?: Record<string, unknown>) => void;
-  closeTab: (tabId: string) => void;
-  activateTab: (tabId: string) => void;
+  updateTab: (key: string, tabId: string, label: string, meta?: Record<string, unknown>) => void;
+  closeTab: (key: string, tabId: string) => void;
+  activateTab: (key: string, tabId: string) => void;
   /** Move a tab so it lands on the left/right side of another tab. */
-  moveTab: (fromId: string, toId: string, side: "left" | "right") => void;
+  moveTab: (key: string, fromId: string, toId: string, side: "left" | "right") => void;
   /** Collapse/expand the tab container without touching the tab list. */
-  setActivityBarOpen: (open: boolean) => void;
+  setOpen: (key: string, open: boolean) => void;
+  /** Session-only view flags, isolated per conversation. */
+  setMaximized: (key: string, maximized: boolean) => void;
+  setPreviewActive: (key: string, active: boolean) => void;
+  /** Atomically move a temporary key's snapshot onto its formal key. */
+  migrateConversationKey: (from: string, to: string) => void;
   setAddMenuOpen: (open: boolean) => void;
-  /** Switch the active project (workspace root): reloads that project's own
-   *  persisted tabs. A root of "" falls back to the legacy global tabs. */
-  setWorkspaceRoot: (root: string) => void;
+  resetConversationDockForTests: () => void;
 };
 
-export const useActivityBarStore = create<ActivityBarState>((set) => ({
-  tabs: initial.tabs,
-  activeTabId: initial.activeTabId,
-  activityBarOpen: initial.tabs.length > 0,
+export const useActivityBarStore = create<ConversationDockState>((set) => ({
+  snapshots: initialSnapshots,
   addMenuOpen: false,
-  openEntry: (type, label, meta) =>
+  openEntry: (key, type, label, meta) =>
     set((state) => {
-      const existing = state.tabs.find((tab) => tab.type === type);
+      const current = ensureSnapshot(state, key);
+      const existing = current.tabs.find((tab) => tab.type === type);
       if (existing) {
-        persist(state.tabs, existing.id);
-        return { activeTabId: existing.id, activityBarOpen: true };
+        updateConversationDock(key, { tabs: current.tabs, activeTabId: existing.id, open: true });
+        return { snapshots: { ...state.snapshots, [key]: { ...current, activeTabId: existing.id, open: true } } };
       }
       const tab: TabItem = { id: nextTabId(), type, label, meta };
-      const tabs = [...state.tabs, tab];
-      persist(tabs, tab.id);
-      return { tabs, activeTabId: tab.id, activityBarOpen: true };
+      const tabs = [...current.tabs, tab];
+      updateConversationDock(key, { tabs, activeTabId: tab.id, open: true });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, tabs, activeTabId: tab.id, open: true } } };
     }),
-  addTab: (type, label, meta) =>
+  addTab: (key, type, label, meta) =>
     set((state) => {
+      const current = ensureSnapshot(state, key);
       const tab: TabItem = { id: nextTabId(), type, label, meta };
-      const tabs = [...state.tabs, tab];
-      persist(tabs, tab.id);
-      return { tabs, activeTabId: tab.id, activityBarOpen: true };
+      const tabs = [...current.tabs, tab];
+      updateConversationDock(key, { tabs, activeTabId: tab.id, open: true });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, tabs, activeTabId: tab.id, open: true } } };
     }),
-  updateTab: (tabId, label, meta) =>
+  updateTab: (key, tabId, label, meta) =>
     set((state) => {
-      const tabs = state.tabs.map((tab) => (tab.id === tabId ? { ...tab, label, ...(meta ? { meta } : {}) } : tab));
-      persist(tabs, state.activeTabId);
-      return { tabs };
+      const current = ensureSnapshot(state, key);
+      const tabs = current.tabs.map((tab) => (tab.id === tabId ? { ...tab, label, ...(meta ? { meta } : {}) } : tab));
+      updateConversationDock(key, { tabs, activeTabId: current.activeTabId });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, tabs } } };
     }),
-  closeTab: (tabId) =>
+  closeTab: (key, tabId) =>
     set((state) => {
-      const index = state.tabs.findIndex((tab) => tab.id === tabId);
+      const current = ensureSnapshot(state, key);
+      const index = current.tabs.findIndex((tab) => tab.id === tabId);
       if (index < 0) return state;
-      const tabs = state.tabs.filter((tab) => tab.id !== tabId);
-      let activeTabId = state.activeTabId;
-      if (state.activeTabId === tabId) {
+      const tabs = current.tabs.filter((tab) => tab.id !== tabId);
+      let activeTabId = current.activeTabId;
+      if (current.activeTabId === tabId) {
         // Fall back to the neighbor on the left, then the right, then null.
         activeTabId = tabs[index - 1]?.id ?? tabs[index]?.id ?? null;
       }
-      persist(tabs, activeTabId);
       // Closing the last tab collapses the container back to the activity bar.
-      return { tabs, activeTabId, activityBarOpen: tabs.length > 0 };
+      const open = tabs.length > 0;
+      updateConversationDock(key, { tabs, activeTabId, open });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, tabs, activeTabId, open } } };
     }),
-  activateTab: (tabId) =>
+  activateTab: (key, tabId) =>
     set((state) => {
-      if (!state.tabs.some((tab) => tab.id === tabId)) return state;
-      persist(state.tabs, tabId);
-      return { activeTabId: tabId, activityBarOpen: true };
+      const current = ensureSnapshot(state, key);
+      if (!current.tabs.some((tab) => tab.id === tabId)) return state;
+      updateConversationDock(key, { tabs: current.tabs, activeTabId: tabId, open: true });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, activeTabId: tabId, open: true } } };
     }),
-  moveTab: (fromId, toId, side) =>
+  moveTab: (key, fromId, toId, side) =>
     set((state) => {
+      const current = ensureSnapshot(state, key);
       if (fromId === toId) return state;
-      const tabs = [...state.tabs];
+      const tabs = [...current.tabs];
       const fromIndex = tabs.findIndex((tab) => tab.id === fromId);
       if (fromIndex < 0) return state;
       const [moved] = tabs.splice(fromIndex, 1);
       const toIndex = tabs.findIndex((tab) => tab.id === toId);
       if (toIndex < 0) return state;
       tabs.splice(side === "right" ? toIndex + 1 : toIndex, 0, moved);
-      persist(tabs, state.activeTabId);
-      return { tabs };
+      updateConversationDock(key, { tabs, activeTabId: current.activeTabId });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, tabs } } };
     }),
-  setActivityBarOpen: (open) => set({ activityBarOpen: open }),
-  setAddMenuOpen: (open) => set({ addMenuOpen: open }),
-  setWorkspaceRoot: (root) => {
-    if (root === workspaceRoot) return;
-    workspaceRoot = root;
-    const loaded = loadTabs();
-    set({
-      tabs: loaded.tabs,
-      activeTabId: loaded.activeTabId,
-      activityBarOpen: loaded.tabs.length > 0,
-      addMenuOpen: false,
+  setOpen: (key, open) =>
+    set((state) => {
+      const current = ensureSnapshot(state, key);
+      if (current.open === open) return state;
+      updateConversationDock(key, { tabs: current.tabs, activeTabId: current.activeTabId, open });
+      return { snapshots: { ...state.snapshots, [key]: { ...current, open } } };
+    }),
+  setMaximized: (key, maximized) =>
+    set((state) => {
+      const current = ensureSnapshot(state, key);
+      if (current.maximized === maximized) return state;
+      return { snapshots: { ...state.snapshots, [key]: { ...current, maximized } } };
+    }),
+  setPreviewActive: (key, active) =>
+    set((state) => {
+      const current = ensureSnapshot(state, key);
+      if (current.previewActive === active) return state;
+      return { snapshots: { ...state.snapshots, [key]: { ...current, previewActive: active } } };
+    }),
+  migrateConversationKey: (from, to) => {
+    if (from === to) return;
+    migrateConversationDockRecord(from, to);
+    set((state) => {
+      if (state.snapshots[to]) {
+        const next = { ...state.snapshots };
+        delete next[from];
+        return { snapshots: next };
+      }
+      const fromSnapshot = state.snapshots[from];
+      if (!fromSnapshot) return state;
+      const next = { ...state.snapshots, [to]: fromSnapshot };
+      delete next[from];
+      return { snapshots: next };
     });
   },
+  setAddMenuOpen: (open) => set({ addMenuOpen: open }),
+  resetConversationDockForTests: () => {
+    resetConversationDockPersistenceForTests();
+    set({ snapshots: {}, addMenuOpen: false });
+    tabSeq = 0;
+  },
 }));
+
+/** Bound view + actions for one conversation's dock. The key is derived from
+ *  the identity input; the snapshot is read synchronously (no effect-based
+ *  switch), so switching conversations shows the right dock on the first
+ *  frame. Every returned action is bound to this key. */
+export function useConversationDock(input: ConversationDockIdentityInput): ConversationDockSnapshot & {
+  openEntry: (type: TabType, label: string, meta?: Record<string, unknown>) => void;
+  addTab: (type: TabType, label: string, meta?: Record<string, unknown>) => void;
+  updateTab: (tabId: string, label: string, meta?: Record<string, unknown>) => void;
+  closeTab: (tabId: string) => void;
+  activateTab: (tabId: string) => void;
+  moveTab: (fromId: string, toId: string, side: "left" | "right") => void;
+  setOpen: (open: boolean) => void;
+  setMaximized: (maximized: boolean) => void;
+  setPreviewActive: (active: boolean) => void;
+} {
+  const key = useMemo(() => conversationDockKey(input), [input]);
+  const snapshot = useActivityBarStore((s) => s.snapshots[key]);
+  const resolved = useMemo(() => {
+    registerConversationDockLegacyContext(key, { scope: input.scope ?? "", workspaceRoot: input.workspaceRoot ?? "" });
+    return snapshot ?? loadConversationDockSeed(key);
+  }, [snapshot, key, input]);
+  const actions = useMemo(() => {
+    const store = useActivityBarStore.getState;
+    return {
+      openEntry: (type: TabType, label: string, meta?: Record<string, unknown>) => store().openEntry(key, type, label, meta),
+      addTab: (type: TabType, label: string, meta?: Record<string, unknown>) => store().addTab(key, type, label, meta),
+      updateTab: (tabId: string, label: string, meta?: Record<string, unknown>) => store().updateTab(key, tabId, label, meta),
+      closeTab: (tabId: string) => store().closeTab(key, tabId),
+      activateTab: (tabId: string) => store().activateTab(key, tabId),
+      moveTab: (fromId: string, toId: string, side: "left" | "right") => store().moveTab(key, fromId, toId, side),
+      setOpen: (open: boolean) => store().setOpen(key, open),
+      setMaximized: (maximized: boolean) => store().setMaximized(key, maximized),
+      setPreviewActive: (active: boolean) => store().setPreviewActive(key, active),
+    };
+  }, [key]);
+  return useMemo(() => ({ ...resolved, ...actions }), [resolved, actions]);
+}

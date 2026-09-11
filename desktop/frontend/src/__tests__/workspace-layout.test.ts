@@ -165,9 +165,9 @@ eq(terminalMaxHeight(180), 120, "terminal maximum never falls below the accessib
 eq(clampTerminalHeight(680, 480), 240, "restored terminal height clamps after the window shrinks");
 eq(clampTerminalHeight(80, 720), 120, "terminal height clamps to its minimum");
 eq(
-  /const closeWorkspacePanel = useCallback\(\(\) => \{[\s\S]*?setLiveWorkspacePanelRenderWidth\(null\);[\s\S]*?setWorkspacePanelOpen\(false\);[\s\S]*?saveWorkspacePanelOpen\(false, activeWorkspaceRoot\);/.test(appSource),
+  /const toggleWorkspacePanel = useCallback\(\(\) => \{[\s\S]*?if \(dockOpen\) \{[\s\S]*?dockSetOpen\(false\);[\s\S]*?return;[\s\S]*?if \(dockTabs\.length === 0\) \{[\s\S]*?dockOpenEntry\([\s\S]*?} else \{[\s\S]*?dockSetOpen\(true\);/.test(appSource),
   true,
-  "closing the dock clears the transient render width, hides the panel, and persists the collapsed preference",
+  "closing collapses only the conversation-scoped dock and keeps tabs for re-expansion",
 );
 eq(
   /\.workspace-panel-resizer \{[\s\S]*?grid-column: 3;[\s\S]*?justify-self: start;[\s\S]*?width: 1px;/.test(stylesSource)
@@ -182,9 +182,9 @@ eq(
   "workspace resize has one guarded finish path for capture loss, blur, cancellation, and unmount",
 );
 eq(
-  /setWorkspacePanelOpen\(true\);[\s\S]*?saveWorkspacePanelOpen\(true, activeWorkspaceRoot\);/.test(appSource),
+  /const openWorkspacePanel = useCallback\([\s\S]*?dockSetMaximized\(false\);[\s\S]*?if \(dockOpen && !workspacePanelMaximized\) \{[\s\S]*?return;[\s\S]*?dockSetOpen\(true\);/.test(appSource),
   true,
-  "opening the dock persists the expanded preference for the next launch",
+  "opening the dock expands the conversation-scoped snapshot (persisted in the conversation envelope)",
 );
 eq(
   /terminalPanelOpen[\s\S]*?terminal-drawer/.test(appSource),

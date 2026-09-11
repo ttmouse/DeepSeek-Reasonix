@@ -2,12 +2,19 @@
 // + add menu) and the active tab's panel below, routed through TabContent.
 // The ActivityBar sits to its left inside the workbench-dock (rendered by
 // App); panel content is provided as a renderer because the panels need App's
-// props. When the last tab is closed the container collapses (activityBarOpen
-// flips false in the store), so this component only renders while tabs exist.
+// props. When the last tab is closed the container collapses (the
+// conversation snapshot's `open` flips false in the store), so this component
+// only renders while tabs exist.
+//
+// The whole shell is bound to ONE conversation via conversationDockInput:
+// every action below is keyed to that conversation's snapshot, so tabs can
+// never leak across conversations.
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import { useActivityBarStore, type TabItem, type TabType } from "../../store/activityBar";
+import type { ConversationDockIdentityInput } from "../../lib/conversationDockIdentity";
+import { conversationDockKey } from "../../lib/conversationDockIdentity";
+import { useActivityBarStore, useConversationDock, type TabItem, type TabType } from "../../store/activityBar";
 import { TabAddMenu } from "./TabAddMenu";
 import { TabBar } from "./TabBar";
 import { TabContent } from "./TabContent";
@@ -18,18 +25,22 @@ interface TabContainerProps {
   /** Active session tab id — forwarded to the tab bar for workspace-scoped
    *  file operations in the file-tab context menu. */
   workspaceTabId?: string;
+  /** Identity of the conversation this dock shell belongs to. */
+  conversationDockInput: ConversationDockIdentityInput;
 }
 
-export function TabContainer({ renderTab, workspaceTabId }: TabContainerProps) {
-  const tabs = useActivityBarStore((s) => s.tabs);
-  const activeTabId = useActivityBarStore((s) => s.activeTabId);
+export function TabContainer({ renderTab, workspaceTabId, conversationDockInput }: TabContainerProps) {
+  const dock = useConversationDock(conversationDockInput);
+  const conversationKey = useMemo(() => conversationDockKey(conversationDockInput), [conversationDockInput]);
   const addMenuOpen = useActivityBarStore((s) => s.addMenuOpen);
-  const addTab = useActivityBarStore((s) => s.addTab);
-  const closeTab = useActivityBarStore((s) => s.closeTab);
-  const activateTab = useActivityBarStore((s) => s.activateTab);
-  const moveTab = useActivityBarStore((s) => s.moveTab);
   const setAddMenuOpen = useActivityBarStore((s) => s.setAddMenuOpen);
   const addButtonRef = useRef<HTMLButtonElement>(null);
+  const tabs = dock.tabs;
+  const activeTabId = dock.activeTabId;
+  const addTab = dock.addTab;
+  const closeTab = dock.closeTab;
+  const activateTab = dock.activateTab;
+  const moveTab = dock.moveTab;
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
   // Closing the add menu on outside click / Escape lives inside TabAddMenu
   // (it knows its own bounds); the panel itself must not swallow those clicks.
@@ -54,6 +65,7 @@ export function TabContainer({ renderTab, workspaceTabId }: TabContainerProps) {
         onAdd={() => setAddMenuOpen(!addMenuOpen)}
         addButtonRef={addButtonRef}
         workspaceTabId={workspaceTabId}
+        conversationKey={conversationKey}
       />
       {addMenuOpen && <TabAddMenu anchorRef={addButtonRef} onPick={handlePickTab} onClose={() => setAddMenuOpen(false)} />}
       <div className="tab-container__content">

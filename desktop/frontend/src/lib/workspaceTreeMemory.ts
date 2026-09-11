@@ -1,3 +1,25 @@
+// Conversation-scoped workspace navigation memory.
+//
+// The file tree's expanded dirs, selection, scroll position and recent paths
+// belong to a conversation's dock work scene — keyed by
+// `conversationDockKey\u0000dockTabId` — so two conversations of the same
+// project keep independent trees, and switching tabs restores each one's own
+// state. Persistence lives in the shared versioned envelope
+// (reasonix.conversationDock.v1, see conversationDockPersistence) together
+// with the dock snapshot, under the same 100-conversation cap.
+//
+// The one exception is the tree/preview width preference (GLOBAL_TREE_WIDTH_KEY
+// — a window-level operation habit, not conversation content): it is stored in
+// its own tiny key and stays global. Legacy project-scoped navigation from
+// reasonix.workspaceState.v2 is copied lazily on a conversation's first read
+// (registered via registerConversationDockLegacyContext), then independent.
+
+import {
+  readLegacyGlobalTreeWidth,
+  readWorkspaceNavigation,
+  registerConversationDockLegacyContext,
+  writeWorkspaceNavigation,
+} from "./conversationDockPersistence";
 import { createWorkspaceTreePersistenceScheduler } from "./workspaceTreePersistence";
 
 export type WorkspaceTreeWidthMode = "manual" | "even";
@@ -15,21 +37,21 @@ export interface WorkspaceTreeMemorySnapshot {
   recentPaths: string[];
 }
 
-type PersistedWorkspaceState = Omit<WorkspaceTreeMemorySnapshot, "openDirs" | "visitId"> & {
-  openDirs: string[];
+/** Memory key for the window-level tree/preview width preference. */
+export const GLOBAL_TREE_WIDTH_KEY = "__global_tree_width__";
+const GLOBAL_TREE_WIDTH_STORAGE_KEY = "reasonix.workspaceState.globalTreeWidth";
+
+type PersistedGlobalTreeWidth = {
+  treeWidth: number | null;
+  treeWidthMode: WorkspaceTreeWidthMode;
   updatedAt: number;
 };
 
-interface PersistedWorkspaceEnvelope {
-  version: 2;
-  projects: Array<{ key: string; state: PersistedWorkspaceState }>;
-}
-
-const STORAGE_KEY = "reasonix.workspaceState.v2";
-const MAX_PERSISTED_PROJECTS = 50;
-const MAX_RECENT_PATHS = 10;
+// Runtime cache: snapshots for the keys visited this session (incl. the
+// runtime-only visitId). Persisted state lives in the conversation envelope;
+// this map is the cheap synchronous read layer and the coalesced-scroll
+// source, and it seeds on demand from persistence / legacy.
 const workspaceTreeMemory = new Map<string, WorkspaceTreeMemorySnapshot>();
-let storageHydrated = false;
 let activeWorkspaceTreeKey = "";
 let workspaceTreeVisitSequence = 0;
 
@@ -48,85 +70,77 @@ function defaultSnapshot(visitId = 0): WorkspaceTreeMemorySnapshot {
   };
 }
 
-function validPath(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
+function cloneSnapshot(snapshot: WorkspaceTreeMemorySnapshot): WorkspaceTreeMemorySnapshot {
+  return { ...snapshot, openDirs: new Set(snapshot.openDirs) };
 }
 
-function hydrateWorkspaceTreeMemory(): void {
-  if (storageHydrated) return;
-  storageHydrated = true;
-  if (typeof localStorage === "undefined") return;
+function splitMemoryKey(memoryKey: string): { conversationKey: string; dockTabId: string } {
+  const separator = memoryKey.lastIndexOf("\u0000");
+  if (separator < 0) return { conversationKey: memoryKey, dockTabId: "" };
+  return { conversationKey: memoryKey.slice(0, separator), dockTabId: memoryKey.slice(separator + 1) };
+}
+
+function snapshotFromPersisted(state: {
+  openDirs: string[];
+  selectedFilePath: string | null;
+  selectedChangePath: string | null;
+  scrollTop: number;
+  recentPaths: string[];
+  updatedAt: number;
+}, visitId: number): WorkspaceTreeMemorySnapshot {
+  const openDirs = state.openDirs.length > 0 ? state.openDirs : [""];
+  return {
+    openDirs: new Set(openDirs),
+    visitId,
+    selectedFilePath: state.selectedFilePath,
+    selectedChangePath: state.selectedChangePath,
+    treeWidth: null,
+    treeWidthMode: "manual",
+    scrollTop: state.scrollTop,
+    dockTreeWidth: null,
+    dockPreviewWidth: null,
+    recentPaths: state.recentPaths,
+  };
+}
+
+// ── global tree width (window-level preference) ─────────────────────────────
+
+function readPersistedGlobalTreeWidth(): { treeWidth: number | null; treeWidthMode: WorkspaceTreeWidthMode } | null {
+  if (typeof localStorage === "undefined") return null;
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<PersistedWorkspaceEnvelope> | null;
-    if (!parsed || parsed.version !== 2 || !Array.isArray(parsed.projects)) return;
-    for (const project of parsed.projects) {
-      if (!project || typeof project.key !== "string" || !project.state || typeof project.state !== "object") continue;
-      const state = project.state as Partial<PersistedWorkspaceState>;
-      const openDirs = Array.isArray(state.openDirs)
-        ? state.openDirs.filter((path): path is string => typeof path === "string")
-        : [""];
-      workspaceTreeMemory.set(project.key, {
-        openDirs: new Set(openDirs.length > 0 ? openDirs : [""]),
-        visitId: 0,
-        selectedFilePath: validPath(state.selectedFilePath),
-        selectedChangePath: validPath(state.selectedChangePath),
-        treeWidth: typeof state.treeWidth === "number" && Number.isFinite(state.treeWidth) && state.treeWidth > 0
-          ? state.treeWidth
-          : null,
-        treeWidthMode: state.treeWidthMode === "even" ? "even" : "manual",
-        scrollTop: typeof state.scrollTop === "number" && Number.isFinite(state.scrollTop) && state.scrollTop >= 0
-          ? state.scrollTop
-          : 0,
-        dockTreeWidth: typeof state.dockTreeWidth === "number" && Number.isFinite(state.dockTreeWidth) && state.dockTreeWidth > 0
-          ? state.dockTreeWidth
-          : null,
-        dockPreviewWidth: typeof state.dockPreviewWidth === "number" && Number.isFinite(state.dockPreviewWidth) && state.dockPreviewWidth > 0
-          ? state.dockPreviewWidth
-          : null,
-        recentPaths: Array.isArray(state.recentPaths)
-          ? state.recentPaths.filter((path): path is string => typeof path === "string").slice(0, MAX_RECENT_PATHS)
-          : [],
-      });
+    const raw = localStorage.getItem(GLOBAL_TREE_WIDTH_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<PersistedGlobalTreeWidth> | null;
+      if (parsed && typeof parsed === "object") {
+        return {
+          treeWidth: typeof parsed.treeWidth === "number" && Number.isFinite(parsed.treeWidth) && parsed.treeWidth > 0
+            ? parsed.treeWidth
+            : null,
+          treeWidthMode: parsed.treeWidthMode === "even" ? "even" : "manual",
+        };
+      }
     }
   } catch {
-    // Corrupt or newer storage must never prevent the workspace from opening.
+    // Corrupt storage falls through to the legacy fallback.
+  }
+  try {
+    return readLegacyGlobalTreeWidth();
+  } catch {
+    return null;
   }
 }
 
-function persistWorkspaceTreeMemory(recentKey: string): void {
+function persistGlobalTreeWidth(treeWidth: number | null, treeWidthMode: WorkspaceTreeWidthMode): void {
   if (typeof localStorage === "undefined") return;
   try {
-    const now = Date.now();
-    const entries = Array.from(workspaceTreeMemory.entries())
-      .map(([key, snapshot]) => ({
-        key,
-        state: {
-          openDirs: Array.from(snapshot.openDirs),
-          selectedFilePath: snapshot.selectedFilePath,
-          selectedChangePath: snapshot.selectedChangePath,
-          treeWidth: snapshot.treeWidth,
-          treeWidthMode: snapshot.treeWidthMode,
-          scrollTop: snapshot.scrollTop,
-          dockTreeWidth: snapshot.dockTreeWidth,
-          dockPreviewWidth: snapshot.dockPreviewWidth,
-          recentPaths: snapshot.recentPaths,
-          updatedAt: key === recentKey ? now : 0,
-        },
-      }))
-      .sort((left, right) => (right.key === recentKey ? 1 : 0) - (left.key === recentKey ? 1 : 0))
-      .slice(0, MAX_PERSISTED_PROJECTS);
-    const envelope: PersistedWorkspaceEnvelope = { version: 2, projects: entries };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+    const envelope: PersistedGlobalTreeWidth = { treeWidth, treeWidthMode, updatedAt: Date.now() };
+    localStorage.setItem(GLOBAL_TREE_WIDTH_STORAGE_KEY, JSON.stringify(envelope));
   } catch {
     // localStorage can be disabled or full; the in-memory state still works.
   }
 }
 
-const deferredScrollPersistence = createWorkspaceTreePersistenceScheduler(persistWorkspaceTreeMemory);
-
-function cloneSnapshot(snapshot: WorkspaceTreeMemorySnapshot): WorkspaceTreeMemorySnapshot {
-  return { ...snapshot, openDirs: new Set(snapshot.openDirs) };
-}
+// ── public API (unchanged surface, conversation-scoped storage) ─────────────
 
 export function workspaceTreeVisitId(memoryKey: string): number {
   if (activeWorkspaceTreeKey !== memoryKey) {
@@ -137,31 +151,53 @@ export function workspaceTreeVisitId(memoryKey: string): number {
 }
 
 export function readWorkspaceTreeMemory(memoryKey: string): WorkspaceTreeMemorySnapshot | null {
-  hydrateWorkspaceTreeMemory();
-  const snapshot = workspaceTreeMemory.get(memoryKey);
-  return snapshot ? cloneSnapshot(snapshot) : null;
+  const cached = workspaceTreeMemory.get(memoryKey);
+  if (cached) return cloneSnapshot(cached);
+  if (memoryKey === GLOBAL_TREE_WIDTH_KEY) {
+    const global = readPersistedGlobalTreeWidth();
+    if (!global) return null;
+    const snapshot = { ...defaultSnapshot(), treeWidth: global.treeWidth, treeWidthMode: global.treeWidthMode };
+    workspaceTreeMemory.set(memoryKey, snapshot);
+    return cloneSnapshot(snapshot);
+  }
+  const { conversationKey, dockTabId } = splitMemoryKey(memoryKey);
+  const state = readWorkspaceNavigation(conversationKey, dockTabId);
+  if (!state) return null;
+  const snapshot = snapshotFromPersisted(state, workspaceTreeVisitId(memoryKey));
+  workspaceTreeMemory.set(memoryKey, snapshot);
+  return cloneSnapshot(snapshot);
 }
 
 export function rememberWorkspaceTreeState(
   memoryKey: string,
   patch: Partial<Omit<WorkspaceTreeMemorySnapshot, "openDirs">> & { openDirs?: ReadonlySet<string> },
 ): void {
-  hydrateWorkspaceTreeMemory();
-  const current = workspaceTreeMemory.get(memoryKey) ?? defaultSnapshot();
-  workspaceTreeMemory.set(memoryKey, {
+  const current = workspaceTreeMemory.get(memoryKey) ?? readWorkspaceTreeMemory(memoryKey) ?? defaultSnapshot();
+  const next: WorkspaceTreeMemorySnapshot = {
     ...current,
     ...patch,
     openDirs: patch.openDirs ? new Set(patch.openDirs) : new Set(current.openDirs),
-  });
+  };
+  workspaceTreeMemory.set(memoryKey, next);
   // An immediate state write already includes the latest in-memory scroll
   // position, so retire any trailing scroll write instead of duplicating it.
   deferredScrollPersistence.cancel();
-  persistWorkspaceTreeMemory(memoryKey);
+  if (memoryKey === GLOBAL_TREE_WIDTH_KEY) {
+    persistGlobalTreeWidth(next.treeWidth, next.treeWidthMode);
+    return;
+  }
+  const { conversationKey, dockTabId } = splitMemoryKey(memoryKey);
+  writeWorkspaceNavigation(conversationKey, dockTabId, {
+    openDirs: Array.from(next.openDirs),
+    selectedFilePath: next.selectedFilePath,
+    selectedChangePath: next.selectedChangePath,
+    scrollTop: next.scrollTop,
+    recentPaths: next.recentPaths,
+  });
 }
 
 export function rememberWorkspaceTreeScroll(memoryKey: string, scrollTop: number): void {
-  hydrateWorkspaceTreeMemory();
-  const current = workspaceTreeMemory.get(memoryKey) ?? defaultSnapshot();
+  const current = workspaceTreeMemory.get(memoryKey) ?? readWorkspaceTreeMemory(memoryKey) ?? defaultSnapshot();
   workspaceTreeMemory.set(memoryKey, {
     ...current,
     openDirs: new Set(current.openDirs),
@@ -179,18 +215,33 @@ export function rememberWorkspaceTreeOpenDirs(memoryKey: string, openDirs: Reado
 }
 
 export function touchWorkspaceTreeVisit(memoryKey: string, visitId: number): void {
-  rememberWorkspaceTreeState(memoryKey, { visitId });
+  const current = workspaceTreeMemory.get(memoryKey) ?? readWorkspaceTreeMemory(memoryKey) ?? defaultSnapshot();
+  workspaceTreeMemory.set(memoryKey, { ...current, openDirs: new Set(current.openDirs), visitId });
 }
 
 export function resetWorkspaceTreeMemoryForTests(): void {
   deferredScrollPersistence.cancel();
   workspaceTreeMemory.clear();
-  storageHydrated = false;
   activeWorkspaceTreeKey = "";
   workspaceTreeVisitSequence = 0;
   try {
-    if (typeof localStorage !== "undefined") localStorage.removeItem(STORAGE_KEY);
+    if (typeof localStorage !== "undefined") localStorage.removeItem(GLOBAL_TREE_WIDTH_STORAGE_KEY);
   } catch {
     // Ignore storage cleanup failures in test environments.
   }
 }
+
+// The scroll scheduler flushes only the coalesced key's cached scrollTop into
+// the conversation envelope — never the whole map.
+const deferredScrollPersistence = createWorkspaceTreePersistenceScheduler((memoryKey) => {
+  if (memoryKey === GLOBAL_TREE_WIDTH_KEY) return;
+  const cached = workspaceTreeMemory.get(memoryKey);
+  if (!cached) return;
+  const { conversationKey, dockTabId } = splitMemoryKey(memoryKey);
+  writeWorkspaceNavigation(conversationKey, dockTabId, { scrollTop: cached.scrollTop });
+});
+
+// Legacy migration context for workspace navigation (registered by App via
+// the store hook — see registerConversationDockLegacyContext). Re-exported so
+// callers that register the dock context also cover navigation seeding.
+export { registerConversationDockLegacyContext };

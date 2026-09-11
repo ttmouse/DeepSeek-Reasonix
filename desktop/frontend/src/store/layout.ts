@@ -121,11 +121,15 @@ export function saveRightDockPreviewWidth(width: number): void {
   saveLayoutSize("rightDockPreviewWidth", width, clampRightDockPreviewWidth);
 }
 
-// rightDockMode selects what the right dock shows. workspacePanelOpen is
-// restored from localStorage (same pattern as sidebarCollapsed) so a collapsed
-// dock survives restart. maximized/preview stay session-local — they are view
-// layout, not a durable preference. (Resize drag flags, button-press animation
-// flags, measured footer height, and viewport width stay as useState in App.tsx.)
+// rightDockMode selects what the right dock shows. The dock's expanded state,
+// active mode, maximized and preview flags are now owned by the conversation
+// dock snapshot (store/activityBar) — layout keeps only window geometry and
+// durable global preferences. The load/saveWorkspacePanelOpen helpers below
+// remain solely as migration readers for the legacy project-scoped preference
+// (conversationDockPersistence seeds a conversation's initial open state from
+// them). terminalPanelOpen is independent from rightDockMode — the terminal is
+// a bottom drawer that coexists with the workspace panel, not a mode of it.
+// Persisted to localStorage so it survives restart.
 export type RightDockMode = "context" | "files" | "changed" | "remote" | "instructions";
 
 // rightDockTabOrder lets the user reorder the dock's mode tabs by dragging.
@@ -266,10 +270,6 @@ export type LayoutState = {
   sidebarWidth: number;
   rightDockTreeWidth: number;
   rightDockPreviewWidth: number;
-  workspacePanelOpen: boolean;
-  workspacePanelMaximized: boolean;
-  workspacePreviewActive: boolean;
-  rightDockMode: RightDockMode;
   rightDockTabOrder: RightDockMode[];
   terminalPanelOpen: boolean;
   terminalHeight: number;
@@ -277,10 +277,6 @@ export type LayoutState = {
   setSidebarWidth: (width: number) => void;
   setRightDockTreeWidth: (width: number) => void;
   setRightDockPreviewWidth: (width: number) => void;
-  setWorkspacePanelOpen: Dispatch<SetStateAction<boolean>>;
-  setWorkspacePanelMaximized: Dispatch<SetStateAction<boolean>>;
-  setWorkspacePreviewActive: Dispatch<SetStateAction<boolean>>;
-  setRightDockMode: Dispatch<SetStateAction<RightDockMode>>;
   setRightDockTabOrder: (order: RightDockMode[]) => void;
   setTerminalPanelOpen: Dispatch<SetStateAction<boolean>>;
   setTerminalHeight: (height: number) => void;
@@ -291,10 +287,6 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   sidebarWidth: loadSidebarWidth(),
   rightDockTreeWidth: loadRightDockTreeWidth(),
   rightDockPreviewWidth: loadRightDockPreviewWidth(),
-  workspacePanelOpen: loadWorkspacePanelOpen(""),
-  workspacePanelMaximized: false,
-  workspacePreviewActive: false,
-  rightDockMode: "context",
   rightDockTabOrder: loadRightDockTabOrder(),
   terminalPanelOpen: loadTerminalPanelOpen(),
   terminalHeight: loadTerminalHeight(),
@@ -302,10 +294,6 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   setSidebarWidth: (width) => set({ sidebarWidth: width }),
   setRightDockTreeWidth: (width) => set({ rightDockTreeWidth: width }),
   setRightDockPreviewWidth: (width) => set({ rightDockPreviewWidth: width }),
-  setWorkspacePanelOpen: (update) => set((s) => ({ workspacePanelOpen: applySetState(s.workspacePanelOpen, update) })),
-  setWorkspacePanelMaximized: (update) => set((s) => ({ workspacePanelMaximized: applySetState(s.workspacePanelMaximized, update) })),
-  setWorkspacePreviewActive: (update) => set((s) => ({ workspacePreviewActive: applySetState(s.workspacePreviewActive, update) })),
-  setRightDockMode: (update) => set((s) => ({ rightDockMode: applySetState(s.rightDockMode, update) })),
   setRightDockTabOrder: (order) => set({ rightDockTabOrder: sanitizeTabOrder(order) }),
   setTerminalPanelOpen: (update) => set((s) => ({ terminalPanelOpen: applySetState(s.terminalPanelOpen, update) })),
   setTerminalHeight: (height) => set({ terminalHeight: height }),
