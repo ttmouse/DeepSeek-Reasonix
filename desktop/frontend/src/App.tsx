@@ -4198,7 +4198,7 @@ export default function App() {
             target: "model-stats",
             requestId: (current?.requestId ?? 0) + 1,
           }));
-          setSettingsTarget("models");
+          setSettingsTarget("model-stats");
         },
       },
       { id: "cmd-task-center", group: t("palette.group.commands"), title: t("palette.cmd.taskCenter"), icon: <Activity size={15} />, compact: true, keywords: ["task", "tasks", "center", "任务", "任务中心"], run: () => setTasksOpen("all") },
@@ -4890,7 +4890,7 @@ export default function App() {
               <span className="banner__spacer" />
               <button type="button" className="btn btn--small" onClick={() => {
                 setSettingsFocus({ target: "model-access" });
-                setSettingsTarget("models");
+                setSettingsTarget("providers");
               }}>
                 {t("onboarding.configureProvider")}
               </button>
@@ -5515,7 +5515,7 @@ export default function App() {
           onChooseProvider={() => {
             setNeedsOnboarding(false);
             setSettingsFocus({ target: "model-access" });
-            setSettingsTarget("models");
+            setSettingsTarget("providers");
           }}
           onSkip={() => {
             dismissOnboarding();

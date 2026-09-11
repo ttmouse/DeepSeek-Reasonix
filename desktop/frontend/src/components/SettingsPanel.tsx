@@ -136,7 +136,7 @@ export function SettingsPanel({
   const [monoFontFamily, setMonoFontFamilyState] = useState<MonoFontFamily>(getMonoFontFamily());
   const [customFontName, setCustomFontNameState] = useState<string>(getCustomFontName());
   const [customMonoFontName, setCustomMonoFontNameState] = useState<string>(getCustomMonoFontName());
-  const [tab, setTab] = useState<SettingsTab>(initialTab === "providers" ? "models" : initialTab ?? "general");
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "general");
   const settingsContentRef = useRef<HTMLElement>(null);
   const pendingSubagentCommandRef = useRef<string | null>(null);
   // Play the modal exit animation, then let the parent unmount us and focus
@@ -172,8 +172,15 @@ export function SettingsPanel({
   }, []);
   useEffect(() => {
     void reload();
-    if (initialTab) setTab(initialTab === "providers" ? "models" : initialTab);
+    if (initialTab) setTab(initialTab);
   }, [initialTab, reload]);
+  // Model focus targets land on their own navigation entries: the access
+  // (provider connections) page and the usage statistics page, not the model
+  // preferences page. requestId lets repeated commands re-target the same tab.
+  useEffect(() => {
+    if (initialFocus?.target === "model-access") setTab("providers");
+    if (initialFocus?.target === "model-stats") setTab("model-stats");
+  }, [initialFocus?.target, initialFocus?.requestId]);
   useEffect(() => {
     const content = settingsContentRef.current;
     if (!content) return;
@@ -309,7 +316,7 @@ export function SettingsPanel({
   }, [requestClose]);
 
   // These pages need SettingsView; capability pages load their own data.
-  const needsSettings = tab === "general" || tab === "models" || tab === "bots" || tab === "subagents" || tab === "network" || tab === "permissions" || tab === "sandbox" || tab === "appearance" || tab === "updates";
+  const needsSettings = tab === "general" || tab === "models" || tab === "providers" || tab === "model-stats" || tab === "bots" || tab === "subagents" || tab === "network" || tab === "permissions" || tab === "sandbox" || tab === "appearance" || tab === "updates";
   const lazySettingsPageFallback = <div className="empty">{t("settings.loading")}</div>;
   const settingsNavigationItems = useMemo(() => SETTINGS_NAV_TABS.map((id) => ({
     id,
@@ -346,7 +353,7 @@ export function SettingsPanel({
             ) : (
               <>
                 {tab === "general" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><GeneralSection s={s} busy={busy} apply={apply} agentRunning={agentRunning} /></SettingsPageShell>}
-                {tab === "models" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><ModelsSection s={s} busy={busy} apply={apply} backgroundApply={backgroundApply} initialFocus={initialFocus} /></SettingsPageShell>}
+                {(tab === "models" || tab === "providers" || tab === "model-stats") && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><ModelsSection s={s} busy={busy} apply={apply} backgroundApply={backgroundApply} subtab={tab === "providers" ? "access" : tab === "model-stats" ? "stats" : "usage"} /></SettingsPageShell>}
                 {tab === "bots" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><BotsSection s={s} busy={busy} apply={apply} initialFocus={initialFocus} /></SettingsPageShell>}
                 {tab === "mcp" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><MCPServersSettingsPage /></Suspense></SettingsPageShell>}
                 {tab === "remote" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><RemoteHostsPage /></Suspense></SettingsPageShell>}
@@ -464,6 +471,8 @@ function SettingsPageShell({ s: _s, tab, children }: { s: SettingsView | null; t
 function settingsPageKind(tab: SettingsTab): "form" | "manager" {
   switch (tab) {
     case "models":
+    case "providers":
+    case "model-stats":
     case "mcp":
     case "remote":
     case "skills":
@@ -574,17 +583,19 @@ type SectionProps = {
 
 type ModelsSectionProps = SectionProps & {
   backgroundApply: (fn: () => Promise<void>) => Promise<void>;
-  initialFocus?: SettingsInitialFocus;
+  subtab: "usage" | "access" | "stats";
 };
 
 function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): string {
   switch (id) {
+    case "model-stats":
+      return t("settings.modelTab.stats");
     case "general":
       return t("settings.tab.general");
     case "models":
-      return t("settings.tab.models");
+      return t("settings.models.preferences");
     case "providers":
-      return t("settings.tab.providers");
+      return t("settings.models.services");
     case "bots":
       return t("settings.tab.bots");
     case "mcp":
@@ -622,6 +633,8 @@ function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): string {
 
 function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<typeof useT>): string {
   switch (id) {
+    case "model-stats":
+      return "";
     case "models":
       return settingsModelMeta(s, t);
     case "general":
@@ -4391,23 +4404,8 @@ function botDraftWithDerivedGatewayState(draft: BotSettingsView): BotSettingsVie
   };
 }
 
-function ModelsSection({ s, busy, apply, backgroundApply, initialFocus }: ModelsSectionProps) {
+function ModelsSection({ s, busy, apply, backgroundApply, subtab }: ModelsSectionProps) {
   const t = useT();
-  const [subtab, setSubtab] = useState<"usage" | "access" | "stats">(
-    initialFocus?.target === "model-access"
-      ? "access"
-      : initialFocus?.target === "model-stats"
-        ? "stats"
-        : "usage",
-  );
-  // The command palette may re-target this section while the settings panel is
-  // already open (the subtab state is not remounted by a tab change). Each
-  // freshly allocated focus request runs this effect once, including repeated
-  // requests for the same target after the user changes subtabs.
-  useEffect(() => {
-    if (initialFocus?.target !== "model-access" && initialFocus?.target !== "model-stats") return;
-    setSubtab(initialFocus.target === "model-access" ? "access" : "stats");
-  }, [initialFocus?.target, initialFocus?.requestId]);
   const autoRefreshKeyRef = useRef("");
   const autoRefreshGenerationRef = useRef(0);
   const refs = useMemo(() => allRefs(s), [s.providers]);
@@ -4591,33 +4589,6 @@ function ModelsSection({ s, busy, apply, backgroundApply, initialFocus }: Models
 
   return (
     <>
-      <div className="settings-subtabs">
-        <button
-          type="button"
-          className={`settings-subtab${subtab === "usage" ? " settings-subtab--active" : ""}`}
-          aria-selected={subtab === "usage"}
-          onClick={() => setSubtab("usage")}
-        >
-          {t("settings.modelTab.usage")}
-        </button>
-        <button
-          type="button"
-          className={`settings-subtab${subtab === "access" ? " settings-subtab--active" : ""}`}
-          aria-selected={subtab === "access"}
-          onClick={() => setSubtab("access")}
-        >
-          {t("settings.modelTab.access")}
-        </button>
-        <button
-          type="button"
-          className={`settings-subtab${subtab === "stats" ? " settings-subtab--active" : ""}`}
-          aria-selected={subtab === "stats"}
-          onClick={() => setSubtab("stats")}
-        >
-          {t("settings.modelTab.stats")}
-        </button>
-      </div>
-
       {subtab === "usage" ? (
         <>
           <SettingsSection title={t("settings.modelUsage")}>

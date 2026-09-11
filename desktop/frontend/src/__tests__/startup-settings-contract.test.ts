@@ -74,12 +74,12 @@ ok(
   "startup preference sync avoids rebuilding the full Settings payload",
 );
 ok(
-  /onChooseProvider=\{\(\) => \{[\s\S]*?setSettingsFocus\(\{ target: "model-access" \}\);[\s\S]*?setSettingsTarget\("models"\);/.test(appSource),
-  "onboarding opens the model access flow instead of model usage",
+  /onChooseProvider=\{\(\) => \{[\s\S]*?setSettingsFocus\(\{ target: "model-access" \}\);[\s\S]*?setSettingsTarget\("providers"\);/.test(appSource),
+  "onboarding opens the model services page instead of model preferences",
 );
 ok(
-  /initialFocus\?\.target === "model-access"[\s\S]*?initialFocus\?\.target === "model-stats"[\s\S]*?"usage"/.test(settingsSource),
-  "model settings honor access and statistics focus targets while preserving usage as the default",
+  /initialFocus\?\.target === "model-access"[\s\S]*?setTab\("providers"\);[\s\S]*?initialFocus\?\.target === "model-stats"[\s\S]*?setTab\("model-stats"\);[\s\S]*?subtab=\{tab === "providers" \? "access" : tab === "model-stats" \? "stats" : "usage"\}/.test(settingsSource),
+  "model focus targets open the provider services and usage statistics pages while preferences stays the default",
 );
 ok(
   !settingsSource.includes("modelFocusHandledRef"),

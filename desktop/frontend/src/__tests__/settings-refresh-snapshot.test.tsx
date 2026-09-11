@@ -786,12 +786,12 @@ await waitFor("provider background discovery", () => providerBatchCalls === 1);
 const providerRefreshStorageKeys = Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index) ?? "");
 ok(providerRefreshStorageKeys.some((key) => key.includes("old-fingerprint")), "provider auto-refresh cooldown uses the opaque catalog fingerprint");
 ok(providerRefreshStorageKeys.every((key) => !key.includes("private-gateway-secret")), "provider auto-refresh cooldown does not persist header secrets");
-const accessModelsButton = Array.from(providerRaceRootEl.querySelectorAll(".settings-subtab")).find(
-  (button) => button.textContent?.trim() === "Access",
+const accessNavItem = Array.from(providerRaceRootEl.querySelectorAll(".settings-center__navitem")).find(
+  (button) => button.textContent?.trim() === "Model services",
 ) as HTMLButtonElement | undefined;
-if (!accessModelsButton) throw new Error("provider Access subtab did not render");
+if (!accessNavItem) throw new Error("provider Model services nav item did not render");
 await act(async () => {
-  accessModelsButton.click();
+  accessNavItem.click();
   await flushPromises();
 });
 await act(async () => {
@@ -856,12 +856,12 @@ await act(async () => {
   );
   await flushPromises();
 });
-const providerRefreshCancelAccessButton = Array.from(providerRefreshCancelRootEl.querySelectorAll(".settings-subtab")).find(
-  (button) => button.textContent?.trim() === "Access",
+const providerRefreshCancelNavItem = Array.from(providerRefreshCancelRootEl.querySelectorAll(".settings-center__navitem")).find(
+  (button) => button.textContent?.trim() === "Model services",
 ) as HTMLButtonElement | undefined;
-if (!providerRefreshCancelAccessButton) throw new Error("provider refresh cancel Access subtab did not render");
+if (!providerRefreshCancelNavItem) throw new Error("provider refresh cancel Model services nav item did not render");
 await act(async () => {
-  providerRefreshCancelAccessButton.click();
+  providerRefreshCancelNavItem.click();
   await flushPromises();
 });
 const providerRefreshCancelButton = Array.from(providerRefreshCancelRootEl.querySelectorAll("button")).find(
@@ -976,12 +976,12 @@ await act(async () => {
   );
   await flushPromises();
 });
-const upgradeFailureAccessButton = Array.from(upgradeFailureRootEl.querySelectorAll(".settings-subtab")).find(
-  (button) => button.textContent?.trim() === "Access",
+const upgradeFailureNavItem = Array.from(upgradeFailureRootEl.querySelectorAll(".settings-center__navitem")).find(
+  (button) => button.textContent?.trim() === "Model services",
 ) as HTMLButtonElement | undefined;
-if (!upgradeFailureAccessButton) throw new Error("upgrade failure Access subtab did not render");
+if (!upgradeFailureNavItem) throw new Error("upgrade failure Model services nav item did not render");
 await act(async () => {
-  upgradeFailureAccessButton.click();
+  upgradeFailureNavItem.click();
   await flushPromises();
 });
 await waitFor(
