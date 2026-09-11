@@ -427,38 +427,40 @@ eq(
   "no secondary file-tab strip above the preview body",
 );
 
-// Overlay follows the width the dock would actually render at: a dock dragged
-// to 260px sits above minWidth (200) yet under the render floor (280), so a
-// free-space test would keep it in the grid column and never float it.
+// The dock is always a regular grid column: it never detaches into a floating
+// overlay card, so the resizer stays mounted and the width stays draggable.
 const narrowDockPlacement = resolveWorkspacePanelPlacement({
   viewportWidth: 1280, sidebarCollapsed: false, sidebarWidth: SIDEBAR_WIDTH,
   chatMinWidth: CHAT_MIN_WIDTH, resizerWidth: RESIZER_WIDTH,
-  open: true, maximized: false, preferredWidth: 260, minWidth: 200, minRenderWidth: 280,
+  open: true, maximized: false, preferredWidth: 260, minWidth: 200,
 });
-eq(narrowDockPlacement.overlay, true, "a dock under the render floor floats while the viewport still has room");
-eq(narrowDockPlacement.gridOpen, false, "a floating dock does not also occupy the grid column");
+eq(narrowDockPlacement.gridOpen, true, "a narrow dock still occupies the grid column");
+eq(narrowDockPlacement.renderable, true, "a narrow dock renders as a column instead of a floating card");
+eq(narrowDockPlacement.renderWidth, 260, "a narrow dock keeps its saved width above minWidth");
 
 const readableDockPlacement = resolveWorkspacePanelPlacement({
   viewportWidth: 1280, sidebarCollapsed: false, sidebarWidth: SIDEBAR_WIDTH,
   chatMinWidth: CHAT_MIN_WIDTH, resizerWidth: RESIZER_WIDTH,
-  open: true, maximized: false, preferredWidth: 480, minWidth: 200, minRenderWidth: 280,
+  open: true, maximized: false, preferredWidth: 480, minWidth: 200,
 });
-eq(readableDockPlacement.overlay, false, "a dock at or above the render floor stays in the grid column");
+eq(readableDockPlacement.gridOpen, true, "a readable dock stays in the grid column");
 eq(readableDockPlacement.renderWidth, 480, "a readable dock keeps its preferred width");
 
 const squeezedViewportPlacement = resolveWorkspacePanelPlacement({
   viewportWidth: 640, sidebarCollapsed: true, sidebarWidth: SIDEBAR_WIDTH,
   chatMinWidth: CHAT_MIN_WIDTH, resizerWidth: RESIZER_WIDTH,
-  open: true, maximized: false, preferredWidth: 480, minWidth: 200, minRenderWidth: 280,
+  open: true, maximized: false, preferredWidth: 480, minWidth: 200,
 });
-eq(squeezedViewportPlacement.overlay, true, "a dock squeezed below the render floor also floats");
+eq(squeezedViewportPlacement.renderWidth, 232, "a squeezed dock clamps to the available width");
+eq(squeezedViewportPlacement.gridOpen, true, "a squeezed dock stays a grid column");
 
 const closedPlacement = resolveWorkspacePanelPlacement({
   viewportWidth: 1280, sidebarCollapsed: false, sidebarWidth: SIDEBAR_WIDTH,
   chatMinWidth: CHAT_MIN_WIDTH, resizerWidth: RESIZER_WIDTH,
-  open: false, maximized: false, preferredWidth: 260, minWidth: 200, minRenderWidth: 280,
+  open: false, maximized: false, preferredWidth: 260, minWidth: 200,
 });
-eq(closedPlacement.overlay, false, "a closed dock never floats");
+eq(closedPlacement.renderable, false, "a closed dock never renders");
+eq(closedPlacement.gridOpen, false, "a closed dock never occupies the grid column");
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
 if (failed > 0) process.exit(1);

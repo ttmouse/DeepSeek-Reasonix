@@ -154,7 +154,6 @@ import {
 import { useComposerModeActions } from "./lib/useComposerModeActions";
 import { openRemoteNewSession, useRemoteComposerProfileSync, useRemoteComposerRuntimeActions, useRemoteComposerSend } from "./lib/useRemoteComposerIntegration";
 import {
-  RIGHT_DOCK_MIN_RENDER_WIDTH,
   RIGHT_DOCK_TREE_MIN_WIDTH,
   type RightDockMode,
   SIDEBAR_MAX_WIDTH,
@@ -1603,7 +1602,6 @@ export default function App() {
   const preferredWorkspacePanelWidth = rightDockTreeWidth;
   const rightDockTreeMinWidth = RIGHT_DOCK_TREE_MIN_WIDTH;
   const rightDockTreeWidthClamp = clampRightDockTreeWidth;
-  const rightDockMinRenderWidth = RIGHT_DOCK_MIN_RENDER_WIDTH;
   const workspacePanelMinWidth = rightDockTreeMinWidth;
   const chatReservedWidth = CHAT_MIN_WIDTH;
   const workspacePanelAvailableWidth = availableWorkspacePanelWidth({
@@ -1615,16 +1613,15 @@ export default function App() {
   });
   const {
     renderWidth: workspacePanelRenderWidth,
-    overlay: workspacePanelOverlay,
     gridOpen: workspacePanelGridOpen,
     // The automation page fills the main content area; the workbench dock must
-    // not overlay it. main-v2 keeps automation as a popup so its placement
-    // helper has no view concept — apply the exclusion here on top.
+    // not share that surface. main-v2 keeps automation as a popup so its
+    // placement helper has no view concept — apply the exclusion here on top.
   } = resolveWorkspacePanelPlacement({
     viewportWidth, sidebarCollapsed, sidebarWidth, chatMinWidth: chatReservedWidth,
     resizerWidth: WORKSPACE_RESIZER_WIDTH, open: workspacePanelOpen,
     maximized: workspacePanelMaximized, preferredWidth: preferredWorkspacePanelWidth,
-    minWidth: workspacePanelMinWidth, minRenderWidth: rightDockMinRenderWidth,
+    minWidth: workspacePanelMinWidth,
     liveWidth: liveWorkspacePanelRenderWidth,
   });
   const automationView = mainView === "automation";
@@ -3153,11 +3150,10 @@ export default function App() {
         "--sidebar-expanded-width": `${sidebarRenderWidth}px`,
         "--chat-min-width": `${chatReservedWidth}px`,
         "--workspace-width": `${effectiveWorkspacePanelGridOpen ? workspacePanelRenderWidth : 0}px`,
-        "--workspace-overlay-width": `${workspacePanelOverlay ? workspacePanelRenderWidth : 0}px`,
         "--workspace-resizer-width": `${WORKSPACE_RESIZER_WIDTH}px`,
         "--terminal-height": `${terminalSurfaceOpen ? liveTerminalHeight ?? terminalRenderHeight : 0}px`,
       }) as CSSProperties,
-    [chatReservedWidth, effectiveWorkspacePanelGridOpen, liveTerminalHeight, sidebarRenderWidth, terminalPanelOpen, terminalRenderHeight, workspacePanelOverlay, workspacePanelRenderWidth, terminalSurfaceOpen],
+    [chatReservedWidth, effectiveWorkspacePanelGridOpen, liveTerminalHeight, sidebarRenderWidth, terminalPanelOpen, terminalRenderHeight, workspacePanelRenderWidth, terminalSurfaceOpen],
 
   );
 
@@ -4585,7 +4581,6 @@ export default function App() {
           sidebarCollapsed ? "layout--sidebar-collapsed" : "",
           sidebarResizing ? "layout--resizing layout--sidebar-resizing" : "",
           surfaceWorkspacePanelGridOpen ? "layout--workspace-open" : "",
-          workspacePanelOverlay ? "layout--workspace-overlay" : "",
           "layout--terminal-drawer-open",
           terminalSurfaceOpen ? "layout--terminal-drawer-expanded" : "",
           terminalResizing ? "layout--terminal-resizing" : "",
@@ -5307,7 +5302,6 @@ export default function App() {
             className={[
               "workbench-dock",
               `workbench-dock--${rightDockMode}`,
-              workspacePanelOverlay ? "workbench-dock--overlay" : "",
             ].join(" ")}
             aria-label={t("rightDock.workbench")}
           >

@@ -37,7 +37,6 @@ export const STORED_RIGHT_DOCK_TREE_MIN_WIDTH = 252;
 export const RIGHT_DOCK_TREE_MAX_WIDTH = 560;
 export const RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH = 660;
 export const RIGHT_DOCK_PREVIEW_MIN_WIDTH = 420;
-export const RIGHT_DOCK_MIN_RENDER_WIDTH = 280;
 export const RIGHT_DOCK_MAX_WIDTH = 860;
 const WORKSPACE_PANEL_OPEN_KEY = "reasonix.workspacePanel.open";
 // First-launch default when no preference is stored (matches post-#6371 UX).

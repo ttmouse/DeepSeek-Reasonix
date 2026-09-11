@@ -22,47 +22,14 @@
   position: relative;
 }
 
-.layout--workspace-overlay .workbench-dock--overlay {
-  position: absolute;
-  z-index: var(--z-workspace-float);
-  top: var(--app-chrome-height);
-  right: 0;
-  bottom: var(--statusbar-height);
-  width: min(var(--workspace-width), calc(100vw - 16px));
-  height: auto;
-  grid-area: auto;
-  border: 1px solid var(--border-soft);
-  border-right: 0;
-  border-radius: 10px 0 0 10px;
-  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.24);
-}
-
-/* When the window is too narrow for an embedded dock, the dock floats over
-   the chat (overlay) and would otherwise cover the grid-positioned 1px
-   resizer (z 13 < float 40), making the drag handle invisible and the panel
-   width un-restorable. In overlay the resizer must ride the floating dock's
-   left edge and lift above the float so it stays visible and draggable. */
-.layout--workspace-overlay .workspace-panel-resizer {
-  position: absolute;
-  top: var(--app-chrome-height);
-  bottom: var(--statusbar-height);
-  right: calc(min(var(--workspace-width), calc(100vw - 16px)) - 1px);
-  z-index: calc(var(--z-workspace-float) + 1);
-  height: auto;
-  /* The ≤820px layout media query hides the resizer with display:none
-     !important; the overlay dock is re-shown there, so the handle must be
-     too, or the floating dock stays un-resizable at narrow widths. */
-  display: block !important;
-}
-
 /* Preserve an opened sidebar beside a 400px chat surface at the native
-   shell's 760px minimum; the right dock floats above both surfaces. */
+   shell's 760px minimum; an open dock keeps its own third column instead. */
 @media (max-width: 820px) {
-  :is(.app, :root[data-theme-style] .app) .layout:not(.layout--sidebar-collapsed) {
+  :is(.app, :root[data-theme-style] .app) .layout:not(.layout--sidebar-collapsed):not(.layout--workspace-open) {
     grid-template-columns: var(--sidebar-expanded-width) minmax(400px, 1fr) !important;
   }
 
-  :is(.app, :root[data-theme-style] .app) .layout.layout--sidebar-collapsed {
+  :is(.app, :root[data-theme-style] .app) .layout.layout--sidebar-collapsed:not(.layout--workspace-open) {
     grid-template-columns: minmax(400px, 1fr) !important;
   }
 
@@ -85,9 +52,5 @@
   :is(.app, :root[data-theme-style] .app) .layout.layout--sidebar-collapsed .chat-pane {
     grid-column: 1 !important;
     min-width: 400px;
-  }
-
-  :is(.app, :root[data-theme-style] .app) .layout--workspace-overlay .workbench-dock--overlay {
-    display: flex !important;
   }
 }

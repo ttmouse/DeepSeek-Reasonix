@@ -73,11 +73,11 @@ export function workspacePanelAriaMinWidth(minWidth: number, renderedWidth: numb
 
 export function resolveWorkspacePanelPlacement({
   viewportWidth, sidebarCollapsed, sidebarWidth, chatMinWidth, resizerWidth,
-  open, maximized, preferredWidth, minWidth, minRenderWidth, liveWidth,
+  open, maximized, preferredWidth, minWidth, liveWidth,
 }: {
   viewportWidth: number; sidebarCollapsed: boolean; sidebarWidth: number;
   chatMinWidth: number; resizerWidth: number; open: boolean; maximized: boolean;
-  preferredWidth: number; minWidth: number; minRenderWidth: number; liveWidth?: number | null;
+  preferredWidth: number; minWidth: number; liveWidth?: number | null;
 }) {
   const availableWidth = availableWorkspacePanelWidth({
     viewportWidth, sidebarCollapsed, sidebarWidth, chatMinWidth, resizerWidth,
@@ -85,19 +85,11 @@ export function resolveWorkspacePanelPlacement({
   const resolvedWidth = resolveWorkspacePanelWidth({
     open, maximized, preferredWidth, minWidth, availableWidth,
   });
-  // Overlay follows the width the dock would actually render at, not the raw
-  // free space: a dock dragged below minRenderWidth (minWidth sits under the
-  // render floor) must float even while the viewport still has room for it.
-  const overlay = open && !maximized && resolvedWidth < minRenderWidth;
-  const storedWidth = maximized
-    ? preferredWidth
-    : overlay ? Math.min(preferredWidth, Math.max(minWidth, viewportWidth - 16)) : resolvedWidth;
+  const storedWidth = maximized ? preferredWidth : resolvedWidth;
   const renderWidth = liveWidth ?? storedWidth;
-  const renderable = open && (maximized || overlay || renderWidth >= minRenderWidth);
-  // The dock occupies a grid column whenever it is open and not in overlay
-  // mode. The width floor for a readable column (minRenderWidth) governs
-  // overlay only; it must not suppress the grid column itself, or a narrow
-  // saved dock width (< minRenderWidth) would render the dock at zero width.
-  const gridOpen = open && !maximized && !overlay;
-  return { renderWidth, overlay, renderable, gridOpen };
+  // The dock is always a regular grid column: never detached into a floating
+  // card, so the resizer stays mounted and the panel keeps its inset layout.
+  const renderable = open && (maximized || availableWidth > 0);
+  const gridOpen = open && !maximized;
+  return { renderWidth, renderable, gridOpen };
 }
