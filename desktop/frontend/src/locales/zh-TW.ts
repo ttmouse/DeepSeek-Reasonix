@@ -1529,6 +1529,7 @@ export const zhTW: Record<DictKey, string> = {
   "settings.compactRatioPreset.80": "80% · 推薦",
   "settings.compactRatioPreset.85": "85% · 較晚",
   "settings.keySet": "已設金鑰",
+  "settings.savedKeyHidden": "已儲存的金鑰無法檢視，輸入新金鑰可覆蓋",
   "settings.noKey": "無金鑰",
   "settings.noKeyRequired": "無需金鑰",
   "settings.cantDeleteDefault": "無法刪除預設模型服務",
