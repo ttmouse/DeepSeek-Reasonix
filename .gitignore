@@ -87,6 +87,12 @@ benchmarks/context-maintenance-e2e/run/
 
 # Local scratch
 temp/
+# Ad-hoc reports, fixtures, screenshots and scratch tests from local debugging.
+.git-check-report/
+click-test/
+hidden_status_line.png
+desktop/zz_scratch_*.go
+desktop/frontend/vite.inspect.config.mjs
 
 # Official theme art intermediate outputs / caches
 scripts/official-theme-art/out/
