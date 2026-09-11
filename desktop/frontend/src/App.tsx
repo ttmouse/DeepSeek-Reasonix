@@ -1052,12 +1052,23 @@ export default function App() {
   const userPlanModeByTabRef = useRef<UserPlanModeIntents>({});
   const [tabMetas, setTabMetas] = useState<TabMeta[]>([]);
   const [tabOrderIds, setTabOrderIds] = useState<string[]>([]);
+  // New-session (blank) surfaces may reveal before the controller build
+  // finishes: the target is an empty page, so the mask does not need to wait
+  // for meta.ready. The set records which in-flight navigation intents are
+  // blank so useNavigationSurface can release their masks early.
+  const blankSurfaceIntentsRef = useRef<Set<number>>(new Set());
   const {
     surface: navigationSurface, intent: navigationSurfaceIntent, transitioning: runtimeTransitioning, dataReady: navigationTargetDataReady,
     preserved: preservedTranscriptSurface, renderedRef: renderedTranscriptSurfaceRef, begin: beginNavigationSurface, maskTarget: settleNavigationSurface, commitPaint: commitNavigationSurfacePaint,
   } = useNavigationSurface({
-    activeTabId, ready: state.meta?.ready === true, backendActivationPending: Boolean(state.backendActivationPending), hydrating: Boolean(state.hydrating), hydrateError: state.hydrateError,
+    activeTabId, ready: state.meta?.ready === true,
+    blankIntents: blankSurfaceIntentsRef.current,
+    backendActivationPending: Boolean(state.backendActivationPending), hydrating: Boolean(state.hydrating), hydrateError: state.hydrateError,
   });
+  useEffect(() => {
+    if (navigationSurface !== null) return;
+    if (blankSurfaceIntentsRef.current.size > 0) blankSurfaceIntentsRef.current.clear();
+  }, [navigationSurface]);
   const [tabRevealSignal, setTabRevealSignal] = useState(0);
   const [transcriptRevealSignal, setTranscriptRevealSignal] = useState(0);
   const startupSplashVisible = useOverlayStore((s) => s.startupSplashVisible);
@@ -3776,6 +3787,10 @@ export default function App() {
       if (request.kind === "blank") {
         const openedTab = await openBlankTarget(request.scope, request.workspaceRoot);
         if (!latest()) return;
+        // Record this intent as a blank surface: the mask may reveal as soon
+        // as the empty page is seeded and hydrated, without waiting for the
+        // controller build (startTabControllerBuild) to flip meta.ready.
+        blankSurfaceIntentsRef.current.add(request.navigationIntentSeq);
         seedActiveTabMeta(openedTab);
         setProjectRevision((value) => value + 1);
         await refreshLatestTabMetas();

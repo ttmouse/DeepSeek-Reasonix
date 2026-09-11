@@ -17,6 +17,7 @@ export type PreservedTranscriptSurface = {
 export function useNavigationSurface(target: {
   activeTabId?: string;
   ready: boolean;
+  blankIntents?: ReadonlySet<number>;
   backendActivationPending: boolean;
   hydrating: boolean;
   hydrateError?: string;
@@ -26,8 +27,14 @@ export function useNavigationSurface(target: {
   const renderedRef = useRef<PreservedTranscriptSurface | null>(null);
   const intent = surface?.intent ?? null;
   const transitioning = intent !== null;
+  // A blank (new-session) surface has no history or live content to reconcile,
+  // so the controller build may finish behind the reveal: the target renders
+  // an empty page that cannot conflict with anything. blankIntents lets
+  // callers release the mask for such surfaces as soon as they are seeded and
+  // hydrated, keeping "new session" from waiting on the full controller boot.
+  const targetReady = target.ready || target.blankIntents?.has(intent ?? -1) === true;
   const dataReady = Boolean(
-    surface?.phase === "target-masked" && target.activeTabId && target.ready &&
+    surface?.phase === "target-masked" && target.activeTabId && targetReady &&
     !target.backendActivationPending && !target.hydrating && !target.hydrateError,
   );
   const failed = Boolean(

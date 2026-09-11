@@ -103,6 +103,9 @@ const surfaceHookSource = readFileSync(new URL("../lib/useNavigationSurface.ts",
 const stylesSource = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 ok(surfaceHookSource.includes("flushSync(() => {"), "navigation masking commits synchronously before the Wails await");
 ok(surfaceHookSource.includes("setPreserved(rendered?.items.length ? rendered : null)"), "the last stable transcript is retained during navigation");
+ok(surfaceHookSource.includes("blankIntents"), "blank (new-session) surfaces may reveal before the controller is ready");
+ok(appSource.includes("blankSurfaceIntentsRef.current.add(request.navigationIntentSeq)"), "blank navigation is marked for early reveal");
+ok(appSource.includes("blankIntents: blankSurfaceIntentsRef.current"), "App passes the blank-intent set into the surface hook");
 ok(appSource.includes("items={visibleTranscriptItems}"), "the visible transcript is decoupled from the hydrating target");
 ok(appSource.includes("transcript-navigation-overlay"), "navigation renders a blocking transcript overlay");
 ok(/\.transcript-navigation-overlay\s*\{[\s\S]*?background:\s*var\(--chat-bg, var\(--bg\)\)/.test(stylesSource), "the navigation overlay is opaque while target rows settle");
