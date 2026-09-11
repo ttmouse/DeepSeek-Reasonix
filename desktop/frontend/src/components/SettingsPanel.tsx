@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, startTransition, useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { ArrowRight, BrainCircuit, Cable, Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clipboard, Download, ExternalLink, KeyRound, Languages, ListChecks, Loader2, MoreHorizontal, PanelsTopLeft, PanelBottom, Play, Power, QrCode, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Trash2, Volume2 } from "lucide-react";
+import { ArrowRight, BrainCircuit, Cable, Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clipboard, Download, ExternalLink, Eye, EyeOff, KeyRound, Languages, ListChecks, Loader2, MoreHorizontal, PanelsTopLeft, PanelBottom, Play, Power, QrCode, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Trash2, Volume2 } from "lucide-react";
 import { asArray } from "../lib/array";
 import { writeClipboardText } from "../lib/clipboard";
 import { ShellInterpreterFields } from "./SettingsShellSupport";
@@ -6051,6 +6051,7 @@ export function ProviderAccessCard({
   const t = useT();
   const editableProvider = group.providers[0];
   const isOpenCodeGoConnection = group.id === "custom:opencode-go";
+  const [editorRevision, setEditorRevision] = useState(0);
   const editingProvider = group.providers.find((p) => editing === p.name) ?? (detail && !isOpenCodeGoConnection ? editableProvider : undefined);
   const upgradeProvider = group.providers.find((p) => p.recommendedUpgradeAvailable);
   const primaryProviderExpanded = Boolean(editableProvider && editing === editableProvider.name);
@@ -6155,7 +6156,7 @@ export function ProviderAccessCard({
         </div>
       )}
 
-      {!supportsServerWebSearch && (
+      {!supportsServerWebSearch && !(detail && editingProvider) && (
         <ProviderModelSummary
           configured={group.configured}
           models={visibleModels}
@@ -6188,7 +6189,7 @@ export function ProviderAccessCard({
         />
       )}
 
-      {editableProvider && (
+      {editableProvider && !(detail && editingProvider) && (
         <ProviderServiceCapabilities
           supported={supportsServerWebSearch}
           configured={group.configured}
@@ -6201,7 +6202,7 @@ export function ProviderAccessCard({
         />
       )}
 
-      <ProviderTechnicalDetails group={group} />
+      {!detail && <ProviderTechnicalDetails group={group} />}
 
       {group.providers.length > 1 && (isOpenCodeGoConnection ? (
         <details className="provider-route-settings">
@@ -6212,11 +6213,12 @@ export function ProviderAccessCard({
 
       {editingProvider && (
         <ProviderEditor
-          key={editingProvider.name}
+          key={`${editingProvider.name}:${editorRevision}`}
+          hideConnectionName={detail}
           initial={editingProvider}
           kinds={kinds}
           busy={busy}
-          onCancel={onCancelEdit}
+          onCancel={() => { onCancelEdit(); setEditorRevision((n) => n + 1); }}
           onSave={onSave}
           onSaveKey={onSaveEditorKey}
           onClearKey={onClearEditorKey}
@@ -6740,11 +6742,13 @@ function parseBotListInput(value: string): string[] {
 }
 
 export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker({
+  actions,
   candidates,
   selectedModels,
   visionModels,
   visionCapability = "configurable",
   contextWindows,
+  inheritedContextWindow,
   disabled,
   onToggleModel,
   onToggleVision,
@@ -6752,11 +6756,13 @@ export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker
   onSelectAll,
   onClear,
 }: {
+  actions?: ReactNode;
   candidates: string[];
   selectedModels: string[];
   visionModels: string[];
   visionCapability?: ProviderVisionCapability;
   contextWindows: Record<string, string>;
+  inheritedContextWindow?: number;
   disabled: boolean;
   onToggleModel: (model: string) => void;
   onToggleVision: (model: string) => void;
@@ -6779,23 +6785,27 @@ export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker
   if (candidates.length === 0) return null;
   const selected = new Set(selectedModels);
   const vision = new Set(visionModels);
+  const formatContext = (value: string) => {
+    const numeric = Number(value) || inheritedContextWindow;
+    if (!numeric) return t("settings.models.inherit");
+    return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(numeric);
+  };
   return (
     <div className="provider-model-draft provider-model-draft--inline">
-      <div className="provider-model-draft__head">
-        <div>
-          <div className="provider-card-block__label">{t("settings.modelCandidates")}</div>
-          <span>{t("settings.modelCandidatesSelected", { n: selectedModels.length })}</span>
-        </div>
+      <div className="provider-model-draft__head provider-model-toolbar">
+        <strong>{t("settings.modelList")}</strong>
+        <span>{t("settings.modelCandidatesSelected", { n: selectedModels.length })}</span>
         <div className="provider-model-draft__tools">
-          <button type="button" className="btn btn--small" disabled={disabled || selectedModels.length === candidates.length} onClick={onSelectAll}>
-            {t("settings.selectAllModels")}
-          </button>
-          <button type="button" className="btn btn--small" disabled={disabled || selectedModels.length === 0} onClick={onClear}>
-            {t("settings.clearModelSelection")}
-          </button>
+          {actions}
+          <details className="provider-key-compact__more">
+            <summary className="btn provider-icon-action" title={t("settings.themeGallery.moreActions")} aria-label={t("settings.themeGallery.moreActions")}><MoreHorizontal size={17} /></summary>
+            <div className="provider-key-compact__menu">
+              <button type="button" className="btn" disabled={disabled || selectedModels.length === candidates.length} onClick={onSelectAll}>{t("settings.selectAllModels")}</button>
+              <button type="button" className="btn" disabled={disabled || selectedModels.length === 0} onClick={onClear}>{t("settings.clearModelSelection")}</button>
+            </div>
+          </details>
         </div>
       </div>
-      <div className="provider-model-draft__context-guide">{t("settings.modelContextWindowGuide")}</div>
       {candidates.length > 8 && (
         <input
           className="mem-input provider-model-draft__search"
@@ -6805,11 +6815,11 @@ export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker
           onChange={(e) => setQuery(e.target.value)}
         />
       )}
-      <div className="provider-model-draft__list" role="list" aria-label={t("settings.modelCandidates")}>
+      <div className="provider-model-draft__list" role="list" aria-label={t("settings.modelList")}>
         {deferredCandidates.length > 0 ? deferredCandidates.map((model) => {
           const enabled = selected.has(model);
           return (
-            <div className="provider-model-draft__option" key={model} role="listitem" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 48px" }}>
+            <div className="provider-model-draft__option" key={model} role="listitem">
               <label className="provider-model-draft__model">
                 <input
                   type="checkbox"
@@ -6820,44 +6830,38 @@ export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker
                 <span>{model}</span>
               </label>
               {visionCapability === "configurable" ? (
-                <label className="provider-model-draft__vision">
-                  <input
-                    type="checkbox"
-                    checked={enabled && vision.has(model)}
-                    disabled={disabled || !enabled}
-                    aria-label={t("settings.visionModelAria", { model })}
-                    onChange={() => onToggleVision(model)}
-                  />
-                  <span>{t("settings.visionModel")}</span>
-                </label>
+                <button
+                  type="button"
+                  className={`provider-model-capability-tag${enabled && vision.has(model) ? " provider-model-capability-tag--on" : ""}`}
+                  disabled={disabled || !enabled}
+                  aria-pressed={enabled && vision.has(model)}
+                  title={t("settings.visionModelAria", { model })}
+                  onClick={() => onToggleVision(model)}
+                >
+                  {t("settings.visionModel")}
+                </button>
               ) : (
                 <div className="provider-model-draft__capabilities" aria-label={t("settings.modelCapabilitiesAria", { model })}>
-                  <span>{t("settings.textInput")}</span>
                   <span>{vision.has(model) ? t("settings.visionModel") : t("settings.imageInputUnsupported")}</span>
                 </div>
               )}
-              <div className="provider-model-draft__context-field">
-                <label className="provider-model-draft__context">
-                  <span>{t("settings.modelContextWindow")}</span>
-                  <input
-                    className="mem-input provider-model-draft__context-input"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    disabled={disabled || !enabled}
-                    placeholder={t("settings.modelContextWindowPlaceholder")}
-                    title={t("settings.modelContextWindowHint")}
-                    aria-label={t("settings.modelContextWindowAria", { model })}
-                    value={contextWindows[model] ?? ""}
-                    onChange={(event) => onContextWindowChange(model, event.target.value)}
-                  />
-                </label>
-                {enabled && providerModelContextWindowIsSmall(contextWindows[model]) && (
-                  <div className="provider-model-draft__context-warning" role="status">
-                    {t("settings.modelContextWindowSmallWarning")}
-                  </div>
-                )}
-              </div>
+              <input
+                className="provider-context-badge provider-context-badge--edit"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                disabled={disabled || !enabled}
+                placeholder={formatContext(contextWindows[model] ?? "")}
+                title={contextWindows[model] ? `${contextWindows[model]} ${t("settings.modelContextWindow")}` : t("settings.models.inherit")}
+                aria-label={t("settings.modelContextWindowAria", { model })}
+                value={contextWindows[model] ?? ""}
+                onChange={(event) => onContextWindowChange(model, event.target.value)}
+              />
+              {enabled && providerModelContextWindowIsSmall(contextWindows[model]) && (
+                <div className="provider-model-draft__context-warning" role="status">
+                  {t("settings.modelContextWindowSmallWarning")}
+                </div>
+              )}
             </div>
           );
         }) : (
@@ -6869,6 +6873,7 @@ export const ProviderEditorModelPicker = memo(function ProviderEditorModelPicker
 });
 
 export function ProviderEditor({
+  hideConnectionName = false,
   initial,
   kinds,
   busy,
@@ -6877,6 +6882,7 @@ export function ProviderEditor({
   onSaveKey,
   onClearKey,
 }: {
+  hideConnectionName?: boolean;
   initial?: ProviderView;
   kinds: string[];
   busy: boolean;
@@ -6927,6 +6933,8 @@ export function ProviderEditor({
   const [fetchStatus, setFetchStatus] = useState<string | null>(null);
   const [fetchFallback, setFetchFallback] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [addingModel, setAddingModel] = useState<string | null>(null);
   const builtIn = initial?.builtIn ?? false;
   const isNewCustomProvider = !initial;
   const providerKindChoices = useMemo(() => {
@@ -6991,6 +6999,14 @@ export function ProviderEditor({
     : [];
   const normalizedDefaultEffort = defaultEffort.toLowerCase().trim();
   const cleanDefaultEffort = cleanedSupportedEfforts.includes(normalizedDefaultEffort) ? normalizedDefaultEffort : "";
+
+  const draftSnapshot = JSON.stringify([
+    name, kind, requestUrl, models, modelsUrl, headersDraft, extraBodyDraft,
+    authHeader, noProxy, keyDraft, balanceUrl, ctx, modelContextWindows,
+    visionModels, reasoningProtocol, thinking, webSearch,
+  ]);
+  const [savedSnapshot, setSavedSnapshot] = useState(draftSnapshot);
+  const dirty = draftSnapshot !== savedSnapshot;
 
   const fetchModels = async () => {
     if (extraBodyInvalid) return;
@@ -7095,6 +7111,9 @@ export function ProviderEditor({
     };
     try {
       await onSave(provider, keyDraft.trim() || undefined);
+      setShowKey(false);
+      setKeyDraft("");
+      setSavedSnapshot(draftSnapshot);
     } catch (e) {
       setFetchFallback(String((e as Error)?.message ?? e));
     }
@@ -7140,14 +7159,6 @@ export function ProviderEditor({
     setModels(uniqueStrings(nextModels).join(", "));
   };
 
-  const updateManualModels = (value: string) => {
-    setModels(value);
-    const typedModels = parseProviderListInput(value);
-    if (typedModels.length > 0) {
-      setModelCandidates((current) => uniqueStrings([...current, ...typedModels]));
-    }
-  };
-
   const toggleEditorModel = (model: string) => {
     const selected = new Set(modelNames);
     if (selected.has(model)) {
@@ -7183,6 +7194,18 @@ export function ProviderEditor({
     setModels("");
     setVisionModels("");
     setVisionModelsConfigured(true);
+  };
+
+  const commitNewModel = () => {
+    const value = (addingModel ?? "").trim();
+    if (!value) {
+      setAddingModel(null);
+      return;
+    }
+    const next = uniqueStrings([...modelCandidateNames, value]);
+    setModelCandidates(next);
+    setModels((current) => uniqueStrings([...parseProviderListInput(current), value]).join(", "));
+    setAddingModel(null);
   };
 
   const advancedFields = (
@@ -7293,116 +7316,168 @@ export function ProviderEditor({
   );
 
   return (
-    <div className={`provider-editor${isNewCustomProvider ? " provider-editor--wizard" : ""}`}>
-      <label className="set-label" htmlFor={providerNameInputId}>{t("settings.customProviderName")}</label>
-      <input
-        id={providerNameInputId}
-        className="mem-input provider-name-input"
-        aria-describedby={initial ? providerNameHelpId : undefined}
-        placeholder={t("settings.customProviderNamePlaceholder")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        disabled={!!initial}
-      />
-      {initial && (
-        <div id={providerNameHelpId} className="mem-hint provider-name-readonly-hint">
-          {t("settings.customProviderNameReadonlyHint")}
-        </div>
-      )}
-      <label className="set-label">{t("settings.providerProtocol")}</label>
-      <select className="mem-select" value={kind} onChange={(e) => setKind(e.target.value)}>
-        {providerKindChoices.map((choice) => (
-          <option key={choice} value={choice}>
-            {providerKindLabel(choice, t)}
-          </option>
-        ))}
-      </select>
-      <div className="mem-hint">{providerKindHint(effectiveKind, t)}</div>
-      <label className="set-label" htmlFor={providerUrlInputId}>
-        {t("settings.providerBaseUrlLabel")}
-      </label>
-      <input
-        id={providerUrlInputId}
-        className="mem-input provider-url-input"
-        aria-describedby={providerUrlHelpId}
-        placeholder={t("settings.providerChatUrlPlaceholder")}
-        value={requestUrl}
-        onChange={(e) => setRequestUrl(e.target.value)}
-      />
-      <div id={providerUrlHelpId} className="mem-hint">
-        {t("settings.providerRequestUrlHint")}
-      </div>
-      {!initial && (
-        <>
-          <label className="set-label">{t("settings.providerKey")}</label>
-          <input
-            className="mem-input"
-            type="password"
-            placeholder={t("settings.providerKeyPlaceholder")}
-            value={keyDraft}
-            onChange={(e) => setKeyDraft(e.target.value)}
-          />
-        </>
-      )}
-      {initial && onSaveKey && apiKeyEnv.trim() && (
-        <>
-          <label className="set-label">{t("settings.providerKey")}</label>
-          {initial.keySource && (
-            <div className="mem-hint" title={initial.keySourcePath || undefined}>
-              {t("settings.keySource", { source: initial.keySource })}
+    <div className={`provider-editor provider-editor--compact${isNewCustomProvider ? " provider-editor--wizard" : ""}`}>
+      <div className="provider-editor__body">
+        {!hideConnectionName && (
+          <>
+            <label className="set-label" htmlFor={providerNameInputId}>{t("settings.customProviderName")}</label>
+            <input
+              id={providerNameInputId}
+              className="mem-input provider-name-input"
+              aria-describedby={initial ? providerNameHelpId : undefined}
+              placeholder={t("settings.customProviderNamePlaceholder")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!!initial}
+            />
+            {initial && (
+              <div id={providerNameHelpId} className="mem-hint provider-name-readonly-hint">
+                {t("settings.customProviderNameReadonlyHint")}
+              </div>
+            )}
+          </>
+        )}
+        <section className="provider-connection-fields">
+          <div className="provider-connection-field">
+            <label className="set-label" htmlFor={providerUrlInputId}>
+              {t("settings.providerBaseUrlLabel")}
+            </label>
+            <input
+              id={providerUrlInputId}
+              className="mem-input provider-url-input"
+              aria-describedby={providerUrlHelpId}
+              placeholder={t("settings.providerChatUrlPlaceholder")}
+              value={requestUrl}
+              onChange={(e) => setRequestUrl(e.target.value)}
+            />
+            <span id={providerUrlHelpId} className="provider-field-help">
+              {t("settings.providerRequestUrlHint")}
+            </span>
+          </div>
+          <div className="provider-connection-field">
+            <label className="set-label">{t("settings.providerProtocol")}</label>
+            <select className="mem-select" value={kind} onChange={(e) => setKind(e.target.value)}>
+              {providerKindChoices.map((choice) => (
+                <option key={choice} value={choice}>
+                  {providerKindLabel(choice, t)}
+                </option>
+              ))}
+            </select>
+            <div className="mem-hint">{providerKindHint(effectiveKind, t)}</div>
+          </div>
+          <div className="provider-connection-field provider-key-single">
+            <label htmlFor={`provider-key-${initial?.name ?? "new"}`}>{t("settings.providerKey")}</label>
+            <div className="provider-key-single__input">
+              <input
+                id={`provider-key-${initial?.name ?? "new"}`}
+                className="mem-input"
+                type={showKey ? "text" : "password"}
+                autoComplete="new-password"
+                spellCheck={false}
+                placeholder={initial?.keySet ? "••••••••••••••••••••" : t("settings.providerKeyPlaceholder")}
+                value={keyDraft}
+                disabled={busy}
+                onChange={(e) => setKeyDraft(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn provider-icon-action"
+                aria-label={showKey ? "Hide API Key" : "Show API Key"}
+                title={showKey ? "Hide API Key" : "Show API Key"}
+                aria-pressed={showKey}
+                disabled={!keyDraft}
+                onClick={() => setShowKey((value) => !value)}
+              >
+                {showKey ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
             </div>
-          )}
-          <KeyField
-            apiKeyEnv={apiKeyEnv.trim()}
-            busy={busy || fetchingModels}
-            keySet={initial.keySet}
-            onSet={(env, value) => onSaveKey(env, value)}
+            {initial?.keySource && (
+              <div className="mem-hint" title={initial.keySourcePath || undefined}>
+                {t("settings.keySource", { source: initial.keySource })}
+              </div>
+            )}
+            {initial && initial.keySet && onClearKey && apiKeyEnv.trim() && (
+              <InlineConfirmButton
+                label={t("settings.clearKey")}
+                confirmLabel={t("settings.confirmClearKey")}
+                cancelLabel={t("common.cancel")}
+                disabled={busy}
+                danger
+                onConfirm={() => onClearKey(apiKeyEnv.trim())}
+              />
+            )}
+          </div>
+        </section>
+        {fetchStatus && <div role="status" className="provider-fetch-status provider-fetch-status--ok">{fetchStatus}</div>}
+        {fetchFallback && <div role="alert" className="provider-fetch-status provider-fetch-status--warn">{fetchFallback}</div>}
+        {addingModel !== null && (
+          <input
+            className="mem-input provider-model-draft__search"
+            placeholder={t("settings.models.addPlaceholder")}
+            autoFocus
+            value={addingModel}
+            disabled={busy || fetchingModels}
+            onChange={(e) => setAddingModel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitNewModel(); }
+              else if (e.key === "Escape") setAddingModel(null);
+            }}
+            onBlur={commitNewModel}
           />
-        </>
-      )}
-      <div className="provider-model-fetch-row">
-        <button
-          type="button"
-          className="btn btn--small"
-          disabled={busy || fetchingModels || !canFetch || extraBodyInvalid}
-          onClick={() => void fetchModels()}
-        >
-          {fetchingModels ? t("settings.fetchingModels") : t("settings.testFetchModels")}
-        </button>
-        <span>{t("settings.testFetchModelsHint")}</span>
+        )}
+        <ProviderEditorModelPicker
+          actions={<>
+            <button
+              type="button"
+              className="btn provider-icon-action"
+              title={t("settings.fetchModels")}
+              aria-label={t(fetchingModels ? "settings.fetchingModels" : "settings.fetchModels")}
+              disabled={busy || fetchingModels || !canFetch || extraBodyInvalid}
+              onClick={() => void fetchModels()}
+            >
+              {fetchingModels ? <Loader2 size={17} className="spin" /> : <RefreshCw size={17} />}
+            </button>
+            <button
+              className="btn btn--small"
+              disabled={busy || fetchingModels}
+              onClick={() => setAddingModel("")}
+            >
+              {t("settings.models.add")}
+            </button>
+          </>}
+          candidates={modelCandidateNames}
+          selectedModels={modelNames}
+          visionModels={visionModelNames}
+          visionCapability={effectiveVisionCapability}
+          contextWindows={modelContextWindows}
+          inheritedContextWindow={Number(ctx) || undefined}
+          disabled={busy || fetchingModels}
+          onToggleModel={toggleEditorModel}
+          onToggleVision={toggleEditorVisionModel}
+          onContextWindowChange={updateEditorModelContextWindow}
+          onSelectAll={selectAllEditorModels}
+          onClear={clearEditorModels}
+        />
+        <ProviderServiceCapabilities
+          supported={effectiveServerWebSearchCapability}
+          models={modelNames}
+          enabled={webSearch}
+          disabled={busy || fetchingModels}
+          onChange={setWebSearch}
+        />
+        {advancedFields}
       </div>
-      {fetchStatus && <div className="provider-fetch-status provider-fetch-status--ok">{fetchStatus}</div>}
-      {fetchFallback && <div className="provider-fetch-status provider-fetch-status--warn">{fetchFallback}</div>}
-      <label className="set-label">{t("settings.manualModels")}</label>
-      <input className="mem-input" placeholder={t("settings.providerModels")} value={models} onChange={(e) => updateManualModels(e.target.value)} />
-      <div className="mem-hint">{t("settings.manualModelsHint")}</div>
-      <ProviderEditorModelPicker
-        candidates={modelCandidateNames}
-        selectedModels={modelNames}
-        visionModels={visionModelNames}
-        visionCapability={effectiveVisionCapability}
-        contextWindows={modelContextWindows}
-        disabled={busy || fetchingModels}
-        onToggleModel={toggleEditorModel}
-        onToggleVision={toggleEditorVisionModel}
-        onContextWindowChange={updateEditorModelContextWindow}
-        onSelectAll={selectAllEditorModels}
-        onClear={clearEditorModels}
-      />
-      <ProviderServiceCapabilities
-        supported={effectiveServerWebSearchCapability}
-        models={modelNames}
-        enabled={webSearch}
-        disabled={busy || fetchingModels}
-        onChange={setWebSearch}
-      />
-      {advancedFields}
-      <div className="prov-card__actions">
+      <div className="prov-card__actions provider-editor-footer">
+        <span role="status">{dirty ? t("settings.models.unsaved") : t("settings.models.saved")}</span>
         <button className="btn btn--small" onClick={onCancel} disabled={busy}>
           {t("common.cancel")}
         </button>
-        <button className="btn btn--primary btn--small" onClick={() => void save()} disabled={busy || !name.trim() || !effectiveBaseUrl || !models.trim() || extraBodyInvalid}>
-          {t("common.save")}
+        <button
+          className="btn btn--primary btn--small"
+          onClick={() => void save()}
+          disabled={busy || fetchingModels || (Boolean(initial) && !dirty) || !name.trim() || !effectiveBaseUrl || !models.trim() || extraBodyInvalid}
+        >
+          {t("settings.models.saveChanges")}
         </button>
       </div>
     </div>
