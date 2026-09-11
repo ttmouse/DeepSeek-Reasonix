@@ -4,6 +4,7 @@ import { asArray } from "../lib/array";
 import { writeClipboardText } from "../lib/clipboard";
 import { ShellInterpreterFields } from "./SettingsShellSupport";
 import { CHANNEL_ICONS } from "./channelIcons";
+import { ProviderConnections } from "./ProviderConnections";
 import { botAccessEntryCount, botAccessReady, botConnectionCredentialSummary, botConnectionLabel, botConnectionScopeLabel, botConnectionSecretEnv, botConnectionSecretPatch, botInstallTargetForConnection, botInstallTargetMatchesConnection, botTargetHint, botTargetLabel, diagnosticMessage, diagnosticReportDetail, firstConnectionRemote, formatInstallTimeLeft, formatInstallUserCode, qqBotAdded, type BotInstallTarget, type BotOfficialInstallTarget } from "./botConnectionSettings";
 import { useDeferredClose } from "../lib/useMountTransition";
 import { app, COMPACT_RATIO_MAX_PERCENT, COMPACT_RATIO_MIN_PERCENT, openExternal } from "../lib/bridge";
@@ -5342,120 +5343,124 @@ function ProvidersSection({ s, busy, apply }: SectionProps) {
     <SettingsSection
       title={t("settings.providerAccess")}
       description={t("settings.providerAccessHint")}
-      actions={
-        <button className="btn btn--small" disabled={busy || adding !== null} onClick={() => setAdding("official")}>
-          {t("settings.addProvider")}
-        </button>
-      }
     >
-      <div className="provider-access-grid">
-        {groups.length === 0 && adding === null && (
-          <div className="provider-empty">
-            <strong>{t("settings.providerAccessEmptyTitle")}</strong>
-            <span>{t("settings.providerAccessEmptyHint")}</span>
-            <div className="provider-empty__actions">
-              <button type="button" className="btn btn--small" disabled={busy} onClick={() => setAdding("official")}>
-                {t("settings.addProvider.officialChoice")}
-              </button>
-              <button type="button" className="btn btn--small" disabled={busy} onClick={() => setAdding("custom")}>
-                {t("settings.addProvider.customChoice")}
-              </button>
-            </div>
+      {groups.length === 0 && adding === null && (
+        <div className="provider-empty">
+          <strong>{t("settings.providerAccessEmptyTitle")}</strong>
+          <span>{t("settings.providerAccessEmptyHint")}</span>
+          <div className="provider-empty__actions">
+            <button type="button" className="btn btn--small" disabled={busy} onClick={() => setAdding("official")}>
+              {t("settings.addProvider.officialChoice")}
+            </button>
+            <button type="button" className="btn btn--small" disabled={busy} onClick={() => setAdding("custom")}>
+              {t("settings.addProvider.customChoice")}
+            </button>
           </div>
-        )}
-        {adding !== null && (
-          <AddProviderPanel
-            mode={adding}
-            kinds={s.providerKinds}
-            officialProviders={s.officialProviders}
-            providerPresets={s.providerPresets}
-            busy={busy}
-            onMode={setAdding}
-            onCancel={() => setAdding(null)}
-            onAddOfficial={(kind, key) => apply(() => app.AddOfficialProviderAccess(kind, key)).then(() => setAdding(null))}
-            onAddPreset={(id, key) => apply(() => app.AddProviderPresetAccess(id, key)).then(() => setAdding(null))}
-            onViewPresetConflict={(providerName) => {
-              setRevealedProvider(providerName);
-              setEditing(providerName);
-              setAdding(null);
-            }}
-            onResetPreset={(id) => apply(() => app.ResetProviderPresetAccess(id)).then(() => setAdding(null))}
-            onAddCustom={(pv, key) => apply(() => saveProvider(pv, key ?? "")).then(() => setAdding(null))}
-          />
-        )}
-        {adding === null && groups.map((group) => (
-          <ProviderAccessCard
-            key={group.id}
-            group={group}
-            busy={busy}
-            fetching={fetchingProviders.has(group.id)}
-            fetchResult={fetchResults[group.id]}
-            modelDraft={modelDrafts[group.id]}
-            editing={editing}
-            kinds={s.providerKinds}
-            onEdit={setEditing}
-            onCancelEdit={() => setEditing(null)}
-            onSave={(pv, key) => {
-              cancelGroupFetch(group.id);
-              return apply(() => saveProvider(pv, key ?? "")).then(() => {
-                setEditing(null);
-                setGroupModelDraft(group.id, null);
-              });
-            }}
-            onRefresh={(provider) => void refreshModels(group, provider)}
-            onToggleDraftModel={(model) => updateModelDraftSelection(group.id, (draft) => (
-              draft.selected.includes(model)
-                ? draft.selected.filter((candidate) => candidate !== model)
-                : [...draft.selected, model]
-            ))}
-            onToggleDraftVision={(model) => toggleModelDraftVision(group.id, model)}
-            onSelectAllDraftModels={() => updateModelDraftSelection(group.id, (draft) => draft.candidates)}
-            onClearDraftModels={() => updateModelDraftSelection(group.id, () => [])}
-            onCancelDraftModels={() => {
-              setGroupModelDraft(group.id, null);
-              setGroupFetchResult(group.id, null);
-            }}
-            onSaveDraftModels={() => void saveModelDraft(group)}
-            onToggleWebSearch={(enabled) => {
-              if (group.id === "custom:opencode-go") {
-                const searchProviderNames = group.providers
-                  .map((provider) => provider.name)
-                  .filter((name) => name.startsWith("opencode-go-deepseek-"));
-                if (enabled) {
-                  void apply(() => app.AddProviderPresetAccess("opencode-go-deepseek-responses", ""));
-                } else if (searchProviderNames.length > 0) {
-                  void apply(() => app.RemoveProviderAccesses(searchProviderNames));
-                }
-                return;
-              }
-              const providerNames = group.providers.map((provider) => provider.name);
-              if (providerNames.length === 0) return;
-              void apply(() => app.SetProviderWebSearch(providerNames, enabled));
-            }}
-            onUpgradeRecommended={(name) => {
-              cancelGroupFetch(group.id);
-              return apply(() => app.UpgradeDeepSeekProviderAccess(name)).then((upgraded) => {
-                if (upgraded) {
+        </div>
+      )}
+      {adding !== null && (
+        <AddProviderPanel
+          mode={adding}
+          kinds={s.providerKinds}
+          officialProviders={s.officialProviders}
+          providerPresets={s.providerPresets}
+          busy={busy}
+          onMode={setAdding}
+          onCancel={() => setAdding(null)}
+          onAddOfficial={(kind, key) => apply(() => app.AddOfficialProviderAccess(kind, key)).then(() => setAdding(null))}
+          onAddPreset={(id, key) => apply(() => app.AddProviderPresetAccess(id, key)).then(() => setAdding(null))}
+          onViewPresetConflict={(providerName) => {
+            setRevealedProvider(providerName);
+            setEditing(providerName);
+            setAdding(null);
+          }}
+          onResetPreset={(id) => apply(() => app.ResetProviderPresetAccess(id)).then(() => setAdding(null))}
+          onAddCustom={(pv, key) => apply(() => saveProvider(pv, key ?? "")).then(() => setAdding(null))}
+        />
+      )}
+      {adding === null && groups.length > 0 && (
+        <ProviderConnections
+          groups={groups}
+          presets={s.providerPresets}
+          revealedProvider={revealedProvider}
+          hidden={adding !== null}
+          busy={busy}
+          onAdd={() => setAdding("official")}
+          renderDetail={(group) => (
+            <ProviderAccessCard
+              key={group.id}
+              detail
+              group={group}
+              busy={busy}
+              fetching={fetchingProviders.has(group.id)}
+              fetchResult={fetchResults[group.id]}
+              modelDraft={modelDrafts[group.id]}
+              editing={editing}
+              kinds={s.providerKinds}
+              onEdit={setEditing}
+              onCancelEdit={() => setEditing(null)}
+              onSave={(pv, key) => {
+                cancelGroupFetch(group.id);
+                return apply(() => saveProvider(pv, key ?? "")).then(() => {
                   setEditing(null);
                   setGroupModelDraft(group.id, null);
+                });
+              }}
+              onRefresh={(provider) => void refreshModels(group, provider)}
+              onToggleDraftModel={(model) => updateModelDraftSelection(group.id, (draft) => (
+                draft.selected.includes(model)
+                  ? draft.selected.filter((candidate) => candidate !== model)
+                  : [...draft.selected, model]
+              ))}
+              onToggleDraftVision={(model) => toggleModelDraftVision(group.id, model)}
+              onSelectAllDraftModels={() => updateModelDraftSelection(group.id, (draft) => draft.candidates)}
+              onClearDraftModels={() => updateModelDraftSelection(group.id, () => [])}
+              onCancelDraftModels={() => {
+                setGroupModelDraft(group.id, null);
+                setGroupFetchResult(group.id, null);
+              }}
+              onSaveDraftModels={() => void saveModelDraft(group)}
+              onToggleWebSearch={(enabled) => {
+                if (group.id === "custom:opencode-go") {
+                  const searchProviderNames = group.providers
+                    .map((provider) => provider.name)
+                    .filter((name) => name.startsWith("opencode-go-deepseek-"));
+                  if (enabled) {
+                    void apply(() => app.AddProviderPresetAccess("opencode-go-deepseek-responses", ""));
+                  } else if (searchProviderNames.length > 0) {
+                    void apply(() => app.RemoveProviderAccesses(searchProviderNames));
+                  }
+                  return;
                 }
-              });
-            }}
-            onSaveEditorKey={(env, value) => group.builtIn ? saveProviderKey(group, env, value) : saveKeyEnvAndAutoRefresh(group, env, value)}
-            onClearEditorKey={(env) => clearProviderKey(group, env)}
-            onDelete={(providers) => {
-              cancelGroupFetch(group.id);
-              const providerNames = providers.map(({ name }) => name);
-              return apply(() => app.RemoveProviderAccesses(providerNames)).then(() => {
-                if (revealedProvider && providerNames.includes(revealedProvider)) {
-                  setRevealedProvider(null);
-                  setEditing(null);
-                }
-              });
-            }}
-          />
-        ))}
-      </div>
+                const providerNames = group.providers.map((provider) => provider.name);
+                if (providerNames.length === 0) return;
+                void apply(() => app.SetProviderWebSearch(providerNames, enabled));
+              }}
+              onUpgradeRecommended={(name) => {
+                cancelGroupFetch(group.id);
+                return apply(() => app.UpgradeDeepSeekProviderAccess(name)).then((upgraded) => {
+                  if (upgraded) {
+                    setEditing(null);
+                    setGroupModelDraft(group.id, null);
+                  }
+                });
+              }}
+              onSaveEditorKey={(env, value) => group.builtIn ? saveProviderKey(group, env, value) : saveKeyEnvAndAutoRefresh(group, env, value)}
+              onClearEditorKey={(env) => clearProviderKey(group, env)}
+              onDelete={(providers) => {
+                cancelGroupFetch(group.id);
+                const providerNames = providers.map(({ name }) => name);
+                return apply(() => app.RemoveProviderAccesses(providerNames)).then(() => {
+                  if (revealedProvider && providerNames.includes(revealedProvider)) {
+                    setRevealedProvider(null);
+                    setEditing(null);
+                  }
+                });
+              }}
+            />
+          )}
+        />
+      )}
     </SettingsSection>
   );
 }
@@ -5995,6 +6000,7 @@ export function AddProviderPanel({
 }
 
 export function ProviderAccessCard({
+  detail = false,
   group,
   busy,
   fetching,
@@ -6018,6 +6024,7 @@ export function ProviderAccessCard({
   onClearEditorKey,
   onDelete,
 }: {
+  detail?: boolean;
   group: ProviderAccessGroup;
   busy: boolean;
   fetching: boolean;
@@ -6044,7 +6051,7 @@ export function ProviderAccessCard({
   const t = useT();
   const editableProvider = group.providers[0];
   const isOpenCodeGoConnection = group.id === "custom:opencode-go";
-  const editingProvider = group.providers.find((p) => editing === p.name);
+  const editingProvider = group.providers.find((p) => editing === p.name) ?? (detail && !isOpenCodeGoConnection ? editableProvider : undefined);
   const upgradeProvider = group.providers.find((p) => p.recommendedUpgradeAvailable);
   const primaryProviderExpanded = Boolean(editableProvider && editing === editableProvider.name);
   const supportsServerWebSearch = isOpenCodeGoConnection
@@ -6083,21 +6090,21 @@ export function ProviderAccessCard({
     </div>
   );
   return (
-    <article className={`provider-access-card${group.builtIn ? " provider-access-card--builtin" : ""}`}>
+    <article className={`provider-access-card${detail ? " provider-access-card--detail" : ""}${group.builtIn ? " provider-access-card--builtin" : ""}`}>
       <div className="provider-access-card__head">
         <div className="provider-access-card__identity">
           <div className="provider-access-card__title">
             {group.label}
-            <span className={`badge ${group.builtIn ? "badge--project" : "badge--neutral"}`}>
+            {!detail && <span className={`badge ${group.builtIn ? "badge--project" : "badge--neutral"}`}>
               {group.builtIn ? t("settings.builtinProviderBadge") : t("settings.customProviderBadge")}
-            </span>
+            </span>}
             <span className={`badge ${group.keySet ? "badge--project" : "badge--feedback"}`}>
               {providerKeyStatusLabel(group, t)}
             </span>
           </div>
         </div>
         <div className="provider-access-card__actions">
-          {editableProvider && !isOpenCodeGoConnection && (
+          {editableProvider && !isOpenCodeGoConnection && !detail && (
             <button
               className="btn btn--small"
               disabled={busy}
