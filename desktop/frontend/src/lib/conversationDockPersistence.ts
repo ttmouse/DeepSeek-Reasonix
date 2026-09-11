@@ -86,7 +86,7 @@ function now(): number {
 
 // ── envelope hydration / write ──────────────────────────────────────────────
 
-export function hydrateConversationDockPersistence(): void {
+function hydrateConversationDockPersistence(): void {
   if (hydrated) return;
   hydrated = true;
   if (typeof localStorage === "undefined") return;
@@ -305,15 +305,6 @@ export function writeWorkspaceNavigation(key: string, dockTabId: string, patch: 
     openDirs: patch.openDirs ? [...patch.openDirs] : [...current.openDirs],
     updatedAt: now(),
   };
-  touch(record);
-  persistEnvelope();
-}
-
-export function removeWorkspaceNavigation(key: string, dockTabId: string): void {
-  hydrateConversationDockPersistence();
-  const record = records.get(key);
-  if (!record || !record.workspaceNavigation[dockTabId]) return;
-  delete record.workspaceNavigation[dockTabId];
   touch(record);
   persistEnvelope();
 }

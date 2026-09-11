@@ -17,7 +17,6 @@
 import {
   readLegacyGlobalTreeWidth,
   readWorkspaceNavigation,
-  registerConversationDockLegacyContext,
   writeWorkspaceNavigation,
 } from "./conversationDockPersistence";
 import { createWorkspaceTreePersistenceScheduler } from "./workspaceTreePersistence";
@@ -241,7 +240,3 @@ const deferredScrollPersistence = createWorkspaceTreePersistenceScheduler((memor
   writeWorkspaceNavigation(conversationKey, dockTabId, { scrollTop: cached.scrollTop });
 });
 
-// Legacy migration context for workspace navigation (registered by App via
-// the store hook — see registerConversationDockLegacyContext). Re-exported so
-// callers that register the dock context also cover navigation seeding.
-export { registerConversationDockLegacyContext };

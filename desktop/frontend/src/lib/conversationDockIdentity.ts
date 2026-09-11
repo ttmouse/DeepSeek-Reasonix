@@ -46,7 +46,7 @@ export function conversationDockIdentityKind(input: ConversationDockIdentityInpu
 
 /** Normalize a workspace path for use inside a key segment: trim, unify path
  *  separators, and drop trailing slashes so equivalent roots hash alike. */
-export function normalizeConversationWorkspaceRoot(root: string): string {
+function normalizeConversationWorkspaceRoot(root: string): string {
   const normalized = root.trim().replace(/\\/g, "/").replace(/\/+$/, "");
   return normalized;
 }

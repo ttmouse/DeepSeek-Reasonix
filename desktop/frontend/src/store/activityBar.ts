@@ -54,7 +54,7 @@ export type ConversationDockSnapshot = {
   previewActive: boolean;
 };
 
-export function defaultConversationDockSnapshot(): ConversationDockSnapshot {
+function defaultConversationDockSnapshot(): ConversationDockSnapshot {
   return { tabs: [], activeTabId: null, open: false, maximized: false, previewActive: false };
 }
 
@@ -77,8 +77,6 @@ let tabSeq = 0;
 // and App register each conversation's { scope, workspaceRoot } so a first
 // mutation on a never-persisted conversation can copy the legacy project
 // dock. This is a plain map (not React state).
-export { registerConversationDockLegacyContext };
-
 function loadConversationDockSeed(key: string): ConversationDockSnapshot {
   const record = readConversationDockRecord(key);
   if (record) return snapshotFromDock(record.dock);
