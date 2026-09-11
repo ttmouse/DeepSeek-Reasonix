@@ -4,10 +4,16 @@
 // App); panel content is provided as a renderer because the panels need App's
 // props. When the last tab is closed the container collapses (activityBarOpen
 // flips false in the store), so this component only renders while tabs exist.
+//
+// Closing a browser dock tab also drops its per-page state (URL / history /
+// zoom live in browserPagesStore under the dock tab id). The cleanup lives
+// here rather than in App so the store stays out of the initial bundle:
+// TabContainer is lazy-loaded, so browserPages rides the lazy chunk.
 
 import { useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { useActivityBarStore, type TabItem, type TabType } from "../../store/activityBar";
+import { useBrowserPagesStore } from "../../store/browserPages";
 import { TabAddMenu } from "./TabAddMenu";
 import { TabBar } from "./TabBar";
 import { TabContent } from "./TabContent";
@@ -43,13 +49,25 @@ export function TabContainer({ renderTab, workspaceTabId }: TabContainerProps) {
     [addTab],
   );
 
+  // Every close path (tab bar ×, context-menu close-others / close-to-right)
+  // funnels through here: close the dock tab and, for browser pages, drop the
+  // per-page state so a later tab with the same id can never resurrect it.
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const tab = useActivityBarStore.getState().tabs.find((entry) => entry.id === tabId);
+      closeTab(tabId);
+      if (tab?.type === "browser") useBrowserPagesStore.getState().dropPage(tabId);
+    },
+    [closeTab],
+  );
+
   return (
     <div className="tab-container">
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         onActivate={activateTab}
-        onClose={closeTab}
+        onClose={handleCloseTab}
         onMoveTab={moveTab}
         onAdd={() => setAddMenuOpen(!addMenuOpen)}
         addButtonRef={addButtonRef}
