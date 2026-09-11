@@ -5010,7 +5010,17 @@ export function useController() {
     confirmBackendActiveTab(meta.id);
     dispatchTo(meta.id, { type: "optimistic_meta", meta: metaFromTab(meta, statesRef.current.get(meta.id)?.meta) });
     dispatchRuntimeStatusForTab(meta.id, meta, snapshotAt);
-    const load = loadSessionDataForTab(meta.id, true, "new-session", { surfacePolicy: "replace-surface", sessionPath: meta.sessionPath, sessionGeneration: meta.sessionGeneration });
+    // A blank surface has no session history yet (the backend reuses only
+    // content-free tabs). Skipping the history read keeps "new session" from
+    // paying a HistorySlice round trip — and its fingerprint reconcile loop —
+    // for an empty page. The load-seq bump below still invalidates any
+    // in-flight stale load, so the reset is the sole source of truth.
+    const load = loadSessionDataForTab(meta.id, true, "new-session", {
+      surfacePolicy: "replace-surface",
+      sessionPath: meta.sessionPath,
+      sessionGeneration: meta.sessionGeneration,
+      skipHistory: true,
+    });
     monitorNavigationHydration(navigationSeq, meta.id, load, () => reconcileTabRuntime(meta.id, RUNTIME_STATUS_ONLY));
     return meta;
   }, [beginActiveNavigation, confirmBackendActiveTab, dispatchRuntimeStatusForTab, dispatchTo, loadSessionDataForTab, monitorNavigationHydration, navigationCompletionCurrent, reassertVisibleTabAfterStaleNavigation, reconcileTabRuntime, snapshotNavigationSourceTab]);
