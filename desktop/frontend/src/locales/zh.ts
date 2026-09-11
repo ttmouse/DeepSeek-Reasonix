@@ -2019,6 +2019,7 @@ export const zh: Record<DictKey, string> = {
   "settings.notificationSound.back": "界面返回",
   "settings.notificationSoundPreview": "预览",
   "settings.keySet": "已设密钥",
+  "settings.savedKeyHidden": "已保存的密钥不可查看，输入新密钥可覆盖",
   "settings.noKey": "无密钥",
   "settings.noKeyRequired": "无需密钥",
   "settings.cantDeleteDefault": "无法删除默认模型服务",

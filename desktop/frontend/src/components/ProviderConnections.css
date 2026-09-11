@@ -89,6 +89,7 @@
 .provider-connections .provider-editor { border: 0; padding-inline: 0; box-shadow: none; }
 
 .btn.provider-icon-action { min-width: 36px; min-height: 36px; padding: 6px; border: 0; background: transparent; list-style: none; }
+.btn.provider-icon-action:disabled { opacity: 0.35; cursor: not-allowed; }
 .provider-icon-action::-webkit-details-marker { display: none; }
 
 .provider-key-compact__more { position: relative; }

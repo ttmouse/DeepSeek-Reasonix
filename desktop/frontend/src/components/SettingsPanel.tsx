@@ -6934,6 +6934,7 @@ export function ProviderEditor({
   const [fetchFallback, setFetchFallback] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [savedKeyNotice, setSavedKeyNotice] = useState(false);
   const [addingModel, setAddingModel] = useState<string | null>(null);
   const builtIn = initial?.builtIn ?? false;
   const isNewCustomProvider = !initial;
@@ -7377,7 +7378,7 @@ export function ProviderEditor({
                 placeholder={initial?.keySet ? "••••••••••••••••••••" : t("settings.providerKeyPlaceholder")}
                 value={keyDraft}
                 disabled={busy}
-                onChange={(e) => setKeyDraft(e.target.value)}
+                onChange={(e) => { setKeyDraft(e.target.value); setSavedKeyNotice(false); }}
               />
               <button
                 type="button"
@@ -7385,8 +7386,14 @@ export function ProviderEditor({
                 aria-label={showKey ? "Hide API Key" : "Show API Key"}
                 title={showKey ? "Hide API Key" : "Show API Key"}
                 aria-pressed={showKey}
-                disabled={!keyDraft}
-                onClick={() => setShowKey((value) => !value)}
+                disabled={busy || (!keyDraft && !initial?.keySet)}
+                onClick={() => {
+                  if (!keyDraft && initial?.keySet) {
+                    setSavedKeyNotice(true);
+                    return;
+                  }
+                  setShowKey((value) => !value);
+                }}
               >
                 {showKey ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
@@ -7395,6 +7402,9 @@ export function ProviderEditor({
               <div className="mem-hint" title={initial.keySourcePath || undefined}>
                 {t("settings.keySource", { source: initial.keySource })}
               </div>
+            )}
+            {savedKeyNotice && (
+              <div className="mem-hint">{t("settings.savedKeyHidden")}</div>
             )}
             {initial && initial.keySet && onClearKey && apiKeyEnv.trim() && (
               <InlineConfirmButton

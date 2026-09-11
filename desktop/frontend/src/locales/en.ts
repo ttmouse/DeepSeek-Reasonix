@@ -2017,6 +2017,7 @@ export const en = {
   "settings.notificationSound.back": "Interface Back",
   "settings.notificationSoundPreview": "Preview",
   "settings.keySet": "key set",
+  "settings.savedKeyHidden": "Saved key is hidden for security; type a new key to replace it.",
   "settings.noKey": "no key",
   "settings.noKeyRequired": "no key required",
   "settings.cantDeleteDefault": "Can't delete the default provider",
