@@ -532,6 +532,7 @@ const guardedStartupTabs = deferred<TabMeta[]>();
 const staleProjectA = "/repo/project-a";
 const targetProjectB = "/repo/project-b";
 const ensureBlankSurfaceCalls: Array<{ scope: string; workspaceRoot: string }> = [];
+let blankSurfaceHistoryCalls = 0;
 window.go.main.App = {
   ListTabs: async () => guardedStartupTabs.promise,
   MetaForTab: async (tabID: string) => tabID === "tab-new"
@@ -544,6 +545,10 @@ window.go.main.App = {
   CheckpointsForTab: async () => checkpoints,
   HistoryForTab: async () => [],
   HistoryPageForTab: async () => ({ messages: [], startTurn: 0, endTurn: 0, totalTurns: 0, hasOlder: false }),
+  HistorySliceForTab: async (tabID: string, req: HistorySliceRequest) => {
+    blankSurfaceHistoryCalls += 1;
+    return historySliceFromMessages(tabID, [], req);
+  },
   HistoryCheckpointTurnsForTab: async () => [],
   ReplayPendingPrompts: async () => {},
   EnsureBlankSurface: async (scope: string, workspaceRoot: string) => {
@@ -577,6 +582,8 @@ eq(ensureBlankSurfaceCalls.length, 1, "EnsureBlankSurface is called once");
 eq(ensureBlankSurfaceCalls[0]?.workspaceRoot, targetProjectB, "EnsureBlankSurface keeps the requested project root");
 eq(controller?.activeTabId, "tab-new", "blank surface becomes active before startup sync resolves");
 eq(controller?.state.meta?.workspaceRoot, targetProjectB, "blank surface exposes the new project root");
+eq(blankSurfaceHistoryCalls, 0, "blank surface skips the history slice read");
+eq(controller?.state.hydrating, false, "blank surface hydration settles without a history round trip");
 
 await act(async () => {
   guardedStartupTabs.resolve([tabMeta({
