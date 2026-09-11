@@ -84,3 +84,76 @@
   .provider-connections--detail > .provider-connections__detail { display: block; }
   .provider-connections .provider-connections__back { display: inline-flex; margin-bottom: 16px; }
 }
+
+/* Compact ProviderEditor: one aligned form and one flat model list. */
+.provider-connections .provider-editor { border: 0; padding-inline: 0; box-shadow: none; }
+
+.btn.provider-icon-action { min-width: 36px; min-height: 36px; padding: 6px; border: 0; background: transparent; list-style: none; }
+.provider-icon-action::-webkit-details-marker { display: none; }
+
+.provider-key-compact__more { position: relative; }
+.provider-key-compact__menu { position: absolute; right: 0; top: 100%; width: min(300px, 70vw); padding: 8px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 2px; box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32); }
+.provider-key-compact__menu .btn { justify-content: flex-start; border-color: transparent; background: transparent; }
+.provider-key-compact__menu .btn:hover { background: var(--bg-soft); }
+
+.provider-model-draft--inline .provider-model-draft__list { display: flex; flex-direction: column; }
+.provider-model-draft--inline .provider-model-draft__option { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
+.provider-model-draft--inline .provider-model-draft__model { flex: 1; min-width: 150px; }
+
+.provider-editor.provider-editor--compact { gap: 20px; background: var(--bg-elev); border: 0; box-shadow: none; padding: 0; font-size: 14px; display: flex; flex-direction: column; }
+.provider-connection-fields { display: flex; flex-direction: column; gap: 16px; padding: 12px 0 24px; border-bottom: 1px solid var(--border); }
+.provider-connection-field { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 8px; }
+.provider-connection-field > .set-label { margin: 0; }
+.provider-connection-field > .mem-input, .provider-connection-field > .mem-select { width: 100%; min-height: 40px; margin: 0; background: var(--bg-elev); border-radius: 8px; box-sizing: border-box; }
+.provider-field-help { grid-column: 1; color: var(--fg-faint); font-size: var(--font-control-small); }
+
+.provider-key-single { display: flex; flex-direction: column; gap: 8px; }
+.provider-key-single > label { font-weight: 500; color: var(--fg-dim); }
+.provider-key-single__input { position: relative; }
+.provider-key-single__input .mem-input { width: 100%; box-sizing: border-box; padding-right: 48px; min-height: 42px; border-radius: 8px; background: var(--bg-elev); }
+.provider-key-single__input > button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; }
+.provider-connection-fields .set-label,
+.provider-connection-fields .provider-key-single > label { color: var(--fg-dim); font-size: 14px; font-weight: 500; line-height: 1.4; }
+
+.provider-editor--compact .provider-model-draft--inline { border: 0; padding: 0; gap: 16px; }
+.provider-model-draft--inline .provider-model-toolbar { justify-content: flex-start; gap: 12px; align-items: center; }
+.provider-model-draft--inline .provider-model-toolbar > strong { margin: 0; font-size: 16px; }
+.provider-model-draft--inline .provider-model-draft__tools { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.provider-model-draft--inline .provider-model-draft__list { gap: 0; padding: 0; max-height: 360px; border: 1px solid var(--border); border-radius: 8px; overflow-y: auto; }
+.provider-model-draft--inline .provider-model-draft__option { flex-wrap: nowrap; min-height: 56px; box-sizing: border-box; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; font-family: var(--font-sans); font-size: 14px; }
+.provider-model-draft--inline .provider-model-draft__option:last-child { border-bottom: 0; }
+.provider-model-draft--inline .provider-model-draft__model { min-width: 0; gap: 12px; }
+.provider-model-draft--inline input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+.provider-model-capability-tag { flex-shrink: 0; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg-faint); font-size: var(--font-control-small); cursor: pointer; }
+.provider-model-capability-tag:disabled { cursor: default; opacity: 0.6; }
+.provider-model-capability-tag--on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.provider-context-badge { flex-shrink: 0; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--fg-faint); font-size: var(--font-control-small); background: transparent; text-align: right; }
+input.provider-context-badge--edit { width: 88px; -moz-appearance: textfield; appearance: textfield; }
+input.provider-context-badge--edit::-webkit-outer-spin-button,
+input.provider-context-badge--edit::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.provider-model-draft__context-warning { flex-basis: 100%; color: var(--danger); font-size: var(--text-2xs); }
+
+.provider-editor--compact .provider-capabilities { padding: 0; }
+.provider-editor--compact .provider-capabilities > .provider-card-block__label { display: none; }
+.provider-editor--compact .provider-capability-row { margin: 0; border: 0; padding: 16px 0; }
+.provider-editor--compact .provider-editor-advanced { border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.provider-editor--compact .provider-editor-advanced__hint { display: none; }
+
+.provider-editor__body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.provider-editor__body > * { flex-shrink: 0; }
+.provider-editor--compact .provider-model-draft__list { max-height: none; overflow: visible; }
+
+.provider-editor-footer { flex: none; padding: 16px 0; background: var(--bg-elev); border-top: 1px solid var(--border); }
+.provider-editor-footer > span { margin-right: auto; color: var(--fg-faint); font-size: var(--font-control-small); }
+.provider-editor-footer .btn { min-height: 36px; padding-inline: 18px; font-size: 14px; }
+
+.spin { animation: provider-spin 1s linear infinite; }
+@keyframes provider-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .provider-connection-field { grid-template-columns: minmax(0, 1fr); }
+  .provider-field-help { grid-column: 1; }
+  .provider-model-draft--inline .provider-model-toolbar { flex-wrap: wrap; }
+}
