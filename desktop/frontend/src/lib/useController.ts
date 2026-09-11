@@ -236,7 +236,7 @@ export type HistoryMutationKind = "replace" | "prepend" | "append" | "patch";
 export type HistoryMutation = { seq: number; kind: HistoryMutationKind };
 export type HistoryLoadTrigger = "viewport-user" | "question-jump" | "retry" | "auto-fill";
 export type HydrateReason = "switch-tab" | "new-session" | "resume-session" | "open-topic" | "startup" | "rewind";
-type SyncActiveTabOptions = { preserveCachedHistory?: boolean; navigationIntentSeq?: number; surfacePolicy?: HydrateSurfacePolicy; deferHydration?: boolean };
+type SyncActiveTabOptions = { preserveCachedHistory?: boolean; navigationIntentSeq?: number; surfacePolicy?: HydrateSurfacePolicy; deferHydration?: boolean; skipHistoryForIdleBlank?: boolean };
 // A ticketed StartTopicActivation in flight. Only the latest one is tracked:
 // superseded requests get "cancelled" from the backend and are ignored.
 type PendingTopicActivation = {
@@ -3284,7 +3284,10 @@ export function useController() {
     if (active.runtime?.epoch) runtimeEpochByTabRef.current.set(active.id, active.runtime.epoch);
     dispatchTo(active.id, { type: "optimistic_meta", meta: metaFromTab(active, previousState?.meta) });
     if (!reset && hydration.surfacePolicy === "preserve-current") dispatchRuntimeStatusForTab(active.id, active, snapshotAt);
-    const load = loadSessionDataForTab(active.id, reset, "startup", hydration.loadOptions);
+    const loadOptions = options.skipHistoryForIdleBlank
+      ? { ...hydration.loadOptions, skipHistory: true }
+      : hydration.loadOptions;
+    const load = loadSessionDataForTab(active.id, reset, "startup", loadOptions);
     if (reset || hydration.surfacePolicy === "replace-surface") dispatchRuntimeStatusForTab(active.id, active, snapshotAt);
     if (options.deferHydration) void load;
     else await load;
@@ -3561,7 +3564,21 @@ export function useController() {
       }
       // A ready event can race the initial hydrate. Refresh the tab metadata
       // first so a stale ready=false snapshot does not keep the composer locked.
-      void syncActiveTabFromBackend(false, true, { preserveCachedHistory: true });
+      // A fresh blank surface has nothing to read: its history is empty by
+      // construction, so re-hydrating it would only flash the loading state
+      // over the welcome page. Skip the history slice for idle blank tabs and
+      // let the metadata refresh (below) unlock the composer instead.
+      const state = activeId ? statesRef.current.get(activeId) : undefined;
+      // Only a surface that has already settled as empty counts: an in-flight
+      // hydrate may still be about to reveal history, so skipping its read
+      // would drop content. After the blank surface's own hydrate_done, an
+      // idle empty page is provably content-free and needs no second read.
+      const idleBlankSurface = state != null &&
+        !state.hydrating &&
+        state.items.length === 0 &&
+        !state.running && !state.turnActive && !state.pendingPrompt &&
+        !state.approval && !state.ask && !state.mcpInteraction;
+      void syncActiveTabFromBackend(false, true, { preserveCachedHistory: true, skipHistoryForIdleBlank: idleBlankSurface });
     });
 
     // A rebuilt controller reissues approval/ask ids from "1" (see sound.ts).

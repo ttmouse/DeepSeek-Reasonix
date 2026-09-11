@@ -128,5 +128,9 @@ ok(switchFolderSource.includes("pickWorkspace(navigationIntentSeq)"), "folder-pi
 ok(switchFolderSource.includes("switchWorkspace(path, navigationIntentSeq)"), "direct workspace navigation carries the shared intent into the controller");
 ok(switchFolderSource.includes("settleNavigationSurface(navigationIntentSeq)"), "workspace request completion advances the target under its surface mask");
 
+const controllerSource = readFileSync(new URL("../lib/useController.ts", import.meta.url), "utf8");
+ok(controllerSource.includes("skipHistoryForIdleBlank"), "ready-sync may skip the history read for an idle blank surface");
+ok(controllerSource.includes("idleBlankSurface"), "ready-sync detects the settled idle blank surface before re-hydrating");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
