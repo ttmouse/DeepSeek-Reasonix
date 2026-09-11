@@ -176,6 +176,14 @@ export const zhTW: Record<DictKey, string> = {
   "browser.reload": "重新整理",
   "browser.addressPlaceholder": "輸入網址…",
   "browser.frameTitle": "內嵌網頁",
+  "browser.newTab": "新建瀏覽器頁面",
+  "browser.zoomIn": "放大",
+  "browser.zoomOut": "縮小",
+  "browser.zoomReset": "重設縮放",
+  "browser.loading": "載入中…",
+  "browser.errorTitle": "頁面載入失敗",
+  "browser.loadFailed": "頁面載入逾時：{url}",
+  "browser.retry": "重試",
 
   // 話題欄
   "topicBar.renameSession": "重新命名會話",

@@ -5361,7 +5361,7 @@ export default function App() {
                   </Suspense>
                 ) : tab.type === "browser" ? (
                   <Suspense fallback={null}>
-                    <BrowserPanel />
+                    <BrowserPanel tabId={tab.id} conversationKey={conversationDockKey} />
                   </Suspense>
                 ) : tab.type === "instructions" ? (
                   <Suspense fallback={null}>

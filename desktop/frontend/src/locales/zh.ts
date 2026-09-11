@@ -240,6 +240,14 @@ export const zh: Record<DictKey, string> = {
   "browser.reload": "刷新",
   "browser.addressPlaceholder": "输入网址…",
   "browser.frameTitle": "内嵌网页",
+  "browser.newTab": "新建浏览器页面",
+  "browser.zoomIn": "放大",
+  "browser.zoomOut": "缩小",
+  "browser.zoomReset": "重置缩放",
+  "browser.loading": "加载中…",
+  "browser.errorTitle": "页面加载失败",
+  "browser.loadFailed": "页面加载超时：{url}",
+  "browser.retry": "重试",
 
   // 话题栏
   "topicBar.renameSession": "重命名会话",

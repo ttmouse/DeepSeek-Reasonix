@@ -26852,13 +26852,101 @@ html[data-dock-launcher="full"] .app:not(.app--creation) .layout:not(.layout--wo
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  /* Anchors the loading overlay and keeps internal z-index from escaping the
+     panel (isolation creates a stacking context). */
+  position: relative;
+  isolation: isolate;
 }
 
-.browser-panel__frame iframe {
+.browser-panel__surface {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.browser-panel__surface iframe {
   width: 100%;
   height: 100%;
   border: 0;
   background: #fff;
+  display: block;
+}
+
+.browser-panel__zoom {
+  flex: 0 0 auto;
+  min-width: 44px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.browser-panel__zoom:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.browser-panel__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--chat-bg);
+  color: var(--fg-dim);
+}
+
+.browser-panel__loading-spinner {
+  animation: browser-panel-spin 0.9s linear infinite;
+}
+
+.browser-panel__loading-text {
+  font-size: 12px;
+}
+
+@keyframes browser-panel-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.browser-panel__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--fg-dim);
+}
+
+.browser-panel__error-title {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.browser-panel__error-detail {
+  font-size: 12px;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+
+.browser-panel__error-url {
+  font-size: 11px;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+  color: var(--fg-dim);
+  background: var(--bg-elev);
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 .layout--workspace-maximized .context-inspector,

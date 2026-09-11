@@ -1,13 +1,15 @@
 // TabAddMenu is the dropdown opened by the + button in the dock's tab bar.
-// It lists the addable tab types (files / changed / overview / instructions);
-// selecting one appends that tab and activates it. Every type can be added
-// repeatedly, so the list shows no current-selection checkmark. Other panel
-// types (terminal, browser, remote) are not exposed yet.
+// It lists the addable tab types (files / changed / overview / instructions /
+// browser); selecting one appends that tab and activates it. Every type can be
+// added repeatedly, so the list shows no current-selection checkmark. Browser
+// pages follow the per-page-tab interaction: every pick adds one new page tab
+// (its URL / history live under the tab id in browserPagesStore). Other panel
+// types (terminal, remote) are not exposed yet.
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { RefObject } from "react";
 import { useT } from "../../lib/i18n";
-import { Activity, Command, FileDiff, FileText } from "lucide-react";
+import { Activity, Command, Compass, FileDiff, FileText } from "lucide-react";
 import type { ComponentType } from "react";
 import type { TabType } from "../../store/activityBar";
 
@@ -22,6 +24,7 @@ const ADDABLE_TABS: AddableTab[] = [
   { type: "changed", labelKey: "workspace.changedTab", icon: FileDiff },
   { type: "context", labelKey: "rightDock.overview", icon: Activity },
   { type: "instructions", labelKey: "instruction.title", icon: Command },
+  { type: "browser", labelKey: "rightDock.browser", icon: Compass },
 ];
 
 interface TabAddMenuProps {

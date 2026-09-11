@@ -239,6 +239,14 @@ export const en = {
   "browser.reload": "Reload",
   "browser.addressPlaceholder": "Enter URL…",
   "browser.frameTitle": "Embedded web page",
+  "browser.newTab": "New browser page",
+  "browser.zoomIn": "Zoom in",
+  "browser.zoomOut": "Zoom out",
+  "browser.zoomReset": "Reset zoom",
+  "browser.loading": "Loading…",
+  "browser.errorTitle": "Page failed to load",
+  "browser.loadFailed": "Timed out loading {url}",
+  "browser.retry": "Retry",
 
   // topic bar
   "topicBar.renameSession": "Rename session",
