@@ -61,7 +61,9 @@ function ruleBody(selector: string): string {
 
 const turnActionInlineLabelRule = ruleBody(".turn-actions__label-inline");
 const turnActionBtnRule = ruleBody(".turn-actions__btn");
+const turnActionBtnHoverRule = ruleBody(".turn-actions__btn:hover:not(:disabled)");
 const turnActionCopyRule = ruleBody(".turn-actions .copybtn");
+const turnActionCopyHoverRule = ruleBody(".turn-actions .copybtn:hover");
 const turnActionInlineLabelCount = messageSource.match(/className="turn-actions__label-inline"/g)?.length ?? 0;
 
 ok(
@@ -74,16 +76,43 @@ ok(
 
 ok(
   !styles.includes(".turn-actions__btn:hover .turn-actions__label-inline") &&
-    styles.includes(".turn-actions__btn--confirm .turn-actions__label-inline {") &&
+    !styles.includes(".turn-actions__group--open .turn-actions__label-inline") &&
+    !styles.includes(".turn-actions__btn--confirm .turn-actions__label-inline") &&
+    styles.includes(".turn-actions__btn:focus-visible .turn-actions__label-inline {") &&
     styles.includes("max-width: 240px;"),
-  "turn action labels stay collapsed on hover (tooltips describe actions) and only expand for focus, open, or confirming actions",
+  "turn action labels stay collapsed on hover, open, and confirm — only keyboard focus expands them",
 );
 
 ok(
-  /border:\s*none;/.test(turnActionBtnRule) &&
-    !/transition/.test(turnActionBtnRule) &&
+  /width:\s*30px;/.test(turnActionBtnRule) &&
+    /height:\s*30px;/.test(turnActionBtnRule) &&
+    /border:\s*none;/.test(turnActionBtnRule) &&
+    /border-radius:\s*7px;/.test(turnActionBtnRule) &&
+    /width:\s*30px;/.test(turnActionCopyRule) &&
     /border:\s*none;/.test(turnActionCopyRule),
-  "turn action buttons render borderless without hover transitions; tooltips describe them instead",
+  "turn action buttons share the topicbar icon-button geometry (30×30, 7px radius, borderless)",
+);
+
+ok(
+  /background:\s*color-mix\(in srgb, var\(--fg\) 10%, var\(--bg-elev\)\);/.test(turnActionBtnHoverRule) &&
+    !/border-color/.test(turnActionBtnHoverRule) &&
+    /background:\s*color-mix\(in srgb, var\(--fg\) 10%, var\(--bg-elev\)\);/.test(turnActionCopyHoverRule) &&
+    !/border-color/.test(turnActionCopyHoverRule),
+  "turn action buttons share the topicbar hover treatment (faint grey fill, no border)",
+);
+
+ok(
+  /justify-content:\s*center;/.test(turnActionBtnRule) &&
+    /gap:\s*0;/.test(turnActionBtnRule) &&
+    /justify-content:\s*center;/.test(turnActionCopyRule),
+  "turn action icons stay centered while labels are collapsed",
+);
+
+ok(
+  styles.includes(".turn-actions .copybtn svg") &&
+    styles.includes(".turn-actions__btn > svg") &&
+    /\.turn-actions \.copybtn svg,\n\s*\.turn-actions__btn > svg \{\n\s*width: 15px;\n\s*height: 15px;/.test(styles),
+  "turn action icons render at 15px like the topicbar icon buttons",
 );
 
 const windowsPrimaryTranscriptSelector =

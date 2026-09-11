@@ -85,11 +85,10 @@ export function resolveWorkspacePanelPlacement({
   const resolvedWidth = resolveWorkspacePanelWidth({
     open, maximized, preferredWidth, minWidth, availableWidth,
   });
-  // Overlay triggers when the viewport cannot fit a readable dock column
-  // (available space below minRenderWidth), regardless of the user's saved
-  // preferred width — a narrow saved preference must not force overlay mode
-  // on a wide viewport, and a wide preference must not delay it on a narrow one.
-  const overlay = open && !maximized && availableWidth < minRenderWidth;
+  // Overlay follows the width the dock would actually render at, not the raw
+  // free space: a dock dragged below minRenderWidth (minWidth sits under the
+  // render floor) must float even while the viewport still has room for it.
+  const overlay = open && !maximized && resolvedWidth < minRenderWidth;
   const storedWidth = maximized
     ? preferredWidth
     : overlay ? Math.min(preferredWidth, Math.max(minWidth, viewportWidth - 16)) : resolvedWidth;

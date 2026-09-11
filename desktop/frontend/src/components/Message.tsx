@@ -606,7 +606,6 @@ export function TurnActions({
   checkpoint,
   actionPending = false,
   rewindDisabled = false,
-  hoverMenus = false,
   isLastTurn = false,
 }: {
   text: string;
@@ -617,7 +616,6 @@ export function TurnActions({
   checkpoint?: CheckpointMeta;
   actionPending?: boolean;
   rewindDisabled?: boolean;
-  hoverMenus?: boolean;
   /** true when this is the last user turn — disables "summarize after" */
   isLastTurn?: boolean;
 }) {
@@ -714,37 +712,35 @@ export function TurnActions({
     setConfirmScope(null);
     onOpenMenu?.(openMenu === menu ? null : menu);
   };
-  const openHoverMenu = (menu: TurnActionMenu) => {
-    if (!hoverMenus || openMenu === menu) return;
-    setConfirmScope(null);
-    onOpenMenu?.(menu);
-  };
   return (
-    <div className={`turn-actions${openMenu ? " turn-actions--open" : ""}${hoverMenus ? " turn-actions--hover-menu" : ""}`}>
+    <div className={`turn-actions${openMenu ? " turn-actions--open" : ""}`}>
       {text.trim() && (
-        <CopyButton text={text} label={t("msg.copy")} showInlineLabel={false} hideTitle />
+        <Tooltip label={t("msg.copyTip")} side="top">
+          <CopyButton text={text} label={t("msg.copy")} showInlineLabel={false} hideTitle />
+        </Tooltip>
       )}
       {canAct && (
         <>
           <div
             className={`turn-actions__group${openMenu === "fork" ? " turn-actions__group--open" : ""}`}
-            onMouseEnter={() => openHoverMenu("fork")}
           >
-            <button
-              className={`turn-actions__btn${confirmScope === "fork" || confirmScope === "fork-worktree" ? " turn-actions__btn--confirm" : ""}`}
-              type="button"
-              disabled={Boolean(forkDisabledReason)}
-              aria-label={forkDisabledReason || t("rewind.forkTooltip")}
-              aria-haspopup="menu"
-              aria-expanded={openMenu === "fork"}
-              onClick={() => toggleMenu("fork")}
-            >
-              <GitBranch size={13} />
-              <span className="turn-actions__label-inline">
-                <span>{confirmScope === "fork-worktree" ? actionLabel("fork-worktree") : (confirmScope === "fork" ? actionLabel("fork") : t("rewind.fork"))}</span>
-                <ChevronDown size={12} />
-              </span>
-            </button>
+            <Tooltip label={forkDisabledReason || t("rewind.forkTip")} side="top" disabled={openMenu === "fork"}>
+              <button
+                className={`turn-actions__btn${confirmScope === "fork" || confirmScope === "fork-worktree" ? " turn-actions__btn--confirm" : ""}`}
+                type="button"
+                disabled={Boolean(forkDisabledReason)}
+                aria-label={forkDisabledReason || t("rewind.forkTooltip")}
+                aria-haspopup="menu"
+                aria-expanded={openMenu === "fork"}
+                onClick={() => toggleMenu("fork")}
+              >
+                <GitBranch size={13} />
+                <span className="turn-actions__label-inline">
+                  <span>{confirmScope === "fork-worktree" ? actionLabel("fork-worktree") : (confirmScope === "fork" ? actionLabel("fork") : t("rewind.fork"))}</span>
+                  <ChevronDown size={12} />
+                </span>
+              </button>
+            </Tooltip>
             {openMenu === "fork" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {renderAction("fork-worktree")}
@@ -754,22 +750,23 @@ export function TurnActions({
           </div>
           <div
             className={`turn-actions__group${openMenu === "summary" ? " turn-actions__group--open" : ""}`}
-            onMouseEnter={() => openHoverMenu("summary")}
           >
-            <button
-              className="turn-actions__btn"
-              type="button"
-              aria-label={t("turnActions.summary")}
-              aria-haspopup="menu"
-              aria-expanded={openMenu === "summary"}
-              onClick={() => toggleMenu("summary")}
-            >
-              <ScrollText size={13} />
-              <span className="turn-actions__label-inline">
-                <span>{t("turnActions.summary")}</span>
-                <ChevronDown size={12} />
-              </span>
-            </button>
+            <Tooltip label={t("turnActions.summaryTip")} side="top" disabled={openMenu === "summary"}>
+              <button
+                className="turn-actions__btn"
+                type="button"
+                aria-label={t("turnActions.summary")}
+                aria-haspopup="menu"
+                aria-expanded={openMenu === "summary"}
+                onClick={() => toggleMenu("summary")}
+              >
+                <ScrollText size={13} />
+                <span className="turn-actions__label-inline">
+                  <span>{t("turnActions.summary")}</span>
+                  <ChevronDown size={12} />
+                </span>
+              </button>
+            </Tooltip>
             {openMenu === "summary" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {rewindDisabled && <div className="rewind__menu-hint">{t("rewind.disabledRunning")}</div>}
@@ -781,22 +778,23 @@ export function TurnActions({
           </div>
           <div
             className={`turn-actions__group${openMenu === "rewind" ? " turn-actions__group--open" : ""}`}
-            onMouseEnter={() => openHoverMenu("rewind")}
           >
-            <button
-              className="turn-actions__btn"
-              type="button"
-              aria-label={t("turnActions.rewind")}
-              aria-haspopup="menu"
-              aria-expanded={openMenu === "rewind"}
-              onClick={() => toggleMenu("rewind")}
-            >
-              <RotateCcw size={13} />
-              <span className="turn-actions__label-inline">
-                <span>{t("turnActions.rewind")}</span>
-                <ChevronDown size={12} />
-              </span>
-            </button>
+            <Tooltip label={t("turnActions.rewindTip")} side="top" disabled={openMenu === "rewind"}>
+              <button
+                className="turn-actions__btn"
+                type="button"
+                aria-label={t("turnActions.rewind")}
+                aria-haspopup="menu"
+                aria-expanded={openMenu === "rewind"}
+                onClick={() => toggleMenu("rewind")}
+              >
+                <RotateCcw size={13} />
+                <span className="turn-actions__label-inline">
+                  <span>{t("turnActions.rewind")}</span>
+                  <ChevronDown size={12} />
+                </span>
+              </button>
+            </Tooltip>
             {openMenu === "rewind" && (
               <div className="rewind__menu turn-actions__menu" role="menu">
                 {rewindDisabled && <div className="rewind__menu-hint">{t("rewind.disabledRunning")}</div>}

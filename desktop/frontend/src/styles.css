@@ -6067,41 +6067,54 @@ body > .mermaid-diagram--fullscreen {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
-  min-height: 26px;
+  min-height: 30px;
 }
 .turn-actions__group {
   position: relative;
   display: inline-flex;
 }
-/* Hover shows the Tooltip; buttons stay borderless with no hover animation.
-   Labels only expand for keyboard focus, open menus, or the confirm state. */
+/* Buttons share the topicbar actions icon-button treatment: borderless 30×30
+   squares with a 7px radius whose hover adds only a faint foreground-tinted
+   fill (no border). Labels only expand for keyboard focus, so the buttons stay
+   icon-only for mouse hover, open menus, and the confirm state. */
 .turn-actions .copybtn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
   border: none;
   background: transparent;
-  transition: background 0.12s, color 0.12s;
+  transition: color 0.12s, background 0.12s;
 }
 .turn-actions .copybtn:hover {
   color: var(--fg);
-  background: var(--button-bg-hover);
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev));
 }
 .turn-actions__btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 24px;
+  justify-content: center;
+  gap: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   background: transparent;
   border: none;
   color: var(--fg-faint);
-  border-radius: 6px;
-  padding: 3px 7px;
+  border-radius: 7px;
   font: inherit;
   font-size: 11px;
   line-height: 1.25;
-  transition: background 0.12s, color 0.12s;
+  transition: color 0.12s, background 0.12s;
+}
+.turn-actions .copybtn svg,
+.turn-actions__btn > svg {
+  width: 15px;
+  height: 15px;
 }
 .turn-actions__btn:hover:not(:disabled) {
   color: var(--fg);
-  background: var(--button-bg-hover);
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev));
 }
 .turn-actions__label-inline {
   display: inline-flex;
@@ -6115,20 +6128,19 @@ body > .mermaid-diagram--fullscreen {
 .turn-actions__label-inline > svg {
   flex-shrink: 0;
 }
-.turn-actions__btn:focus-visible .turn-actions__label-inline,
-.turn-actions__group--open .turn-actions__label-inline,
-.turn-actions__btn--confirm .turn-actions__label-inline {
+/* Labels never expand for mouse hover, open menus, or the confirm state —
+   the buttons stay icon-only. Only keyboard focus expands them. */
+.turn-actions__btn:focus-visible .turn-actions__label-inline {
   max-width: 240px;
 }
-.turn-actions__btn:focus-visible,
-.turn-actions__group--open .turn-actions__btn,
-.turn-actions__btn--confirm {
+.turn-actions__btn:focus-visible {
+  width: auto;
   gap: 6px;
 }
 .turn-actions__btn:focus-visible:not(:disabled),
 .turn-actions__group--open .turn-actions__btn {
   color: var(--fg);
-  background: var(--button-bg-hover);
+  background: color-mix(in srgb, var(--fg) 10%, var(--bg-elev));
 }
 .turn-actions__btn:disabled {
   cursor: not-allowed;
@@ -6136,7 +6148,7 @@ body > .mermaid-diagram--fullscreen {
 }
 .turn-actions__btn--confirm {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elev-2));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elev));
 }
 .turn-actions__menu {
   bottom: calc(100% + 5px);
@@ -26371,8 +26383,19 @@ body > .mermaid-diagram--fullscreen {
    box as the history rows. Higher specificity than the themed .footer
    shorthand rules, which would otherwise reset padding-right; creation-hero
    layout centers itself and is excluded. */
-html[data-dock-launcher="full"] .app:not(.app--creation) .footer {
+html[data-dock-launcher="full"] .app:not(.app--creation) .layout:not(.layout--workspace-open) .footer {
   padding-right: calc(240px + var(--transcript-inline-pad, 16px));
+}
+
+/* While the dock column is open the card overlays the transcript instead of
+   competing for the already-narrow chat column; no space is reserved for it,
+   which is why the footer inset above skips this state. */
+.layout--workspace-open .dock-launcher {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+  z-index: var(--z-local-popover);
 }
 
 /* Branch row: click to open the inline branch switcher. */

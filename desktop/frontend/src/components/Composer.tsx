@@ -2598,7 +2598,11 @@ export function Composer({
       // Pasted content may carry synthetic markers (copied from another
       // composer or a message surface). Restore them as real invocations and
       // strip the literal marker text so it never leaks into the composer.
-      const pastedHasMarkers = /@chat\[/.test(normalizedPasted) || /@file\[/.test(normalizedPasted) || /(?:^|\s)\/[a-zA-Z]/.test(normalizedPasted);
+      // Detect synthetic markers copied from another composer/message surface.
+      // Slash commands must be standalone tokens (whitespace-bounded, no file
+      // extension) so absolute paths like "/Users/.../file.md" are not mistaken
+      // for skill invocations.
+      const pastedHasMarkers = /@chat\[/.test(normalizedPasted) || /@file\[/.test(normalizedPasted) || /(?:^|\s)\/[a-zA-Z][a-zA-Z0-9_-]*(?=\s|$)/.test(normalizedPasted);
       if (pastedHasMarkers) {
         const withFileMarkers = convertAttachmentRefsToFileMarkers(next.text).text;
         const restored = parseComposerInvocationsFromDisplayText(withFileMarkers, commandCatalog ?? [], pastChats);

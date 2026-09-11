@@ -4,10 +4,11 @@
 // protects: the card's render condition and the toggle's pressed state must
 // never diverge). Two layers:
 //   1. Truth-table over resolveLauncherCardState — every combination of
-//      gridOpen × spaceMode × dismissed.
+//      spaceMode × dismissed.
 //   2. Source contracts — App must drive the toggle through the shared
-//      resolver (not inline the condition again), and DockLauncher must keep
-//      reporting its space-yield mode upward.
+//      resolver (not inline the condition again), App must keep the card
+//      mounted and floating while the dock panel is open, and DockLauncher
+//      must keep reporting its space-yield mode upward.
 
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
@@ -31,17 +32,15 @@ function eq<T>(actual: T, expected: T, label: string) {
 const modes: SpaceMode[] = ["full", "hidden"];
 
 // ---- 1. Truth table -------------------------------------------------------
-process.stdout.write("truth table: gridOpen × spaceMode × dismissed\n");
-for (const gridOpen of [false, true]) {
-  for (const spaceMode of modes) {
-    for (const dismissed of [false, true]) {
-      const { renderable, visible } = resolveLauncherCardState({ gridOpen, spaceMode, dismissed });
-      const tag = `g=${gridOpen} m=${spaceMode} d=${dismissed}`;
-      eq(renderable, !gridOpen && spaceMode === "full", `renderable ${tag}`);
-      eq(visible, !gridOpen && spaceMode === "full" && !dismissed, `visible ${tag}`);
-      // A visible card is always renderable (consistency invariant).
-      assert.ok(!visible || renderable, `invariant: visible implies renderable ${tag}`);
-    }
+process.stdout.write("truth table: spaceMode × dismissed\n");
+for (const spaceMode of modes) {
+  for (const dismissed of [false, true]) {
+    const { renderable, visible } = resolveLauncherCardState({ spaceMode, dismissed });
+    const tag = `m=${spaceMode} d=${dismissed}`;
+    eq(renderable, spaceMode === "full", `renderable ${tag}`);
+    eq(visible, spaceMode === "full" && !dismissed, `visible ${tag}`);
+    // A visible card is always renderable (consistency invariant).
+    assert.ok(!visible || renderable, `invariant: visible implies renderable ${tag}`);
   }
 }
 
@@ -58,8 +57,8 @@ assert.match(
 );
 assert.match(
   appSource,
-  /gridOpen: effectiveWorkspacePanelGridOpen,\s*spaceMode: launcherSpaceMode,\s*dismissed: launcherDismissed,/,
-  "App feeds gridOpen / spaceMode / dismissed into the resolver",
+  /const launcherCardSpaceMode = effectiveWorkspacePanelGridOpen \? "full" : launcherSpaceMode;/,
+  "App folds an open dock panel into the space mode the resolver reads",
 );
 assert.doesNotMatch(
   appSource,
@@ -67,11 +66,21 @@ assert.doesNotMatch(
   "the renderable condition is not inlined in App (single source of truth)",
 );
 assert.match(
+  appSource,
+  /<DockLauncher[^>]*overlay=\{effectiveWorkspacePanelGridOpen\}/,
+  "App keeps the card mounted and floating while the dock panel is open",
+);
+assert.match(
+  dockLauncherSource,
+  /if \(!overlay && spaceMode === "hidden"\) return null;/,
+  "the card only yields the space when it is not floating over the dock",
+);
+assert.match(
   dockLauncherSource,
   /onSpaceModeChange\?\.\(next\)/,
   "DockLauncher keeps reporting its space-yield mode upward",
 );
 
-passed += 4; // the four assert.* checks above
+passed += 6; // the six assert.* checks above
 process.stdout.write(`launcher card state: ${passed} checks passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

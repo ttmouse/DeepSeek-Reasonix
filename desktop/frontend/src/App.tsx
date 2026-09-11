@@ -4484,18 +4484,12 @@ export default function App() {
       </button>
     </Tooltip>
   );
-  // Floating launcher card show/hide toggle. The card only exists while the
-  // dock is collapsed, so the button is rendered only in that state (see the
-  // .app__launcher-toggle mount below). The chevron points the way the card
-  // moves: left to show it, right to hide it.
-  // The floating card only renders while the dock is collapsed, the surface is
-  // wide enough, and the card is not dismissed. While any of those fails the
-  // middle area belongs to the dock/chat, so the card cannot show: the pressed
-  // state mirrors whether the card is actually on screen, and the button is
-  // inert in that state.
+  // Floating launcher card show/hide toggle — the only control that summons
+  // the card. The pressed state mirrors whether it is on screen: the card has
+  // room while the surface is wide enough, or while it floats over an open dock.
+  const launcherCardSpaceMode = effectiveWorkspacePanelGridOpen ? "full" : launcherSpaceMode;
   const { renderable: launcherCardRenderable, visible: launcherCardVisible } = resolveLauncherCardState({
-    gridOpen: effectiveWorkspacePanelGridOpen,
-    spaceMode: launcherSpaceMode,
+    spaceMode: launcherCardSpaceMode,
     dismissed: launcherDismissed,
   });
   const launcherToggleButton = (
@@ -4954,9 +4948,9 @@ export default function App() {
             ) : (
               <>
                 <div className="transcript-navigation-surface" aria-busy={runtimeTransitioning}>
-                  {!effectiveWorkspacePanelGridOpen && !automationView && !launcherDismissed && (
+                  {!automationView && !launcherDismissed && (
                     <Suspense fallback={null}>
-                      <DockLauncher onSelect={handleActivitySelect} gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch} onSpaceModeChange={setLauncherSpaceMode} />
+                      <DockLauncher onSelect={handleActivitySelect} gitBranch={remoteSurfaceActive ? undefined : state.meta?.gitBranch} onSpaceModeChange={setLauncherSpaceMode} overlay={effectiveWorkspacePanelGridOpen} />
                     </Suspense>
                   )}
                   <div
@@ -4989,7 +4983,6 @@ export default function App() {
                         turnStartAt={state.turnStartAt}
                         contentRevision={state.historyLayoutRevision}
                         historyMutation={state.historyMutation}
-                        actionHoverMenus={!hydratePlaceholderActive && !runtimeTransitioning}
                         rewindSignal={rewindSignal}
                         revealSignal={transcriptRevealSignal}
                         hydrating={transcriptHydrating || (runtimeTransitioning && !navigationTargetDataReady)}

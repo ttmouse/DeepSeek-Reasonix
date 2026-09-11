@@ -103,7 +103,6 @@ export function Transcript({
   rewindDisabled = false,
   running = false,
   questionNavigator = true,
-  actionHoverMenus = false,
   rewindSignal = 0,
   revealSignal = 0,
   hydrating = false,
@@ -138,7 +137,6 @@ export function Transcript({
   rewindDisabled?: boolean;
   running?: boolean;
   questionNavigator?: boolean;
-  actionHoverMenus?: boolean;
   rewindSignal?: number;
   revealSignal?: number;
   hydrating?: boolean;
@@ -735,7 +733,6 @@ export function Transcript({
             checkpoint={checkpointsByTurn.get(row.turn)}
             actionPending={actionPending}
             rewindDisabled={rewindDisabled}
-            hoverMenus={actionHoverMenus}
             isLastTurn={row.turn === lastTurn}
             onRewind={(targetTurn, scope) => {
               onRewind?.(targetTurn, scope);
@@ -746,7 +743,6 @@ export function Transcript({
       }
     }
   }, [
-    actionHoverMenus,
     actionPending,
     checkpointsByTurn,
     handleFoldToggle,

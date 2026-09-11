@@ -274,6 +274,11 @@ function tokenMatches(text: string): TokenMatch[] {
   for (const match of text.matchAll(re)) {
     const end = match.index + match[0].length;
     if (end < text.length && !/\s/.test(text[end])) continue;
+    const isCommand = match[1] !== undefined;
+    // A slash command must start at string beginning or be preceded by whitespace.
+    // Path segments like "/Users/.../file.md" have another "/" (or char) before
+    // them and must not be treated as skill invocations.
+    if (isCommand && match.index > 0 && !/\s/.test(text[match.index - 1])) continue;
     out.push({
       start: match.index,
       end,
@@ -377,7 +382,10 @@ function segmentsFromAllMatches(
     if (match.start > textCursor) {
       segments.push({ type: "text", content: display.slice(textCursor, match.start), start: textCursor });
     }
-    segments.push({ type: "invocation", offset: match.start, invocation: invocationSegmentForMatch(match, invocationMetadata) });
+    // Offset must be match.end (not match.start): mergeInvocationSegments
+    // advances stripCursor to the invocation offset and expects the token
+    // text to already be consumed, matching hydratedSlashFallbackSegments.
+    segments.push({ type: "invocation", offset: match.end, invocation: invocationSegmentForMatch(match, invocationMetadata) });
     textCursor = match.end;
   }
   if (textCursor < display.length) {

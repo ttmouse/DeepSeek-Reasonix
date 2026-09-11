@@ -70,9 +70,12 @@ interface DockLauncherProps {
   /** Reports the space-yield mode whenever it changes, so the App-level
    *  launcher toggle can mirror whether the card is actually on screen. */
   onSpaceModeChange?: (mode: SpaceMode) => void;
+  /** True while the dock panel is open: the card then overlays the transcript
+   *  rather than competing for the chat column, so the yield rule is skipped. */
+  overlay?: boolean;
 }
 
-export function DockLauncher({ onSelect, gitBranch, onSpaceModeChange }: DockLauncherProps) {
+export function DockLauncher({ onSelect, gitBranch, onSpaceModeChange, overlay }: DockLauncherProps) {
   const t = useT();
   const [diffStats, setDiffStats] = useState<DiffStats | null>(null);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -268,7 +271,7 @@ export function DockLauncher({ onSelect, gitBranch, onSpaceModeChange }: DockLau
     );
   };
 
-  if (spaceMode === "hidden") return null;
+  if (!overlay && spaceMode === "hidden") return null;
 
   return (
     <div
